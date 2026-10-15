@@ -14883,5 +14883,18 @@
     "ja": "ビュー",
     "hi": "दृश्य",
     "ar": "العروض"
+  },
+  "Área afectada": {
+    "es": "Área afectada",
+    "en": "Affected area",
+    "fr": "Zone concernée",
+    "it": "Area interessata",
+    "pt": "Área afetada",
+    "ar": "القسم المتأثر",
+    "hi": "प्रभावित क्षेत्र",
+    "ja": "対象エリア",
+    "ko": "영향을 받는 영역",
+    "ru": "Затронутая область",
+    "zh": "受影响的区域"
   }
 }
