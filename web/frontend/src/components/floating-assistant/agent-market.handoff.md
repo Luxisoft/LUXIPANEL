@@ -3,8 +3,12 @@
 Fecha: 2026-10-17. Responsable: Valentina.
 
 Implementación en el checkout original `developer`, solo `web/frontend`.
-Market y sus regresiones están implementados. La validación integrada en
-navegador y el despliegue siguen pendientes; este informe no acredita publicación.
+Entrega final de desarrollo UI: Market, navegación y permisos implementados y
+verificados localmente. Inventario: **11 archivos nuevos y 50 modificados**;
+suite completa **609/609**, revisión final de navegación **113/113** y
+typecheck del checkout **salida 0**. La corrección externa de tipos se documenta
+por separado abajo. La validación integrada en navegador y el despliegue siguen
+pendientes; este informe no acredita publicación.
 
 ## Comportamiento y contrato consumido
 
@@ -12,6 +16,12 @@ Se cotejó el contrato v1 de
 `web/backend/src/modules/ai-assistant/docs/agent-market-contract.md` con los tipos
 y servicios actuales de Mateo. Se coordinó por el canal de agentes, sin modificar
 backend ni solicitarle cambios adicionales al DTO.
+QA comunicó después tres defectos backend que conservan este mismo shape:
+carrera al incorporar una asignación durante la admisión de un chat sin
+proyecto, alias de herramientas con diferencias entre DTO y ejecución, y
+superiores/conexiones fuera del equipo contextual. Su corrección corresponde
+a Mateo y su nueva validación integrada a QA; esta entrega no acredita esos
+arreglos ni introduce excepciones de permisos o cambios de proyecto.
 
 - Entrada visible Market desde Agentes IA, búsqueda global del panel, bus v1 y
   drawer; `agentes` conserva compatibilidad como alias. El chat permanece montado.
@@ -169,7 +179,8 @@ esperar el resultado visible. No se desactivó ninguna prueba.
 El runner emitió avisos de solicitudes auxiliares a localhost:3000 sin servicio;
 no provocaron fallos y no constituyen una comprobación del servicio desplegado.
 
-Verificación final tras incorporar la ruta, historial y permisos de retorno:
+Última suite completa tras incorporar la ruta, historial y permisos de retorno
+(sustituye los totales provisionales anteriores):
 
 ```sh
 NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant src/components/workspace src/lib/assistant-request.test.ts src/lib/search-target.test.ts src/lib/panel-routes.test.ts src/lib/auth.test.ts src/middleware.permissions.test.ts --maxWorkers=1 --reporter=dot --silent
@@ -186,6 +197,26 @@ La navegación Astro se simula en Vitest; no sustituye la comprobación real en
 navegador. El caso de módulos internos sí monta su host y verifica su apertura
 y cierre junto a la vista persistente. Se mantuvieron los avisos auxiliares de
 localhost descritos arriba, sin fallos de pruebas.
+
+Revisión final focalizada de navegación y permisos, sin nuevos cambios de
+producto tras esa suite completa:
+
+```sh
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant/AssistantView.route.test.ts src/lib/panel-routes.test.ts src/lib/auth.test.ts src/middleware.permissions.test.ts --maxWorkers=1 --reporter=dot --silent
+```
+
+Salida **0: 4 archivos, 113 pruebas aprobadas, cero fallos u omitidas**, 2,14 s.
+Estos casos ya forman parte de las 609 pruebas anteriores; no se suman como
+pruebas adicionales. Comprueban específicamente:
+
+- `panel.assistant` permite Market y regreso al chat con menú oculto.
+- `panel.dashboard` conserva acceso a inicio y no concede acceso a Market.
+- Sin ninguno de esos permisos se deniega el acceso aunque el menú sea visible
+  o existan permisos de acciones.
+- SPA, Atrás/Adelante y apertura/cierre de módulos internos conservan chat,
+  borrador y subproyecto sin duplicar entradas de historial.
+- Se conservan login, sesión, autorización por target y separación entre
+  permisos de vista, visibilidad del menú y acciones.
 
 Análisis de sintaxis con `@astrojs/compiler.parse`, sin emitir ni ejecutar build:
 **salida 0**, ningún error en `market.astro`, `panel/index.astro` y
@@ -208,22 +239,32 @@ discrepancia. El complemento reutiliza las traducciones existentes del Market.
 NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/tsc --noEmit --pretty false
 ```
 
-Salida **2: 19 errores, todos fuera de los archivos modificados del área**.
-No se silencian ni se excluyen archivos para conseguir un resultado verde.
-Se repitió después del ajuste final de navegación y permisos: conserva esos
-mismos 19 errores, sin errores en el código o pruebas añadidos/modificados.
+Resultado vigente **salida 0, cero diagnósticos**. Los 19 errores anteriores
+fueron corregidos bajo el encargo externo autorizado antes de esta entrega;
+no son un gate fallido ni un pendiente actual. No se rebajó tsconfig, no se
+excluyeron pruebas ni se añadieron supresiones o `any`.
 
-| Archivo relativo a frontend | Ubicación | Cantidad y diagnóstico |
-| --- | --- | --- |
-| `src/lib/diagnostics/browser.ts` | 27:33 | 1, TS2339: target sobre never |
-| `src/scripts/extracted/components/floating-terminal/startup.test.ts` | 6:161; 7:170 y 7:322; 8:158; 9:149; 10:346; 11:542; 12:152 | 8, TS2345: fixtures ApiResponse sin status |
-| `src/scripts/extracted/lib/mail-sudo.ts` | 7:46 | 1, TS2353: previousError no admitido |
-| `src/scripts/extracted/pages/panel/expo/read.test.ts` | 24:118 | 1, TS2345: fixture ApiResponse sin status |
-| `src/scripts/extracted/pages/panel/hosting/provider-settings.ts` | 1:76; 95:66; 107:81 | 3: import de permission-editor no resuelto y dos parámetros any implícitos |
-| `src/scripts/extracted/pages/panel/mail/account-catalog.ts` | 7:72 | 1, TS2322: domain opcional donde se exige string |
-| `src/scripts/extracted/pages/panel/mail/index-script1.ts` | 8:41 | 1, TS2307: import de mail-server-settings no resuelto |
-| `src/scripts/extracted/pages/panel/users/hosting-templates.ts` | 3:94; 25:71 | 2: import de permission-editor no resuelto y parámetro any implícito |
-| `src/scripts/extracted/pages/panel/users/role-permissions.ts` | 4:56 | 1, TS2307: import de permission-editor no resuelto |
+### Aporte externo de tipos, separado del inventario UI
+
+Se conserva como entrega independiente ya aplicada, sin ampliarlo en este
+cierre. Fueron cinco archivos y 48 pruebas focalizadas; no se modificaron los
+archivos del Market para resolver estos errores.
+
+| Archivo relativo a frontend | Corrección |
+| --- | --- |
+| `src/lib/diagnostics/browser.ts` | Evento base `Event` para estrechar a `ErrorEvent` y conservar los errores de recursos. |
+| `src/types/extracted-scripts.d.ts` | Reexportaciones de los tipos fuente de permission-editor y mail-server-settings; `previousError` según la implementación existente de sudo. |
+| `src/scripts/extracted/components/floating-terminal/startup.test.ts` | Respuestas simuladas con status 200 y promesa diferida tipada con ApiResponse. |
+| `src/scripts/extracted/pages/panel/expo/read.test.ts` | Status 200 en respuestas simuladas satisfactorias. |
+| `src/scripts/extracted/pages/panel/mail/account-catalog.ts` | AccountOption deriva de MailAccount y refleja el dominio opcional del respaldo local. |
+
+```sh
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/scripts/extracted/components/floating-terminal/startup.test.ts src/scripts/extracted/pages/panel/expo/read.test.ts src/scripts/extracted/pages/panel/mail/accounts.loading.test.ts src/scripts/extracted/lib/mail-api-client.test.ts src/scripts/extracted/pages/panel/hosting/provider-policy.test.ts src/lib/permission-labels.test.ts --maxWorkers=1 --reporter=dot --silent
+```
+
+Salida **0: 6 archivos, 48 pruebas aprobadas, cero fallos u omitidas**, 3,44 s.
+El typecheck indicado arriba se ejecutó después de estas correcciones de tipos;
+el cierre posterior solo actualiza este informe.
 
 Desde la raíz, `git diff --check -- web/frontend`: **salida 0**.
 Sin copias, worktrees, cambio de rama, commit, push, builds ni reinicios.
@@ -239,11 +280,16 @@ No se tocaron los dist preexistentes, backend, infraestructura ni docs/changes.
    Incluir entrada directa `/panel/assistant/market` y alias canónico, menú
    Agentes IA → Market, buscador, Atrás/Adelante, abrir/cerrar otro módulo y
    regreso al mismo chat con borrador. Comprobar sesión y permisos reales.
+   Repetir la admisión concurrente de un chat con proyecto null, la equivalencia
+   de alias de herramientas entre DTO y ejecución y la pertenencia de superiores
+   y conexiones al equipo contextual después de las correcciones de Mateo.
+   Las pruebas locales del frontend no resuelven esos tres pendientes integrados.
    En el descubrimiento de esta sesión, `modules.describe("browser")` no
    devolvió operaciones; usar el canal browser disponible en QA/líder. Esto
    no acredita un fallo de conexión del servidor.
-2. Líder: asignar los 19 errores externos al Market antes del cierre global.
-   El typecheck de todo frontend continúa fallando aunque esta área no reporte errores.
+2. Líder: recibir esta entrega final UI y secuenciar QA. La corrección externa
+   de tipos ya verificada se mantiene separada; el checkout actual pasa tsc.
+   No queda otra ampliación de frontend dentro de este encargo.
 3. Andrés: build limpio serial y restart exclusivamente en la fase autorizada,
    seguido de proceso online, logs, HTTP y flujos reales. Esta entrega no ejecutó
    ni solicita adelantar esa fase.
