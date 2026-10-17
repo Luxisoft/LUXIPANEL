@@ -312,3 +312,75 @@ Typecheck y suites terminan antes de este cierre; no se ejecutó build/restart.
 QA integrada y publicación siguen en su fase coordinada. La comprobación de
 permisos permanece en el panel, con login Linux y aislamiento target/sesión
 existentes; LP-LICENSE-SERVER se consultó y no se modificó.
+
+
+## Continuación: reproducción durante lectura de rol (2026-10-17)
+
+Se conservaron las correcciones de producto ya presentes en este checkout.
+Esta continuación añade **13 regresiones**: nueve en
+`services/agent-market.service.test.ts`, dos en
+`services/turn-queue.service.test.ts` y dos en
+`services/realtime.service.test.ts`; el resto del delta es esta evidencia.
+
+La reproducción P1 pausa exactamente `agentRolesRepository.get` con promesas
+controladas, sin sleeps ni sustituir binding/admisión. Un chat persistido con
+dos mensajes conserva su proyecto, incluido null. Incorporar o retirar con
+`agentMarketService.put/remove` mientras esa lectura espera impide encolar:
+CONTEXT_MISMATCH/ASSIGNMENT_REMOVED, historial intacto y ninguna admisión
+residual. Si la admisión gana el mutex antes de leer el rol, ambas mutaciones
+devuelven BUSY y la cola conserva el contexto original. La recuperación
+de cola mantiene el turno sin consumirlo ni guardar mensajes; voz rechaza
+antes de fetch, socket o sesión activa. Se revisaron también los llamadores
+`queued-turn-admission.ts`, `agent.service.ts` y `turn-queue.service.ts`:
+reutilizan la admisión estricta, donde null/undefined no vuelven a inferirse.
+
+Las pruebas P2 usan el normalizador real con catálogo poblado: alias de rol
+base y local, herramientas desconocidas y límites null/vacíos producen la
+misma intersección en DTO y runtime. La referencia global legada a B permanece
+guardada; solo aparece efectiva en Y, donde B es ejecutable, y desaparece de X.
+Se preservan perfiles originales, permisos y shape del contrato v1.
+
+Verificación ejecutada desde `web/backend`:
+
+```sh
+NODE_OPTIONS=--max-old-space-size=2560 npm run typecheck
+```
+
+Salida **0**, `tsc --noEmit`.
+
+```sh
+NODE_OPTIONS=--max-old-space-size=2560 npm test -- \
+  \
+  src/modules/ai-assistant/services/agent-market.service.test.ts \
+  src/modules/ai-assistant/controllers/agents.controller.test.ts \
+  src/modules/ai-assistant/repositories/agent-activity.repository.test.ts \
+  src/modules/ai-assistant/services/module-tools.service.test.ts \
+  src/modules/ai-assistant/services/team-tools.test.ts \
+  src/modules/ai-assistant/services/team-tasks.service.test.ts \
+  src/modules/ai-assistant/services/turn-queue.service.test.ts \
+  src/modules/ai-assistant/services/realtime.service.test.ts \
+  src/modules/ai-assistant/services/agent-messages.service.test.ts \
+  src/modules/ai-assistant/services/project-workspace.service.test.ts \
+  src/modules/ai-assistant/services/cli-run-recovery.service.test.ts \
+  src/modules/ai-assistant/services/tool-allowlist.test.ts \
+  src/modules/ai-assistant/services/agent-contributions.test.ts \
+  src/modules/ai-assistant/services/agent-run-lifecycle.test.ts \
+  src/modules/ai-assistant/services/agent-provider-mode.test.ts \
+  src/modules/ai-assistant/services/graph-scope.service.test.ts \
+  --pool=threads --maxWorkers=1 --minWorkers=1 --no-cache
+```
+
+Salida **0**: **16 suites, 381 pruebas aprobadas, ninguna fallida u omitida**.
+Market tiene 77, cola 35 y voz 22. Se incluyen las 11 suites de la primera
+entrega y runtime, ciclo del agente, normalizador y permisos de grafo.
+
+El primer pase focal de las dos regresiones nuevas de voz falló por esperar
+null para una sesión ausente; `liveVoiceSession` devuelve undefined. Se ajustó
+únicamente esa comprobación de ausencia, conservando rechazo de contexto y
+cero llamadas al proveedor. El primer intento de la suite completa no inició
+por el entorno de solo lectura al crear el temporal de Vitest; se repitió con
+el permiso correspondiente y produjo el resultado anterior.
+
+Sin build, reinicio, cambios de datos reales, frontend, infraestructura,
+docs/changes, commit ni push. Esta evidencia no sustituye la nueva QA
+independiente ni autoriza publicar.
