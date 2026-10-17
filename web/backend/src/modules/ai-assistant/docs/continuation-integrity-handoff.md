@@ -1,5 +1,132 @@
 # Entrega backend: continuidad, persistencia y cierre verificado
 
+
+## Revalidación para QA — 2026-10-17, Mateo
+
+Esta revisión confirma las correcciones existentes; no añade código de producto
+ni pruebas y no aprueba el despliegue global. Sustituye las cifras y el pendiente
+de integración del consumidor indicados en entregas anteriores; sus detalles
+de implementación se conservan debajo.
+
+### Checkout, rutas y delta propio
+
+- Original: `/var/www/LUXIPANEL`, rama **developer**, HEAD
+  `46abcb9aed44e78915cf488a9a2050ca8196c482`.
+- `/var/www/LUXIPANEL/backend` resuelve a
+  `/var/www/LUXIPANEL/web/backend`; no son dos checkouts.
+  `frontend` también es un alias de `web/frontend`.
+- No existe `/var/www/LUXIPANEL/CLAUDE.md`; se leyó la guía encontrada en
+  `web/CLAUDE.md`, además de AGENTS, arquitectura backend, README del módulo,
+  ambos handoffs solicitados, el handoff de continuidad y la evidencia QA.
+- Único archivo editado en esta intervención:
+  `web/backend/src/modules/ai-assistant/docs/continuation-integrity-handoff.md`.
+  El árbol ya tenía modificaciones backend/frontend, documentos y entradas
+  `dist` sin seguimiento; se conservan y no son producto de esta revisión.
+  No se cambian auth, licencia, sesión, executor, configuración ni contratos.
+  No corresponde nota pública nueva: esta intervención solo revalida y documenta.
+- Las siete sumas SHA-256 de la entrega posterior a QA, registradas más abajo,
+  coinciden exactamente con los archivos actuales: registry, cola, snapshot y
+  sus pruebas, incluido el archivo independiente de QA.
+  No se crearon copias ni worktrees ni se cambió de rama; no hubo commit/push.
+
+Se descubrió el canal protegido con `modules.list → modules.describe(files)`.
+Se leyó y actualizó este documento mediante `modules.read/execute`, revisión
+`2:0`, usando el alias autorizado `backend/`. El grafo no está disponible en
+las herramientas de este run; se buscó en fuentes. No hubo error de conexión.
+
+### Evidencia actual
+
+Comandos ejecutados desde `/var/www/LUXIPANEL/web/backend`:
+
+| Comando | Salida y resultado actual |
+| --- | --- |
+| `env NODE_OPTIONS=--max-old-space-size=2560 npm run typecheck` | **0**, sin diagnósticos |
+| `npm test -- src/modules/ai-assistant --pool=threads --maxWorkers=2 --minWorkers=1 --reporter=dot --silent` | **0**, **99 archivos aprobados; 994 pruebas aprobadas, 1 omitida (995)**; **26,84 s** |
+| `git diff --check` desde el original | **0**, sin errores de whitespace |
+
+Salida final de Vitest, corrida de esta intervención:
+
+```text
+Test Files  99 passed (99)
+     Tests  994 passed | 1 skipped (995)
+  Start at  14:17:43
+  Duration  26.84s (transform 6.41s, setup 0ms, collect 22.25s, tests 6.48s, environment 17ms, prepare 8.27s)
+```
+
+La hora anterior es la que imprime el runner. Las cifras de 949/967/994 de
+entregas anteriores no se reutilizaron como validación. No se repitieron
+subconjuntos ya aprobados ni se alteraron expectativas. Las cinco regresiones QA,
+los catorce casos de lifecycle y los ocho de snapshot están incluidos en esta
+corrida completa.
+
+La única omitida sigue siendo
+`services/providers/cli/resource-launch.test.ts:30`, condicionada por
+`LXP_RESOURCE_INTEGRATION=1`: requiere crear y terminar un scope systemd real.
+No se activó. Los avisos de fallos de almacenamiento/proveedor/permisos de
+Vitest pertenecen a fixtures; no acreditan el estado de servicios vivos.
+
+### Los cinco puntos solicitados
+
+Rutas relativas a `web/backend/src/modules/ai-assistant/`:
+
+| Requisito | Código y evidencia ejecutada |
+| --- | --- |
+| Avances separados de la respuesta final | `services/turn-finalization.ts` conserva el avance como commentary cuando el turno está pendiente o falla. `services/turn-finalization.test.ts` comprueba final, traducción, EOF, error, pendiente y persistencia; `services/providers/api-completion.test.ts` comprueba los cuatro proveedores y el comentario de Responses. |
+| Recuperación sin falsos completados | `services/team-tasks/{service,lifecycle,persisted-outcome}.ts` conservan ejecución/recuperación activa, pregunta y reparación en cola. Sin verificación requerida acreditada no hay done; una verificación ya pasada no se ejecuta otra vez. Regresiones en `services/team-tasks.service.test.ts:803`, `:828`, `:846` y `services/team-tasks/persisted-outcome.test.ts`. |
+| Reconexión y continuidad durante persistencia | `services/agent-run-registry.ts:310` y `services/turn-queue.service.ts:295` difieren el drenado hasta liberar la conversación. `services/continuation-integrity.qa.test.ts` verifica terminal único al reconectar, ownership y arranque duplicado; `services/agent-run-lifecycle.test.ts` verifica sucesor API/CLI único, usuario/target, fallo de guardado/despacho, retry de verificación y apagado. `repositories/conversations.repository.test.ts:762` cubre el recibo que evita duplicar mensajes encolados. |
+| Errores, cancelación y aprobaciones | `services/turn-queue.service.ts:308` bloquea continuación automática ante error, interrupción o pregunta; `services/team-tasks/lifecycle.ts:541` aplica la misma guarda al despertar al líder. Las pruebas de cola/equipo y `services/providers/api-completion.test.ts` cubren stop, preguntas, techo de rondas y resultado unconfirmed sin pedir otra ejecución. Los reintentos acotados de verificación siguen siendo distintos de repetir una operación incierta. |
+| Historial y archivos cambiados | `services/assistant-message-persistence.ts` y `services/conversation-message-normalizer.ts` conservan resultado, actividad y estados. `models/team-task.types.ts:282` proyecta artifacts/verify/isolation al snapshot sin campos privados. `models/team-task.snapshot.test.ts` verifica ida/vuelta JSON, ceros, estados y compatibilidad antigua. |
+
+No se reprodujo un defecto adicional que justifique un refactor o cambio de
+producto. Esta evidencia usa lógica real con almacenamiento/proveedores
+simulados; no sustituye SSE/HTTP ni persistencia sobre un target real.
+
+### Contrato y coordinación con frontend
+
+Esta revisión no cambia el contrato. Siguen vigentes `text.phase`,
+`done.pending`, `ConversationMessage.pending/apiActivity` y los campos
+opcionales `TeamTaskSnapshot.artifacts/verify/isolation` documentados abajo.
+El terminal se emite tras guardar/cerrar; pending no equivale a éxito, y
+verify ausente, running, failed o skipped no acredita passed.
+
+Se comprobó en fuente, sin editar ni ejecutar frontend, que
+`web/frontend/src/components/floating-assistant/assistant-api/team.ts:97`
+ya declara los tres bloques opcionales y `snapshotToTaskView` (línea 135)
+los copia. También están declaradas/consumidas las fases, actividad y estado
+pendiente en `assistant-api/agent-stream.ts`, `assistant-api/conversations.ts`,
+`chat-engine/stream-apply.ts` y `chat-engine/history.ts`.
+Por tanto, el pendiente anterior de **añadir ese mapeo** ya no describe las
+fuentes actuales; falta su validación integrada por Valentina/QA.
+
+El snapshot conserva contadores de archivos, inserciones y eliminaciones;
+no incluye la lista de rutas ni el diff completo. El detalle sigue usando
+`GET /api/ai/team/tasks/:id/diff` con los permisos existentes. No se afirma
+conservación ilimitada ni éxito de ese endpoint en la instalación actual.
+
+Este documento entrega el contrato y la evidencia al líder y a Valentina.
+El canal de coordinación solo mostró este agente; no se envió un mensaje
+externo ni se afirma una aceptación recibida del otro responsable.
+
+### Pendientes y límites de cierre
+
+Backend listo para el siguiente gate QA en el ámbito probado. QA/Valentina
+deben repetir el contrato cruzado y la recarga de historial, comprobar la
+consola, archivos/diff, reconexión durante guardado, recogida posterior única,
+cancelación, aprobaciones y cambio de target con frontend integrado.
+Los diagnósticos frontend mencionados en informes previos no se revalidaron
+en este turno y no se presentan como resueltos.
+
+Andrés conserva en exclusiva build/restart después de QA y su autorización:
+una compilación por máquina y comprobación posterior de online, HTTP y logs.
+**No se ejecutaron builds, reinicios, despliegue ni proveedores reales**;
+no se declara publicación en GitHub.
+
+Un fallo persistente de almacenamiento/conexión/permisos/proveedor o una espera
+humana puede impedir terminar. El error o estado pendiente permanece honesto,
+sin repetir herramientas a ciegas. Se conserva la limitación documentada:
+una caída entre consumir una cola y arrancar el proceso requiere reconciliación;
+no se promete ejecución exactamente una vez frente a cualquier caída.
+
 ## Corrección posterior al gate QA — entrega vigente, 2026-10-17
 
 Responsable: Mateo. Destinatarios: líder, Valentina y QA.
