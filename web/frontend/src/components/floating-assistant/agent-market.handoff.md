@@ -169,6 +169,29 @@ esperar el resultado visible. No se desactivó ninguna prueba.
 El runner emitió avisos de solicitudes auxiliares a localhost:3000 sin servicio;
 no provocaron fallos y no constituyen una comprobación del servicio desplegado.
 
+Verificación final tras incorporar la ruta, historial y permisos de retorno:
+
+```sh
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant src/components/workspace src/lib/assistant-request.test.ts src/lib/search-target.test.ts src/lib/panel-routes.test.ts src/lib/auth.test.ts src/middleware.permissions.test.ts --maxWorkers=1 --reporter=dot --silent
+```
+
+Salida **0: 70 archivos, 609 pruebas aprobadas, cero fallos u omitidas**, 58,80 s.
+Incluye entrada directa interna/pública, instancia persistente, borrador y
+subproyecto, SPA, Atrás/Adelante, cierre de módulos internos, duplicación de
+eventos, fallo de navegación, carga/deshabilitado, cambio de target y acceso
+con menú oculto. Las pruebas de permisos comprueban sesión, reescritura interna,
+retorno a home con `panel.assistant`, compatibilidad con `panel.dashboard` y
+denegación cuando solo existen permisos de menú o acciones.
+La navegación Astro se simula en Vitest; no sustituye la comprobación real en
+navegador. El caso de módulos internos sí monta su host y verifica su apertura
+y cierre junto a la vista persistente. Se mantuvieron los avisos auxiliares de
+localhost descritos arriba, sin fallos de pruebas.
+
+Análisis de sintaxis con `@astrojs/compiler.parse`, sin emitir ni ejecutar build:
+**salida 0**, ningún error en `market.astro`, `panel/index.astro` y
+`PanelLayout.astro`. Los dos primeros no tienen diagnósticos; el layout mantiene
+17 sugerencias sobre scripts inline preexistentes, ajenas a estas líneas.
+
 ```sh
 npm run i18n:split
 node scripts/i18n-audit-coverage.mjs
@@ -178,6 +201,8 @@ Ambas salidas **0**. Generación: **39 namespaces × 12 idiomas = 468 JSON**,
 versión `26dcabe22be1`. Auditoría: **8628 claves**, 43 nuevas del Market en los
 12 idiomas, cero faltantes, extras, tipos, placeholders incompatibles o vacíos.
 Solo se editaron fuentes; el script regeneró los derivados y el catálogo público.
+La auditoría se repitió tras añadir la ruta: mismo total, salida 0 y ninguna
+discrepancia. El complemento reutiliza las traducciones existentes del Market.
 
 ```sh
 NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/tsc --noEmit --pretty false
@@ -185,6 +210,8 @@ NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/tsc --noEmit --pretty
 
 Salida **2: 19 errores, todos fuera de los archivos modificados del área**.
 No se silencian ni se excluyen archivos para conseguir un resultado verde.
+Se repitió después del ajuste final de navegación y permisos: conserva esos
+mismos 19 errores, sin errores en el código o pruebas añadidos/modificados.
 
 | Archivo relativo a frontend | Ubicación | Cantidad y diagnóstico |
 | --- | --- | --- |
