@@ -15,6 +15,25 @@ backend ni solicitarle cambios adicionales al DTO.
 
 - Entrada visible Market desde Agentes IA, búsqueda global del panel, bus v1 y
   drawer; `agentes` conserva compatibilidad como alias. El chat permanece montado.
+- Ruta dedicada `src/pages/panel/assistant/market.astro`, con enlace
+  `/panel/assistant/market` y URL pública canónica `/assistant/market` según el
+  middleware existente. Exige sesión y vista `panel.assistant`, incluso con
+  `__lxp_internal__`; el layout permite la visita autorizada con menú oculto.
+  Reutiliza el asistente persistente y los textos Market de los 12 catálogos.
+  Navegación SPA, Atrás/Adelante y volver al chat conservan la instancia y el
+  borrador; solicitudes duplicadas no crean dos navegaciones.
+- Contrato exclusivamente frontend: `AssistantPanel.onNavigateTab` comunica
+  acciones al wrapper `AssistantView`, que usa el router de Astro. La lectura
+  de ruta no genera historial; el drawer sigue usando navegación local.
+  `InternalModuleHost` emite `lxp:internal-modules:route-changed` tras sus cambios
+  de historial para sincronizar apertura/cierre de módulos sin swap de Astro.
+  Este complemento no modifica los endpoints ni DTO consumidos.
+- Al volver del Market, home admite `panel.assistant` además del permiso legado
+  `panel.dashboard`; antes un usuario con solo vista de asistente podía rebotar
+  entre `/` y el redirect `/assistant`. `hasView` separa acceso de visibilidad:
+  layout y home conservan el asistente con menú oculto, mientras un menú visible
+  sin permiso de vista no lo monta. Se mantiene la sesión obtenida del backend,
+  los scopes de target y las comprobaciones de acciones; no se cambia el login.
 - Catálogo completo: `GET /api/ai/agents?contextProjectId=P`; la comprobación de
   miembros al cambiar de proyecto usa `GET /api/ai/agents?projectId=P`.
   No se combinan ambos parámetros. El cliente también tipa `q` y `technology`.
@@ -66,6 +85,9 @@ src/components/floating-assistant/AgentMarket.test.ts
 src/components/floating-assistant/agent-market-state.test.ts
 src/components/floating-assistant/assistant-api/agents.market.test.ts
 src/components/floating-assistant/agent-market.handoff.md
+src/components/floating-assistant/AssistantView.route.test.ts
+src/lib/panel-routes.test.ts
+src/pages/panel/assistant/market.astro
 ```
 
 Modificados:
@@ -76,6 +98,7 @@ src/components/floating-assistant/README.md
 src/components/floating-assistant/AgentsTab.tsx
 src/components/floating-assistant/AssistantPanel.tsx
 src/components/floating-assistant/AssistantPanel.agent-launch.test.ts
+src/components/floating-assistant/AssistantView.tsx
 src/components/floating-assistant/FloatingAssistantDrawer.test.ts
 src/components/floating-assistant/ProjectAgentsDialog.tsx
 src/components/floating-assistant/agents-tab/AgentEditor.tsx
@@ -96,9 +119,18 @@ src/components/floating-assistant/project-modal/ProjectModalView.tsx
 src/components/floating-assistant/project-modal/agent-scope.ts
 src/components/floating-assistant/project-modal/project-agents.test.ts
 src/components/workspace/credentials/AgentCredentialFields.tsx
+src/components/workspace/InternalModuleHost.tsx
+src/layouts/PanelLayout.astro
 src/lib/assistant-request.ts
 src/lib/assistant-request.test.ts
+src/lib/auth.ts
+src/lib/auth.test.ts
+src/lib/panel-routes.ts
 src/lib/search-catalog.ts
+src/middleware.ts
+src/middleware.permissions.test.ts
+src/pages/panel/index.astro
+vitest.config.ts
 src/i18n/es/assistant/part2.ts
 src/i18n/en/assistant/part2.ts
 src/i18n/fr/assistant/part2.ts
@@ -121,7 +153,7 @@ de credenciales y el fixture de razonamiento corrigen errores de tipos del área
 
 ## Verificación reproducible
 
-Desde `web/frontend`:
+Desde `web/frontend`, primera verificación del Market:
 
 ```sh
 NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant src/lib/assistant-request.test.ts src/lib/search-target.test.ts --maxWorkers=1 --reporter=dot --silent
@@ -177,6 +209,12 @@ No se tocaron los dist preexistentes, backend, infraestructura ni docs/changes.
    historial previo, cambio de target y ambos modos vista/drawer. Verificar móvil,
    RTL, foco y contraste sobre el tema real. La revisión con datos simulados no
    acredita autorización real ni funcionamiento desplegado.
+   Incluir entrada directa `/panel/assistant/market` y alias canónico, menú
+   Agentes IA → Market, buscador, Atrás/Adelante, abrir/cerrar otro módulo y
+   regreso al mismo chat con borrador. Comprobar sesión y permisos reales.
+   En el descubrimiento de esta sesión, `modules.describe("browser")` no
+   devolvió operaciones; usar el canal browser disponible en QA/líder. Esto
+   no acredita un fallo de conexión del servidor.
 2. Líder: asignar los 19 errores externos al Market antes del cierre global.
    El typecheck de todo frontend continúa fallando aunque esta área no reporte errores.
 3. Andrés: build limpio serial y restart exclusivamente en la fase autorizada,
