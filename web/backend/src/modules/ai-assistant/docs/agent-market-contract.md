@@ -146,6 +146,13 @@ habitual. canExecute no es un permiso para eludir esas comprobaciones.
 perfil/rol base/rol local/asignación, recursos del árbol activo acotados por el
 perfil/asignación, equipo raíz y superior/conexiones contextuales. allowedTools
 null significa sin restricción adicional; [] ninguna herramienta de módulo.
+Los aliases legados (por ejemplo files.list → files.list_dir) se normalizan
+antes de intersectar también en el DTO, usando el mismo helper del resolver.
+parentAgentId/connections efectivos solo contienen perfiles ejecutables en
+ese mismo contexto; se excluyen autorreferencias, ausentes, retirados, ajenos
+y miembros de otros proyectos. No se reescriben el perfil ni las asignaciones
+guardadas. La validación de ciclos en PUT recorre los vínculos guardados, para
+no ocultar un ciclo que la nueva pertenencia haría efectivo.
 El catálogo no enumera permisos efectivos de sesión/módulos: esos filtros
 siguen aplicándose en cada despacho. systemPrompt contiene las instrucciones
 de rol y luego perfil/asignación, sin prompt base, secretos ni contexto dinámico.
@@ -186,6 +193,11 @@ Padre asignado habilita descendientes autorizados. La asignación activa más ce
 Target y projectId se fijan al ejecutar. Solo para una conversación nueva, si falta projectId se resuelve un vínculo directo único; varios devuelven REQUIRED. Toda conversación persistida conserva agentId/projectId, incluso vacía o con projectId:null: no puede adoptar agente/proyecto nuevos ni inferir una asignación incorporada después. Devuelve CONTEXT_MISMATCH y exige abrir otra conversación. Un input null/omitido reanuda el vínculo persistido; no lo elimina. Sin vínculos actuales ni retirados continúa el chat libre. La misma validación se aplica antes de admitir cola, voz y respuestas de aprobación; no se modifica historial al rechazar.
 Contexto del proyecto activo + ancestros autorizados, hijos autorizados anunciados; nunca unión de otros projectIds raíz. Rutas/servidores/grafos se acotan al árbol activo y restricciones de asignación. Sesión/módulos/perfil/roles/asignación se intersectan, nunca se amplían.
 Chat, delegación, equipo y cola recuperada revalidan antes del despacho. Retirada y admisión comparten exclusión target/agente; trabajo durable pendiente bloquea tras reinicio.
+La admisión recibe el projectId ya resuelto y lo vuelve a validar bajo esa
+exclusión sin inferirlo otra vez, incluso si es null/undefined. Si una primera
+asignación gana la carrera entre vincular el chat y admitirlo, el chat libre
+se rechaza con CONTEXT_MISMATCH sin encolarlo ni modificar su historial. Si
+la admisión libre gana primero, incorporar devuelve BUSY hasta que se libere.
 Historial se conserva consultable; no autoriza nuevos runs después de retirada.
 
 ## Límites
@@ -203,7 +215,7 @@ La voz mantiene la admisión de la asignación mientras su sesión está activa.
 allowedTools conserva su significado existente: herramientas registradas de módulos, normalizando aliases legados antes de intersectar. La coordinación (equipo/mensajes/delegación) mantiene sus controles de jerarquía, pertenencia al proyecto y supervisión; no se añaden permisos globales al catálogo.
 
 
-## Evidencia focalizada (2026-10-17)
+## Evidencia focalizada inicial (2026-10-17)
 
 Desde `web/backend`, en el checkout original `developer`:
 
@@ -241,3 +253,62 @@ que asumían el comportamiento anterior; ninguna prueba se desactivó.
 No acredita despliegue: build serial, reinicio, logs y HTTP quedan para la fase
 de publicación coordinada. No se modificaron configuración real de usuarios,
 login directo, contratos LP, frontend ni infraestructura en este aporte.
+
+
+## Verificación posterior a la revisión (2026-10-17)
+
+Corrige tres hallazgos posteriores a las 278 pruebas iniciales: admisión
+concurrente desde projectId:null, aliases allowedTools en DTO/runtime y
+parent/connections fuera del roster contextual. El DTO v1, endpoints, cuerpos,
+HTTP 200 síncrono y ausencia de jobs no cambian. Las capacidades siguen
+revalidándose en runtime; no hay migración ni cambios de datos reales.
+
+Delta de esta revisión: `services/agent-context.service.ts`,
+`services/agent-market.service.ts`, `services/agent-market.service.test.ts`
+y este contrato. Se agregaron 14 regresiones con normalizador real de aliases;
+los fixtures de superiores legados ahora incluyen los perfiles autorizados
+que referencian. No se quitaron pruebas. La reproducción previa al arreglo
+con `--testNamePattern='post-review admission'` dio salida 1: 9 fallos y 4
+aprobadas (54 casos existentes fuera del filtro); confirmó los tres defectos.
+
+Verificación final desde `web/backend`, checkout original `developer`:
+
+```sh
+NODE_OPTIONS=--max-old-space-size=2560 npm run typecheck
+```
+
+Salida **0**, `tsc --noEmit`, posterior a los tres arreglos.
+
+```sh
+NODE_OPTIONS=--max-old-space-size=2560 npm test -- \
+  src/modules/ai-assistant/services/agent-market.service.test.ts \
+  src/modules/ai-assistant/controllers/agents.controller.test.ts \
+  src/modules/ai-assistant/repositories/agent-activity.repository.test.ts \
+  src/modules/ai-assistant/services/module-tools.service.test.ts \
+  src/modules/ai-assistant/services/team-tools.test.ts \
+  src/modules/ai-assistant/services/team-tasks.service.test.ts \
+  src/modules/ai-assistant/services/turn-queue.service.test.ts \
+  src/modules/ai-assistant/services/realtime.service.test.ts \
+  src/modules/ai-assistant/services/agent-messages.service.test.ts \
+  src/modules/ai-assistant/services/project-workspace.service.test.ts \
+  src/modules/ai-assistant/services/cli-run-recovery.service.test.ts \
+  src/modules/ai-assistant/services/tool-allowlist.test.ts \
+  src/modules/ai-assistant/services/agent-contributions.test.ts \
+  src/modules/ai-assistant/services/agent-run-lifecycle.test.ts \
+  src/modules/ai-assistant/services/agent-provider-mode.test.ts \
+  src/modules/ai-assistant/services/graph-scope.service.test.ts \
+  --pool=threads --maxWorkers=2 --minWorkers=1
+```
+
+Salida **0**; **16 archivos, 368 pruebas aprobadas**, ninguna fallida u omitida.
+Market contiene 68 pruebas (54 anteriores + 14 nuevas). Incluye ambos órdenes
+de la carrera admisión/incorporación y el encolado real sin recontextualizar,
+aliases con límites nulos/vacíos, jerarquía legacy/explicit/heredada, otro
+propietario/proyecto, retirados/roles ausentes, líder retirado y prevención de
+ciclos al crear una pertenencia. Se comprueba que filtrar relaciones no muta
+los datos guardados ni oculta perfiles compartidos del catálogo.
+
+Typecheck y suites terminan antes de este cierre; no se ejecutó build/restart.
+QA integrada y publicación siguen en su fase coordinada. La comprobación de
+permisos permanece en el panel, con login Linux y aislamiento target/sesión
+existentes; LP-LICENSE-SERVER se consultó y no se modificó.
