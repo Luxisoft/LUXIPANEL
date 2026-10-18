@@ -2,9 +2,210 @@
 
 Fecha: 2026-10-17. Responsable: Valentina.
 
-## Correctiva posterior al rechazo de QA — 2026-10-17
+## Continuación acotada H1 — invalidación irreversible (2026-10-17)
 
-Esta sección es la entrega final vigente de la corrección de los seis hallazgos.
+**Entrega vigente de Valentina para recogida y nueva revalidación de QA.**
+El gate de fuentes continúa pendiente de QA; esta entrega no acredita despliegue.
+Se leyó primero el reporte independiente
+`.cache/qa-market-final-20261017-camila/report.md` y sus dos suites.
+Se reprodujeron exactamente **20 aprobadas y 7 fallidas**, antes de editar
+producto. Los siete casos corresponden a los dos P2 de H1, no a siete defectos.
+La evidencia previa de 687 pruebas no se usa para cerrar esta continuación.
+H2 y H3–H6 conservan su aceptación previa; no se reescribieron sus áreas.
+
+Checkout original `/var/www/LUXIPANEL`, rama `developer`, frontend en
+`web/frontend` (alias `frontend`). Se leyeron `web/CLAUDE.md`, ambas
+arquitecturas web, la documentación de voz/asistente, `MODULE-SDK-SPEC.md`
+y `INFRA_LUXIPANEL.md`. El grafo no está expuesto en este run: se buscó
+en fuentes. Se descubrieron y utilizaron `modules.list → describe →
+read/execute`, módulos files/admin revisión `2:0`. El canal files acepta
+el alias autorizado `frontend`; rechazó la ruta canónica como fuera de su
+ámbito, sin ejecutar esa lectura. Las escrituras se hicieron por el alias,
+que apunta al mismo checkout original.
+
+### Mecanismo y alcance
+
+- Cada objeto Session es la identidad de una operación y conserva
+  `canceled` monotónico y `starting` hasta terminar la negociación.
+  Un layout effect cancela el inicio al primer commit sin admisión o con otro
+  contexto; volver a `canStart=true` no modifica ese objeto ni lo rescata.
+  Las llamadas ya establecidas conservan Terminar, silenciar y las solicitudes.
+- El ámbito capturado incluye target, cabeceras reales de sesión/CSRF y usuario
+  del DOM, como el aislamiento del cliente API; solo vive en memoria, sin logs
+  ni persistencia de cabeceras. ChatMain añade un `contextKey` interno con
+  proveedor, agente vinculado y proyecto efectivo del chat. No cambia login,
+  API, backend, configuración ni el contrato v1.
+- Cada continuación de micrófono, creación/adopción, consulta previa, SDP,
+  POST y SDP remoto comprueba propiedad de la operación y contexto. La
+  invalidación también se ejecuta si se observa un cambio al resolver una
+  promesa antes de otro render. Un recurso tardío se libera; no se vincula
+  audio ni se inicia polling desde la operación cancelada.
+- Un POST ya enviado puede devolver un id después de cancelar. Solo se cierra
+  ese id si sigue vigente su usuario/sesión/target original; nunca se envía a
+  una autenticación sustituta. Los callbacks de eventos, respuestas y refresco
+  conservan su propietario; no actualizan ni liberan el intento nuevo.
+- Para preservar la creación autorizada, ChatMain adopta los metadatos devueltos
+  junto con el id y agente del chat en el mismo lote de estado. Así la lista
+  de la renderización anterior, que todavía no conoce ese id, no provoca una
+  falsa pérdida de admisión. `accept` sigue rechazando creaciones tardías.
+  Se probó con metadatos e historial pendientes, sin omitir guards de admisión.
+
+Inventario **solo de esta continuación**, relativo a `web/frontend`:
+
+1. `src/components/floating-assistant/chat-pane/use-realtime-voice.tsx`.
+2. `src/components/floating-assistant/chat-pane/ChatMain.tsx`.
+3. `src/components/floating-assistant/chat-pane/use-realtime-voice.test.ts`:
+   el mock API pasa a ser parcial y conserva las funciones reales de sesión;
+   las 19 aserciones existentes no se sustituyen ni desactivan.
+4. `src/components/floating-assistant/chat-pane/use-realtime-voice.context.test.ts`
+   (nuevo): 18 probes originales y 17 variantes/positivos, total 35.
+5. `src/components/floating-assistant/chat-pane/ChatMain.voice-context.test.ts`
+   (nuevo): 9 probes originales y 6 integraciones adicionales, total 15.
+6. Este handoff.
+
+No se editó RealtimeRequests, PermissionView, Market, creación de perfiles,
+modal, tipos externos aprobados, backend, login, infraestructura ni entorno.
+La prop opcional `contextKey` es un contrato interno hook/ChatMain, actualizado
+en ambos extremos; no requiere una ampliación ni un handoff backend.
+Se preservaron las demás modificaciones preexistentes.
+
+### Las siete regresiones exigidas
+
+Nombres exactos que fallaron en `voice-invalidation-before.json` y pasan
+en `voice-invalidation-final.json`:
+
+1. H1: readmisión no revive el intento obsoleto durante createOffer
+2. H1: readmisión no revive el intento obsoleto durante setLocalDescription
+3. H1: sesión cambiada en el mismo target durante createOffer invalida el intento
+4. H1: sesión cambiada en el mismo target durante setLocalDescription invalida el intento
+5. H1 ChatMain real: recarga y readmisión en createOffer no reviven intento
+6. H1 ChatMain real: recarga y readmisión en setLocalDescription no reviven intento
+7. H1 ChatMain real: nueva sesión del mismo target no recupera SDP anterior
+
+Los 20 probes positivos originales también están conservados y aprobados:
+revocación persistente, ida/vuelta de target y conversación, navegación real
+de proyecto, permisos/respuestas bloqueados, callbacks retenidos, Terminar y
+liberación del input, acciones admitidas y un clic nuevo tras readmisión.
+No se simula la sesión dentro del target: se usan `scopeHeaders(true)`,
+`resolveTargetScope()` y sessionStorage reales con valores ficticios.
+
+Las variantes cubren nuevo inicio autorizado antes de resolver el anterior,
+sesión con `canStart` siempre true e ida/vuelta, usuario, CSRF y proyecto,
+detección sin render, micrófono tardío, `accept` tardío, consulta previa,
+POST exitoso tardío, SDP remoto tardío, eventos WebRTC antiguos, fallo tardío,
+callbacks y respuestas de otra sesión. Se comprueban por separado recursos
+de cada intento, reproducción de audio, polling e input-lock del intento nuevo.
+Las promesas son controladas; el hook usa temporizadores simulados y avanza
+1500 ms explícitamente para comprobar el polling vigente.
+ChatMain monta useChatPane, hook y RealtimeRequests reales; sus seis casos
+adicionales cubren nuevos clics, error de catálogo, creación autorizada con
+lecturas pendientes y creación tardía tras cambio de sesión.
+
+### Verificación de esta entrega
+
+Entorno simulado happy-dom; API, WebRTC, captura y proveedores sustituidos por
+fixtures. Sin credenciales, proveedores reales, datos operativos ni navegador.
+Vitest se ejecutó serialmente, siempre con `--maxWorkers=1`.
+
+| Ejecución | Resultado | Evidencia ignorada en .cache |
+| --- | --- | --- |
+| Antes de editar producto: dos suites portadas de QA | salida 1; 20 pasan / 7 fallan / 0 omitidas; 3,432 s | voice-invalidation-before.json y .log |
+| Tras corrección inicial: 27 probes + 32 existentes | salida 0; 59/59; 6,397 s | voice-invalidation-after.json y .log |
+| Selección integrada final: 15 archivos | salida 0; **203/203**, 0 fallos/omitidas/todo; 21,678 s | voice-invalidation-final.json y .log |
+| Tras precisar tipos de los mocks nuevos: suite afectada | salida 0; 35/35; 1,235 s | voice-invalidation-typed-fixture.json y .log |
+| TypeScript final | salida 0; **cero diagnósticos**; 25,923 s | voice-invalidation-typecheck-final.json y .log |
+| git diff --check | salida 0 | voice-invalidation-diff-check.log |
+
+Los tiempos de Vitest proceden de sus JSON (startTime/endTime). Las filas se
+solapan: no se suman como pruebas distintas. La selección integrada contiene
+las 32 existentes y los 27 probes originales. Los únicos cambios posteriores
+a esas 203 pruebas fueron anotaciones explícitas de mocks en la suite nueva
+y este documento. Se reejecutó esa suite y el typecheck completo.
+Un primer typecheck encontró tres anotaciones no invocables de los mocks;
+se precisaron sus firmas, sin supresiones ni cambios de configuración.
+Los avisos auxiliares de conexión rechazada al localhost ficticio del runner
+persisten; no son evidencia de logs ni disponibilidad de producción.
+
+Selección exacta de las 203 pruebas (todas bajo
+`src/components/floating-assistant/chat-pane/`):
+
+| Archivo | Casos |
+| --- | ---: |
+| use-realtime-voice.context.test.ts | 35 |
+| use-realtime-voice.test.ts | 19 |
+| ChatMain.voice-context.test.ts | 15 |
+| ChatMain.market-review.test.ts | 8 |
+| ask-permission.test.ts | 5 |
+| voice-message.test.ts | 4 |
+| use-prompt-dictation.test.ts | 4 |
+| reactbits/PromptBar.integration.test.ts | 16 |
+| reactbits/PromptBar.voice-exclusive.test.ts | 6 |
+| agent-chat-handoff.test.ts | 7 |
+| team-execution.render.test.ts | 64 |
+| agent-shortcut-activity.test.ts | 5 |
+| use-chat-pane-derived.projects.test.ts | 2 |
+| turn-view.container.test.ts | 12 |
+| turn-view.quick-actions.test.ts | 1 |
+
+Comandos desde `web/frontend` (las ejecuciones guardaron stdout/stderr en los
+.log del mismo nombre, conservando el código de salida):
+
+```sh
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant/chat-pane/use-realtime-voice.context.test.ts src/components/floating-assistant/chat-pane/ChatMain.voice-context.test.ts --maxWorkers=1 --reporter=json --outputFile=.cache/voice-invalidation-before.json --silent
+
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run \
+  src/components/floating-assistant/chat-pane/use-realtime-voice.context.test.ts \
+  src/components/floating-assistant/chat-pane/ChatMain.voice-context.test.ts \
+  src/components/floating-assistant/chat-pane/use-realtime-voice.test.ts \
+  src/components/floating-assistant/chat-pane/ChatMain.market-review.test.ts \
+  src/components/floating-assistant/chat-pane/ask-permission.test.ts \
+  src/components/floating-assistant/chat-pane/voice-message.test.ts \
+  src/components/floating-assistant/chat-pane/use-prompt-dictation.test.ts \
+  src/components/floating-assistant/chat-pane/reactbits/PromptBar.integration.test.ts \
+  src/components/floating-assistant/chat-pane/reactbits/PromptBar.voice-exclusive.test.ts \
+  src/components/floating-assistant/chat-pane/agent-chat-handoff.test.ts \
+  src/components/floating-assistant/chat-pane/team-execution.render.test.ts \
+  src/components/floating-assistant/chat-pane/agent-shortcut-activity.test.ts \
+  src/components/floating-assistant/chat-pane/use-chat-pane-derived.projects.test.ts \
+  src/components/floating-assistant/chat-pane/turn-view.container.test.ts \
+  src/components/floating-assistant/chat-pane/turn-view.quick-actions.test.ts \
+  --maxWorkers=1 --reporter=json --outputFile=.cache/voice-invalidation-final.json --silent
+
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant/chat-pane/use-realtime-voice.context.test.ts --maxWorkers=1 --reporter=json --outputFile=.cache/voice-invalidation-typed-fixture.json --silent
+NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/tsc --noEmit --pretty false
+git diff --check
+```
+
+El comando de baseline documenta la corrida anterior a editar producto y
+ampliar los dos archivos; ejecutarlo sobre la fuente final ejecuta sus 50 casos
+actuales y no reproduce un fallo esperado. No se restauró una versión vieja
+del producto ni se creó una copia/worktree para obtener ese resultado.
+
+No se modificaron textos de producto ni catálogos: no se ejecutó i18n por
+rutina. No se repitieron las 687 pruebas ni la auditoría ajena de tipos.
+
+### Pendientes y límites
+
+- Nueva revalidación independiente de QA antes de aceptar H1 y el gate de
+  fuentes. Las pruebas de autora no declaran ese gate aprobado.
+- Un POST ya emitido no se puede deshacer desde el navegador antes de recibir
+  su respuesta. Tras cambiar autenticación, se libera el audio local sin
+  intentar cerrar el id antiguo usando la sesión nueva; el cierre remoto en
+  ese ámbito anterior no queda confirmado por estas pruebas.
+- Sin build/restart por instrucción expresa: siguen reservados para Andrés,
+  junto con logs, HTTP autenticado y navegador/SPA desplegada.
+- Sin nota pública `docs/changes`, commits, push, copias, worktrees ni cambio
+  de rama. Los artefactos de .cache permanecen ignorados. No se enviaron
+  acuses ni mensajes repetidos; esta entrega queda disponible para team.collect
+  (esa herramienta no está expuesta en este run).
+
+---
+
+## Entrega anterior — correctiva posterior al rechazo de QA (histórica)
+
+Esta sección conserva la entrega anterior de la corrección de los seis hallazgos.
+Fue revalidada por QA: H2 aprobado y H1 rechazado por los dos P2 documentados arriba.
+Sus recuentos no sustituyen la evidencia de la continuación vigente.
 Actualizada tras los dos huecos de voz reproducidos por Camila: corrección de
 autora y evidencia final listas para team.collect. H1/H2 requieren nueva
 revalidación de QA; H3–H6 fueron aprobados en fuente/pruebas por Camila, con
