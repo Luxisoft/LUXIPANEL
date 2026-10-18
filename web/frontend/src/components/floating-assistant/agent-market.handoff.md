@@ -4,7 +4,12 @@ Fecha: 2026-10-17. Responsable: Valentina.
 
 ## Correctiva posterior al rechazo de QA — 2026-10-17
 
-Esta sección es la entrega vigente de la corrección de los seis hallazgos.
+Esta sección es la entrega final vigente de la corrección de los seis hallazgos.
+Actualizada tras los dos huecos de voz reproducidos por Camila: corrección de
+autora y evidencia final listas para team.collect. H1/H2 requieren nueva
+revalidación de QA; H3–H6 fueron aprobados en fuente/pruebas por Camila, con
+la limitación de recuperación local aceptada. No se envían más notificaciones
+entre agentes ni se modifica el registro de tareas.
 Las 609 pruebas y el inventario de la primera implementación, conservados debajo,
 son evidencia histórica: **no se reutilizan como validación de esta correctiva**.
 
@@ -23,10 +28,14 @@ El CLAUDE vigente está en `web/CLAUDE.md`, no en la raíz.
    mientras la sesión está activa, aunque el catálogo pase por loading/error.
    `useRealtimeVoice.canStart` separa el permiso de iniciar de la capacidad de
    terminar: tampoco renueva/inicia tras perder admisión mientras espera el
-   micrófono o consultas iniciales. La sesión activa sigue siendo terminable.
+   micrófono o consultas iniciales. Además, vuelve a comprobar la admisión
+   después de createOffer y setLocalDescription: si se pierde durante cualquiera
+   de esas esperas, libera micrófono/peer/input-lock y no hace POST de sesión.
+   La validez de una sesión existente se mantiene separada de esa admisión:
+   Terminar y silenciar siguen disponibles cuando el catálogo se bloquea.
    Se probaron evento agents-updated, promesa GET rechazada, cierre, ausencia de
-   un nuevo inicio y preservación del borrador/adjuntos; también el hook real
-   con WebRTC y micrófono simulados.
+   un nuevo inicio y preservación del borrador/adjuntos; también las dos esperas
+   SDP con promesas controladas, hook real, WebRTC y micrófono simulados.
 
 2. **Caminos alternativos de envío en histórico.** La admisión común vive en
    `use-chat-pane-derived`, usa el binding persistido (incluido projectId:null)
@@ -37,8 +46,18 @@ El CLAUDE vigente está en `web/CLAUDE.md`, no en la raíz.
    opciones y de crear una conversación, comprobando ámbito/binding actuales.
    Un fallo al crear desde una sugerencia conserva el borrador original y sus
    adjuntos. La petición explícita de un chat general nuevo sigue admitida y no
-   recontextualiza el histórico. Las aserciones son llamadas simuladas del
-   frontend; **no acreditan ejecución real del backend**.
+   recontextualiza el histórico.
+
+   La misma admisión llega ahora a las solicitudes de voz mediante canRespond.
+   RealtimeRequests deshabilita opciones de respuesta y Aprobar/Aprobar siempre;
+   el hook revalida inmediatamente antes de los POST, incluso con callbacks
+   retenidos o una aprobación encolada justo antes de perder admisión.
+   Rechazar permanece disponible y no concede acciones. Una negativa local
+   rechaza la promesa para que la UI libere su estado pendiente. Si vuelve la
+   admisión, la pregunta conservada puede responderse. Se usa el texto existente
+   agentMarket.readOnly del catálogo, sin nuevas claves.
+   Las aserciones son llamadas simuladas del frontend; **no acreditan ejecución
+   real del backend**.
 
 3. **Catálogo tardío con proveedor ya activo.** `AssistantPanel.launchAgent`
    toma el texto/adjuntos más recientes después de todas las esperas, también si
@@ -48,55 +67,54 @@ El CLAUDE vigente está en `web/CLAUDE.md`, no en la raíz.
    diferido con edición simultánea; otras cubren cambio de proyecto, hilo,
    target, sesión y ruta.
 
-4. **POST de perfil con resultado incierto.** El cliente conserva status/code
-   también en creación; una respuesta sin id válido es incierta.
-   `profile-create-recovery` mantiene un bloqueo local antes del POST, separado
-   por usuario/target; persiste solamente una marca booleana en sessionStorage,
-   nunca formulario, credenciales ni cabeceras. Impide repetir la creación tras
-   pérdida de respuesta, incluso al cerrar/reabrir el editor. Un rechazo HTTP
-   definitivo permite corregir/reintentar. Revisar el catálogo hace solo GET.
-   El usuario puede elegir explícitamente un id existente, que se relee y exige
-   canEditProfile antes de pasar a edición PUT. No se infiere identidad por
-   nombre, timestamps ni diferencias del catálogo. Se probaron persistencia
-   seguida de respuesta perdida, dos perfiles con el mismo nombre, recuperación
-   por id, ausencia de otro POST, remontaje y rechazo definitivo.
+4. **POST de perfil con resultado incierto.** Se completó el enfoque frontend
+   decidido por Marin, sin ampliar la API. El cliente conserva status/code y
+   trata una respuesta sin id válido como incierta. Antes del POST se marca un
+   bloqueo local por **usuario, sesión y target**; se comprueba antes de cada
+   creación y permanece al cerrar/reabrir y al navegar SPA en el mismo ámbito.
+   Un GET vacío, fallido o con el mismo nombre nunca lo levanta ni acredita que
+   el perfil no se creó. Un rechazo HTTP definitivo permite corregir/reintentar.
 
-   **Límite/dependencia:** el contrato v1 no devuelve una identidad recuperable
-   de la operación si se pierde la respuesta del POST. No es posible confirmar
-   automáticamente qué perfil creó ese intento ni demostrar que no se aplicó
-   mediante un catálogo vacío. Si el usuario no identifica el perfil, el estado
-   sigue incierto y la creación bloqueada. Automatizarlo requiere que backend
-   admita una identidad de operación acotada a usuario/target, registre
-   atómicamente su resultado y permita consultarlo/repetirlo sin duplicar.
-   Esta propuesta **no está implementada ni se presupone disponible**.
-   La marca local no sustituye ese contrato entre pestañas, dispositivos o
-   después de borrar almacenamiento; si sessionStorage no permite escribir,
-   la protección conserva solo la memoria del documento.
-   No se tocó backend. La dependencia se intentó enviar al líder; su buzón
-   rechazó los mensajes por capacidad. Camila recibió el hallazgo por el canal
-   asíncrono (mensaje 575636a0-fee3-446d-8a03-f6d2b2479d9d).
+   La recuperación requiere selección EXPLÍCITA de un id. Hace GET nuevo,
+   encuentra ese id exacto y exige canEditProfile antes de abrir edición PUT.
+   Un id ausente o sin permiso mantiene el bloqueo. No hay inferencia por nombre,
+   timestamps ni diferencias del catálogo, ni aviso de éxito del POST original.
+   Los tests comprueban que elegir un id no llama onEditorDone ni realiza PUT
+   hasta que el usuario guarda el perfil elegido.
 
-   **Límites concretos para la revalidación de Camila (revisión de fuente).**
-   `reload()` no limpia la marca de creación incierta: ni un GET vacío, ni un
-   error, ni la presencia de un nombre coincidente prueban que el POST no ocurrió.
-   `recoverProfile(id)` relee el catálogo y exige ese id exacto con
-   `canEditProfile === true`; sin él o con GET fallido mantiene el bloqueo.
-   Elegirlo abre su edición, sin anunciar éxito del POST original.
-   El desmontaje del editor no borra la marca; memoria de módulo y sessionStorage
-   la conservan durante navegación SPA en el mismo ámbito. Las respuestas de
-   recuperación se descartan si cambian target o cabeceras de sesión respecto al
-   montaje. La marca persistida contiene solo el booleano por usuario/target,
-   no una identidad de sesión u operación ni datos que permitan atribuir el POST.
+   **Aislamiento adicional, verificado en esta continuación.** Las nuevas pruebas
+   reprodujeron tres fallos de la versión anterior: marca visible en otra sesión,
+   GET tardío aceptado después de cambiar usuario y POST incierto antiguo visible
+   en la sesión nueva. Se corrigieron en profile-create-recovery,
+   use-agents-tab y el guard de AgentEditor. La identidad local incluye usuario,
+   target y cabeceras de sesión; las respuestas se descartan tras un cambio.
+   La clave persistida es un digest SHA-256, nunca las cabeceras o credenciales.
+   sessionStorage guarda solamente ese identificador opaco y un booleano.
+   El control Crear permanece deshabilitado mientras se prepara/lee la marca;
+   el handler también espera y revalida el ámbito antes de cualquier POST.
 
-   Las cuatro regresiones de `agents-tab/profile-create-recovery.test.ts`
-   acreditan pérdida de respuesta tras persistir sin segundo POST, selección
-   explícita por id entre nombres iguales, cierre/remontaje y rechazo definitivo.
-   La navegación SPA real, los GET vacíos/fallidos y los cambios de target/sesión
-   durante recuperación quedan como comprobaciones específicas de QA; la
-   inspección anterior no se presenta como nuevas pruebas ejecutadas.
-   La recuperación automática descrita arriba es una limitación del contrato,
-   no una ampliación backend solicitada por esta entrega. La corrección ofrece
-   bloqueo seguro con incertidumbre explícita y recuperación manual.
+   **Regresiones del caso 4:** 26 pruebas en
+   `agents-tab/profile-create-recovery.test.ts`, incluidas en la suite final.
+   Cubren persistencia seguida de respuesta perdida; GET vacío/fallido/nombre
+   coincidente; recuperación con id ausente/equivocado/sin permiso; aislamiento
+   entre usuarios, sesiones y targets; GET y POST tardíos tras cada cambio;
+   cierre/remontaje; navegación SPA con AssistantView, Market, ModalShell,
+   AgentProfileDialog y editor reales; ausencia de datos privados persistidos;
+   preparación diferida de la marca con clics simultáneos y cambio de target;
+   Web Crypto no disponible y almacenamiento que rechaza escritura.
+   En la prueba SPA solo se simulan transporte, contenido del chat y eventos
+   del router; el cierre avanza 250 ms con temporizadores controlados.
+   Esto acredita integración frontend en DOM simulado, no un navegador desplegado.
+
+   **Limitación aceptada:** v1 no permite identificar automáticamente la operación
+   cuya respuesta se perdió. Si el usuario no puede identificar un perfil
+   existente, la incertidumbre y el bloqueo siguen activos. No se solicita una
+   ampliación backend para cerrar esta corrección. La marca local no garantiza
+   deduplicación entre dispositivos/pestañas independientes o después de borrar
+   almacenamiento. Sin Web Crypto o sin storage utilizable, el respaldo en
+   memoria conserva el bloqueo y aislamiento durante la vida del documento,
+   incluidos desmontajes y navegación SPA, sin prometer persistencia al recargar
+   por completo. No se guardan formularios, cabeceras ni secretos.
 
 5. **Cerrar asignación durante PUT rechazado.** `ModalShell.closeDisabled`
    bloquea antes de iniciar la salida y también protege cierres desde contexto,
@@ -115,7 +133,7 @@ El CLAUDE vigente está en `web/CLAUDE.md`, no en la raíz.
 
 ### Archivos de esta correctiva
 
-Rutas relativas a `web/frontend`, exclusivamente el delta de este turno:
+Rutas relativas a `web/frontend`, inventario acumulado de esta correctiva:
 
 - `src/components/floating-assistant/AssistantPanel.tsx`
 - `src/components/floating-assistant/AssistantPanel.agent-launch.test.ts`
@@ -133,6 +151,9 @@ Rutas relativas a `web/frontend`, exclusivamente el delta de este turno:
 - `src/components/floating-assistant/chat-pane/use-chat-pane-actions.tsx`
 - `src/components/floating-assistant/chat-pane/use-realtime-voice.tsx`
 - `src/components/floating-assistant/chat-pane/use-realtime-voice.test.ts`
+- `src/components/floating-assistant/chat-pane/RealtimeRequests.tsx`
+- `src/components/floating-assistant/chat-pane/ask-permission.tsx`
+- `src/components/floating-assistant/chat-pane/ask-permission.test.ts`
 - `src/components/ui/ModalShell.tsx`
 - `src/components/ui/ModalNavbar.tsx`
 - `src/components/ui/ModalShell.test.ts` (nuevo)
@@ -141,9 +162,16 @@ Rutas relativas a `web/frontend`, exclusivamente el delta de este turno:
 
 No se cambiaron contratos HTTP, rutas de login ni permisos backend. Las nuevas
 props compartidas son internas de frontend y opcionales; los consumidores
-conservan sus valores predeterminados. No se cambió configuración de tipos.
+conservan sus valores predeterminados. PermissionView.canApprove es opcional,
+por defecto true: las pruebas comprueban los tres botones del consumidor previo
+sin esa prop. La voz pasa la admisión explícita. No se cambió configuración de tipos.
 
-### Evidencia nueva y reproducible
+En la última continuación se editaron únicamente use-realtime-voice.tsx y su
+prueba, RealtimeRequests.tsx, ask-permission.tsx y su prueba,
+ChatMain.market-review.test.ts y este handoff. Los demás cambios del inventario
+acumulado se conservaron.
+
+### Evidencia final nueva y reproducible
 
 Se escribieron primero regresiones y se observaron los fallos: control de voz
 ausente; create llamado desde sugerencia retirada; snapshot viejo de borrador;
@@ -153,24 +181,50 @@ detectó fixtures incompletos de la prueba nueva de chat, corregidos antes de
 validar. Ese total no representa doce defectos del producto. La reproducción
 de chat se repitió con sus API simuladas completas antes del arreglo.
 
-La suite final se dividió en ocho lotes seriales por el límite de duración del
-canal protegido. Cada archivo se cuenta una sola vez; los lotes afectados por
-los últimos ajustes sustituyen sus resultados anteriores.
+La ampliación del caso 4 reprodujo **3 fallos/18 aprobadas** antes del arreglo
+(21 casos, 2,06 s). Después se completaron las 26 regresiones del archivo,
+sin omitir ni desactivar casos. Un error nuevo de tipos en el fixture de
+workspace (null en lugar de proveedor/modo válidos) se corrigió en la prueba;
+el typecheck final vuelve a cero, sin supresiones ni cambios de configuración.
+
+La continuación de voz reprodujo **8 fallos/10 aprobadas** antes de modificar
+producto (18 pruebas; 0,988 s; salida 1). Son ocho aserciones fallidas de los dos
+huecos de admisión, no ocho defectos nuevos. Tras corregirlos se añadieron la
+carrera del clic encolado y tres casos de compatibilidad del componente común.
+La corrida focal final del **2026-10-17, 19:36 America/Bogota** fue:
+
+```sh
+NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest run src/components/floating-assistant/chat-pane/use-realtime-voice.test.ts src/components/floating-assistant/chat-pane/ChatMain.market-review.test.ts src/components/floating-assistant/chat-pane/ask-permission.test.ts --maxWorkers=1 --reporter=dot --silent
+```
+
+Salida **0; 3 archivos; 32 aprobadas; cero fallos u omitidas; 3,74 s**.
+El hook y los botones de RealtimeRequests/PermissionView son reales en las
+regresiones de voz; las APIs/WebRTC están simuladas. ChatMain verifica que
+canStart pasa de true a false durante loading/error del catálogo y ante
+históricos bloqueados. La suite de voz tiene 19 pruebas; ChatMain, 8; y
+ask-permission, 5. Esas 32 están incluidas en el total integrado, no se suman.
+
+La suite final se volvió a ejecutar completa el **2026-10-17, 19:37–19:39
+America/Bogota**, después del último ajuste de código y pruebas. Sustituye los
+resultados anteriores de 653 y 675 pruebas; no los suma ni los recicla como
+evidencia. Se dividió en ocho lotes seriales por el límite de duración del canal
+protegido. Se comprobaron los JSON y los nombres de archivo: 76 únicos, sin
+duplicados, todos con success:true.
 
 | Lote | Archivos | Aprobadas | Fallos / omitidas / todo |
 | --- | ---: | ---: | --- |
 | 1 | 10 | 59 | 0 / 0 / 0 |
-| 2 | 10 | 52 | 0 / 0 / 0 |
+| 2 | 10 | 74 | 0 / 0 / 0 |
 | 3 | 10 | 125 | 0 / 0 / 0 |
-| 4 | 10 | 66 | 0 / 0 / 0 |
+| 4 | 10 | 69 | 0 / 0 / 0 |
 | 5 | 10 | 123 | 0 / 0 / 0 |
-| 6 | 10 | 48 | 0 / 0 / 0 |
+| 6 | 10 | 57 | 0 / 0 / 0 |
 | 7 | 10 | 45 | 0 / 0 / 0 |
 | 8 | 6 | 135 | 0 / 0 / 0 |
-| **Total** | **76** | **653** | **0 / 0 / 0** |
+| **Total** | **76** | **687** | **0 / 0 / 0** |
 
 Todos los comandos finalizaron con salida 0. Informes locales ignorados:
-`.cache/market-review-batch-{1..8}.json`, todos con success:true.
+`.cache/market-voice-review-batch-{1..8}.json`, todos con success:true.
 Reproducción exacta desde `web/frontend` (sin build):
 
 ```sh
@@ -192,13 +246,13 @@ for offset in range(0, len(files), 10):
     subprocess.run([
         "./node_modules/.bin/vitest", "run", *files[offset:offset + 10],
         "--maxWorkers=1", "--reporter=json",
-        f"--outputFile=.cache/market-review-batch-{batch}.json", "--silent",
+        f"--outputFile=.cache/market-voice-review-batch-{batch}.json", "--silent",
     ], env=env, check=True)
 PY
 ```
 
-Incluye la suite del asistente, sus consumidores del modal, los tres casos
-nuevos del componente compartido, workspace y regresiones de rutas/permisos.
+Incluye la suite del asistente, ModalShell y sus consumidores, PermissionView,
+workspace y regresiones de rutas/permisos.
 El runner sigue mostrando avisos auxiliares de conexión rechazada a
 localhost:3000; no hubo fallos ni pruebas omitidas. Esto no diagnostica el
 servicio de producción ni acredita logs de un despliegue.
@@ -210,13 +264,16 @@ node scripts/i18n-audit-coverage.mjs
 git -C /var/www/LUXIPANEL diff --check -- web/frontend
 ```
 
-- Typecheck **salida 0, cero diagnósticos**, última ejecución 25,35 s.
+- Typecheck **salida 0, cero diagnósticos**, última ejecución **24,619 s** tras
+  completar la continuación de voz el 2026-10-17.
   La línea base antes de editar también fue salida 0 (25,813 s).
   **Remanentes externos exactos: ninguno en este checkout.** Los cinco archivos
   de la corrección externa ya estaban modificados al entrar; no se editaron en
   esta correctiva. No se aplicaron any, supresiones, exclusiones ni strict más
   permisivo para ocultar errores.
-- i18n: tres textos nuevos en los doce catálogos fuente. Split **salida 0**:
+- i18n: evidencia de la fase anterior de esta correctiva, conservada sin repetir
+  la generación en la continuación de voz, que reutiliza agentMarket.readOnly.
+  Tres textos nuevos en los doce catálogos fuente. Split **salida 0**:
   39 namespaces × 12 idiomas = 468 JSON, versión `0a6379a6f6ef`.
   Auditoría **salida 0**, 8631 claves, cero faltantes, extras, diferencias de
   tipo/placeholders o vacíos. Derivados regenerados por el script.
@@ -224,7 +281,8 @@ git -C /var/www/LUXIPANEL diff --check -- web/frontend
 
 ### Corrección externa de los 19 diagnósticos: aplicada y conservada
 
-Actualización documental solicitada por coordinación el **2026-10-17**.
+Trazabilidad solicitada por coordinación el **2026-10-17**, conservada en esta
+entrega final sin volver a editar esos cinco archivos.
 Estos cinco archivos ya estaban corregidos al comenzar esta correctiva UI;
 se cotejó su diff y se conservaron sin nuevas ediciones. No queda un arreglo
 de tipos pendiente que deba asignarse de nuevo. Rutas relativas a `web/frontend`:
@@ -247,7 +305,7 @@ NODE_ENV=test NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/vitest 
 
 Salida registrada: **0; 6 archivos; 48 aprobadas; cero fallos u omitidas;
 3,44 s**. Esta evidencia es previa, no se volvió a ejecutar por la actualización
-de coordinación ni se suma a las **653 pruebas nuevas de la correctiva UI**.
+de coordinación ni se suma a las **687 pruebas de la suite final de esta correctiva UI**.
 
 El comando de tipos, ejecutado antes y después de las correcciones UI, fue:
 
@@ -256,16 +314,24 @@ NODE_OPTIONS=--max-old-space-size=2560 ./node_modules/.bin/tsc --noEmit --pretty
 ```
 
 Ambas ejecuciones registradas en esta correctiva del **2026-10-17** terminaron
-con **salida 0 y cero diagnósticos**: línea base 25,813 s; final 25,35 s.
+con **salida 0 y cero diagnósticos**: línea base 25,813 s; final 24,619 s.
 Remanentes exactos: **0**. No se añadió `any`, exclusión, supresión ni relajación
-de strict para obtener ese resultado. Esta actualización solo completa la
-trazabilidad documental; no afirma una ejecución adicional de tests o tsc.
+de strict para obtener ese resultado. Las 48 pruebas anteriores no se repitieron en esta continuación; sí se ejecutaron
+la suite final de 687 y el typecheck final descritos arriba.
 
 No hubo build, restart, commit, push, cambio de rama, worktree, copia de
 checkout, nota docs/changes, ediciones backend/LP/móvil/desktop/infra/.env ni
-mutaciones de datos reales. QA integrada en navegador y con backend real sigue
-pendiente; no se declara cierre de esos gates. Andrés conserva la fase posterior
+mutaciones de datos reales. La implementación y sus regresiones de autora quedan cerradas; QA integrada
+en navegador y con backend real conserva su gate independiente pendiente. Andrés conserva la fase posterior
 de compilación/reinicio/verificación. La publicación corresponde al panel.
+
+
+La decisión de mantener la recuperación manual y el bloqueo seguro queda aplicada.
+La evidencia backend 381/381 en 16 suites y typecheck 0 fue comunicada por Marin
+(contrato backend, sección de línea 317); no se ejecutó ni se atribuye a esta
+entrega frontend. Camila aprobó H3–H6 en fuente/pruebas según su último informe;
+los dos huecos de H1/H2 corregidos aquí quedan disponibles para su revalidación.
+El gate integrado de QA no se declara aprobado por esta entrega de autora.
 
 ---
 
