@@ -5,6 +5,12 @@ import type { PublicChangeNote } from "./change-notes.js";
  * Empty entries are test-only changes, without a new user-facing feature.
  */
 export const legacyChangeNotes: Record<string, PublicChangeNote[]> = {
+  "7318594f3e0727688544fe143952d34e797419a9": [{ title: "Modelos disponibles y continuidad del chat", changes: ["La configuración del asistente muestra los modelos disponibles de cada proveedor para elegir con información actualizada.", "Cuando un modelo deja de estar disponible, el chat puede continuar con una alternativa compatible."] }],
+  "9398429a824918c35f744e1aef874f3ac6378951": [{ title: "Agentes IA con acceso al proyecto Luxisoft", changes: ["Los agentes del proyecto Luxisoft consultan su código y sus conversaciones relacionadas desde el workspace del propio proyecto.", "Las tareas normales de lectura, cambio y ejecución se resuelven en ese workspace, sin desviarse a módulos ajenos."] }],
+  "91f671cab53273e3051fdcee7a1243fca093bd34": [
+    { title: "Perfiles globales y agentes privados por proyecto", changes: ["El asistente separa los perfiles generales de conocimientos y herramientas de las adaptaciones privadas de cada proyecto.", "Las actualizaciones del perfil global se revisan y aplican manualmente, conservando los ajustes privados."] },
+    { title: "Más agentes IA con control de RAM", changes: ["El panel permite iniciar varios agentes IA cuando el servidor dispone de memoria suficiente.", "Monitor permite configurar el porcentaje de RAM a partir del cual se detiene el inicio de agentes nuevos."] },
+  ],
   "57b29f8debd38687b18f02fc58fb99044655487a": [{ title: "Avisos centrados en las actualizaciones", changes: ["El botón de versiones deja de mostrar avisos de actividad de la comunidad y señala únicamente versiones o cambios pendientes de instalar."] }],
   "87d993db14a2f411a687e70a326a4123dfdcecf7": [{ title: "Versiones y ramas en un mismo lugar", changes: ["Puedes elegir una rama desde el panel de versiones, revisar sus novedades y actualizar cuando lo decidas.", "Los avisos usan un color por rama y disponen de una ayuda para identificarlo.", "Las notificaciones de nuevos cambios abren directamente la rama correspondiente."] }],
   "701d6aacbc0dbaf3113a7bea7665c981c7c2e3d2": [{ title: "Aportes del asistente sobre el proyecto original", changes: ["Los nuevos turnos trabajan en el proyecto original sin crear una copia separada para cada conversación.", "El envío automático conserva los cambios de cada tarea y detecta conflictos entre trabajos simultáneos."] }],

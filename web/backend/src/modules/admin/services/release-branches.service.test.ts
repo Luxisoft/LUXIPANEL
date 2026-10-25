@@ -82,6 +82,24 @@ it("uses reviewed historical descriptions only for exact commits in the selected
   expect(result.notes[0]?.title).toBe("Avisos centrados en las actualizaciones");
   expect(result.notesIncomplete).toBe(false);
 });
+it("shows the reviewed notes for the deployed revisions that predate commit metadata", async () => {
+  const globalProfiles = "91f671cab53273e3051fdcee7a1243fca093bd34";
+  const luxisoftWorkspace = "9398429a824918c35f744e1aef874f3ac6378951";
+  const providerFallback = "7318594f3e0727688544fe143952d34e797419a9";
+  vi.mocked(publicGithub).mockImplementation(async route => {
+    if (route.includes("/branches?")) return [{ name: "developer", commit: { sha: globalProfiles } }];
+    if (route.includes("/commits?")) return [globalProfiles, luxisoftWorkspace, providerFallback].map((sha, index) => ({ sha, commit: { message: "chore: deployed change", author: { name: "Author", date: `2026-10-${25 - index}` } } }));
+    return [];
+  });
+  const result = await releaseBranchDetails("developer", globalProfiles);
+  expect(result.notes.map(note => note.title)).toEqual([
+    "Perfiles globales y agentes privados por proyecto",
+    "Más agentes IA con control de RAM",
+    "Agentes IA con acceso al proyecto Luxisoft",
+    "Modelos disponibles y continuidad del chat",
+  ]);
+  expect(result.notesIncomplete).toBe(false);
+});
 
 it.each([{ ahead_by: 0, behind_by: 4 }, { ahead_by: 2, behind_by: 4 }])("does not advertise a backward or divergent branch: %j", async comparison => {
   vi.mocked(publicGithub).mockImplementation(async route => route.includes("/branches?") ? [{ name: "main", commit: { sha } }] : comparison);
