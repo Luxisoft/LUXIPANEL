@@ -4,8 +4,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import http from "node:http";
 import net from "node:net";
+import { optionalDirectoryEntries, finalizePreview, discardCandidate, runtimeCapacity } from "./runtime-policy.mjs";
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 const job = JSON.parse(input),
@@ -178,27 +178,6 @@ async function startContainer(
     throw new Error("runtime_port_not_loopback");
   return Number(match[1]);
 }
-async function healthy(port, healthPath) {
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const ready = await new Promise((resolve) => {
-      const req = http.get(
-        { host: "127.0.0.1", port, path: healthPath, timeout: 3000 },
-        (response) => {
-          response.resume();
-          resolve(response.statusCode >= 200 && response.statusCode < 500);
-        },
-      );
-      req.on("timeout", () => {
-        req.destroy();
-        resolve(false);
-      });
-      req.on("error", () => resolve(false));
-    });
-    if (ready) return;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  throw new Error("runtime_health_failed");
-}
 async function stopUnit(unit) {
   if (!/^luxi-[a-f0-9-]+-[a-z0-9-]+$/.test(unit) || !unit.includes(project))
     throw new Error("invalid_owned_unit");
@@ -207,6 +186,14 @@ async function stopUnit(unit) {
   }).catch(() => {});
   await fs.unlink(path.join(quadlet, unit + ".container")).catch(() => {});
 }
+const jobIo = {
+  read: id => json(path.join(root, "jobs", id + ".json"), null),
+  list: async () => (await optionalDirectoryEntries(path.join(root, "jobs"))).filter(name => name.endsWith(".json")).map(name => name.slice(0, -5)),
+  write: (id, value) => fs.writeFile(path.join(root, "jobs", id + ".json"), JSON.stringify(value), {mode: 0o600}),
+  remove: id => fs.unlink(path.join(root, "jobs", id + ".json")),
+  stop: stopUnit,
+  activeUnits: async () => [...(await json(path.join(root, "active.json"), {units:[]})).units, ...(await json(path.join(root, "pending.json"), {units:[]})).units],
+};
 try {
   await secureDir(root);
   await secureDir(path.join(root, "jobs"));
@@ -297,11 +284,17 @@ try {
       await fs.unlink(path.join(root, "retired")).catch((error) => {
         if (error.code !== "ENOENT") throw error;
       });
+    } else if (job.operation === "finalize-preview") {
+      const result = await finalizePreview(jobIo, job.requestId);
+      process.stdout.write(JSON.stringify({ ok: true, result }));
+      process.exit(0);
+    } else if (job.operation === "discard") {
+      await discardCandidate(jobIo, job.requestId);
     } else if (job.operation === "retire") {
       await fs.writeFile(path.join(root, "retired"), "retired", {
         mode: 0o600,
       });
-      for (const filename of await fs.readdir(quadlet))
+      for (const filename of await optionalDirectoryEntries(quadlet))
         if (
           filename.startsWith("luxi-" + project + "-") &&
           filename.endsWith(".container")
@@ -310,24 +303,13 @@ try {
       await fs.writeFile(activeFile, JSON.stringify({ units: [] }), {
         mode: 0o600,
       });
+    } else {
+      throw new Error("invalid_lifecycle_operation");
     }
     process.stdout.write(JSON.stringify({ ok: true }));
     process.exit(0);
   }
   const evictedVersionIds = [];
-  if (job.environment === "preview") {
-    for (const filename of await fs.readdir(path.join(root, "jobs"))) {
-      if (!filename.endsWith(".json") || filename === job.requestId + ".json")
-        continue;
-      const previous = await json(path.join(root, "jobs", filename), null);
-      if (previous?.environment === "preview") {
-        for (const unit of previous.units ?? []) await stopUnit(unit);
-        if (previous.result?.versionId)
-          evictedVersionIds.push(previous.result.versionId);
-        await fs.unlink(path.join(root, "jobs", filename));
-      }
-    }
-  }
   const environment =
       job.environment === "production" ? "production" : "preview",
     versionRoot = await secureDir(path.join(root, "versions", job.versionId)),
@@ -369,31 +351,18 @@ try {
   );
   if (manifest.resources.length > job.limits.maxDatabases)
     throw new Error("database_quota_exceeded");
-  // Reserve against configured limits, so a candidate/build cannot exhaust the
-  // account slice and kill the current production services.
-  const running = (
-    await command("/usr/bin/podman", ["ps", "--format", "{{.Names}}"], {
-      record: false,
-    })
-  )
-    .split("\n")
-    .filter(Boolean);
-  const newResources = manifest.resources.filter(
-    (resource) =>
-      resource.engine !== "sqlite" &&
-      !running.includes(`luxi-${project}-${environment}-data-${resource.name}`),
-  ).length;
-  if (
-    (running.length + newResources + manifest.components.length) * 512 > 3584 ||
-    (running.length + newResources) * 512 + 1536 > 3584
-  )
-    throw new Error("runtime_memory_capacity");
-  const available = Number(
-    (await fs.readFile("/proc/meminfo", "utf8")).match(
-      /MemAvailable:\s+(\d+)/,
-    )?.[1] ?? 0,
-  );
-  if (available < 2 * 1024 * 1024) throw new Error("runtime_host_capacity");
+  // The hosting slice still enforces its hard limit. Reserve room for the
+  // bounded build and candidate without treating idle services as full RAM.
+  const accountCgroup = `/sys/fs/cgroup/user.slice/user-${process.getuid()}.slice`;
+  const [used, maximum, meminfo] = await Promise.all([
+    fs.readFile(accountCgroup + '/memory.current', 'utf8'),
+    fs.readFile(accountCgroup + '/memory.max', 'utf8'), fs.readFile('/proc/meminfo', 'utf8'),
+  ]);
+  const hostAvailableMib = Number(meminfo.match(/MemAvailable:\s+(\d+)/)?.[1] ?? 0) / 1024;
+  const accountMaxMib = maximum.trim() === 'max' ? hostAvailableMib : Number(maximum) / 1024 ** 2;
+  if (!runtimeCapacity({ hostAvailableMib, accountUsedMib: Number(used) / 1024 ** 2,
+    accountMaxMib, candidateMib: manifest.components.length * 512 + manifest.resources.length * 512 }))
+    throw new Error('runtime_memory_capacity');
   // Resources have stable names and volumes per environment. A new application
   // version never replaces the database or copies production data to previews.
   for (const resource of manifest.resources) {
@@ -618,8 +587,9 @@ try {
       ]),
       deferred: surface === "worker" && environment === "production",
     });
-    if (port) await healthy(port, part.healthPath);
-    else if (!workers.includes(unit)) {
+    // The root supervisor validates HTTP health before accepting this result.
+    // Tenant identities cannot initiate connections to host loopback.
+    if (!port && !workers.includes(unit)) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       const state = await command(
         "/usr/bin/podman",
@@ -643,7 +613,7 @@ try {
   );
   process.stdout.write(JSON.stringify({ ok: true, result, logs: clean(logs) }));
 } catch (error) {
-  for (const unit of started) await stopUnit(unit).catch(() => {});
+  if (!job.operation) await discardCandidate(jobIo, job.requestId, started).catch(() => {});
   process.stdout.write(
     JSON.stringify({
       ok: false,
