@@ -22,7 +22,7 @@ import { securitySettingsService } from "../../admin/services/security-settings.
 import { panelUserRepository, totpRepository } from "../../auth/repositories/index.js";
 import { systemAccountsService } from "../../users/services/system-accounts.service.js";
 import { readTenantUsage } from "../../../shared/quota/quota-checker.js";
-import { AuthError, ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../../shared/errors/index.js";
+import { AuthError, ConflictError, ForbiddenError, NotFoundError, ValidationError, ServiceUnavailableError } from "../../../shared/errors/index.js";
 import { defaultProviderGroupTemplate, normalizeProviderGroupTemplate, instantiateProviderGroupTemplate } from "./provider-group-policy.js";
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -213,7 +213,7 @@ export const providerService = {
 
   async storage(provider: HostingProvider, externalId: string) {
     const {link,account,executor}=await ownedAccount(provider,externalId);
-    return {...await readProviderStorage(executor,account),version:1,capacityBytes:link.storageCapacityBytes??0,revision:link.storageRevision??0};
+    return {...await readProviderStorage(executor,account),version:1,capacityBytes:Math.max(link.storageCapacityBytes??0,link.storagePendingCapacityBytes??0),pendingCapacityBytes:link.storagePendingCapacityBytes??null,revision:link.storageRevision??0};
   },
   async setStorage(provider:HostingProvider,externalId:string,input:{revision:number;capacityBytes:number}) {
     return withLock(`${provider.id}:account:${externalId}`,async()=>{
@@ -221,8 +221,13 @@ export const providerService = {
       const revision=link.storageRevision??0;
       if(input.revision===revision-1&&input.capacityBytes===link.storageCapacityBytes)return this.storage(provider,externalId);
       if(input.revision!==revision)throw new ConflictError('provider_storage_revision_conflict');
+      if(link.storagePendingCapacityBytes!=null&&link.storagePendingCapacityBytes!==input.capacityBytes)throw new ConflictError('provider_storage_reconciliation_required');
+      if(!(await readProviderStorage(executor,account)).nativeQuota)throw new ServiceUnavailableError('provider_native_storage_quota_unavailable');
+      // Publish an intent before touching the kernel. A crash or failed final
+      // write must keep the possible native capacity reserved to this owner.
+      await providerRepository.updateAccount(link.id,{storagePendingCapacityBytes:input.capacityBytes});
       await applyProviderStorage(executor,account,input.capacityBytes);
-      await providerRepository.updateAccount(link.id,{storageRevision:revision+1,storageCapacityBytes:input.capacityBytes});
+      await providerRepository.updateAccount(link.id,{storageRevision:revision+1,storageCapacityBytes:input.capacityBytes,storagePendingCapacityBytes:null});
       return this.storage(provider,externalId);
     });
   },
