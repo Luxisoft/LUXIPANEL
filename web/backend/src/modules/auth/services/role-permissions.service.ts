@@ -423,6 +423,15 @@ export function canAccessPath(user: SessionUser, targetPath: string, operation: 
   const absolute = targetPath.startsWith("/") ? targetPath : `/${targetPath}`;
   const normalizedPath = path.posix.resolve("/", absolute).replace(/\/+$/, "") || "/";
 
+  // The container store is platform-managed overhead, not an unmetered user
+  // disk. Deny both it and operations on its ancestors (recursive archives,
+  // renames and deletion); application volumes are managed by deployment APIs.
+  if (/^\/home\/hp[a-f0-9]{20}(?:\/|$)/.test(normalizedPath)) {
+    const home=normalizedPath.match(/^\/home\/hp[a-f0-9]{20}/)![0];
+    for(const managed of [home+'/.local/share/containers',home+'/.cache']) {
+     if(matchesPathPrefix(normalizedPath,managed)||(operation==='write'&&matchesPathPrefix(managed,normalizedPath)))return false;
+    }
+  }
   // Hard guard: never expose the LUXIPANEL config dir to non-admin file access.
   if (matchesPathPrefix(normalizedPath, luxipanelConfigDir())) {
     return false;

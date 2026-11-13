@@ -432,7 +432,7 @@ export const hostingService = {
         } else {
           const jailProc = `${account.homeRoot}/proc`;
           await applyTenantSteps(executor, "update", [
-            { type: "sh", argv: ["usermod", "-s", DEFAULT_LOGIN_SHELL, account.username], sudo: true },
+            { type: "sh", argv: ["usermod", "-s", /^hp[a-f0-9]{20}$/.test(account.username)?"/usr/sbin/nologin":DEFAULT_LOGIN_SHELL, account.username], sudo: true },
             {
               type: "sh",
               argv: ["sh", "-c", `mountpoint -q ${quoteArg(jailProc)} && umount ${quoteArg(jailProc)} || true`],
@@ -534,6 +534,9 @@ export const hostingService = {
    *  the account record. */
   async terminate(id: number, executor: Executor): Promise<void> {
     const account = await this.findById(id, executor);
+    if(/^hp[a-f0-9]{20}$/.test(account.username))await applyTenantSteps(executor,"update",[
+      {type:"sh",argv:["sh","-c",`if test -x /usr/lib/luxipanel/storage-helper; then /usr/lib/luxipanel/storage-helper detach ${account.id}; fi`],sudo:true,timeoutMs:120000},
+    ]);
     await hostingRuntimeService.invalidate(executor, account);
     await authorizationChanged(executor.target.id);
     const deleteSteps: MutationStep[] = [];
@@ -545,7 +548,7 @@ export const hostingService = {
     // would make `rm -rf` of the home recurse into the host's /proc).
     const jailProc = `${account.homeRoot}/proc`;
     deleteSteps.push(
-      { type: "sh", argv: ["usermod", "-s", DEFAULT_LOGIN_SHELL, account.username], sudo: true },
+      { type: "sh", argv: ["usermod", "-s", /^hp[a-f0-9]{20}$/.test(account.username)?"/usr/sbin/nologin":DEFAULT_LOGIN_SHELL, account.username], sudo: true },
       {
         type: "sh",
         argv: [

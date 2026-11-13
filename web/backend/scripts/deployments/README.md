@@ -49,3 +49,29 @@ ni sobrescribir el supervisor protegido por la barrera.
 
 Datos privados: ver el contrato /data y install-data.py; este instalador
 coordinado conserva la barrera de red y exige ambos checkouts publicados y limpios.
+
+### Shared native account storage
+
+`install-storage.py` installs a separate sparse ext4 quota filesystem and a
+boot restore service. It never changes the root filesystem's features and never
+replaces the network/egress wrapper. Each provider account has one project quota
+shared by its home and persistent Podman volumes. Container image/download caches
+remain technical overhead on the original filesystem and are inaccessible through
+customer file/shell APIs. Customer code runs in containers with a read-only root,
+bounded temporary directories and an ioctl filter protecting quota inheritance.
+Managed provider Linux identities do not accept direct host-shell logins.
+
+The root-owned storage helper validates hosting metadata and Linux identity,
+serializes migrations against accepted deployment/data jobs, stops only the
+account's manager, copies and checksums home/volumes, retains every original under
+a protected legacy directory and resumes the same Quadlets/ports. Copy/swap
+failures restore the originals; a boot restore repairs interrupted copies before
+starting hosting managers. Ready data is never rolled back over subsequent writes.
+Termination detaches managed mounts before deleting the Linux account and retains
+protected migration backups. Capacity mutations use kernel quotas without
+restarting customer processes. Allocation admission preserves host free space;
+the separate filesystem can grow online within that physical budget.
+
+The deployed runner preserves the already-installed preview finalization and
+measured-memory admission fixes from `68a7e12`; installing storage must not restore
+the older count-based memory checks or loopback health check in tenant isolation.
