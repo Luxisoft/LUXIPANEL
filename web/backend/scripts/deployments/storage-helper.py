@@ -68,6 +68,12 @@ def bind(source,target):
 def restore(a,receipt):
  home=pathlib.Path(a['homeRoot']);tenant=POOL/a['username'];legacy=ROOT/'legacy'/a['username']
  bind(tenant/'home',home)
+ # Bind targets created by the root helper must retain the original hosting
+ # ownership/mode of their managed parent directories, including fresh homes.
+ for relative in ['.local','.local/share']:
+  source=legacy/relative;target=home/relative
+  if source.is_dir():
+   target.mkdir(parents=True,exist_ok=True);info=source.stat();os.chown(target,info.st_uid,info.st_gid);os.chmod(target,info.st_mode&0o7777)
  if (legacy/'.cache').exists():bind(legacy/'.cache',home/'.cache')
  cache=legacy/'.local/share/containers'
  if cache.exists():
