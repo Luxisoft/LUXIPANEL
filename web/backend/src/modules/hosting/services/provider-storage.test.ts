@@ -5,8 +5,10 @@ import {readProviderStorage,applyProviderStorage} from './provider-storage.js';
 const account={id:12,username:'hp0123456789abcdef0123',homeRoot:'/home/hp0123456789abcdef0123'} as any;
 describe('provider-owned storage',()=>{
  it('returns exact bytes and never treats a failed probe as empty storage',async()=>{
-  const exec=vi.fn(async()=>({exitCode:0,stdout:'1234567\t/home/hp0123456789abcdef0123\n'}));
+  const exec=vi.fn(async(command:string)=>({exitCode:0,stdout:command.includes('python3')?'17':'1234550\t/home/hp0123456789abcdef0123\n'}));
   expect(await readProviderStorage({exec} as any,account)).toMatchObject({usedBytes:1234567,nativeQuota:false});
+  expect(exec.mock.calls[0]![0]).toContain('--exclude=');
+  expect(exec.mock.calls[1]![0]).toContain('/storage/volumes');
   exec.mockResolvedValueOnce({exitCode:1,stdout:'0'});
   await expect(readProviderStorage({exec} as any,account)).rejects.toThrow('provider_storage_measurement_unavailable');
  });
