@@ -60,7 +60,7 @@ export const MODULE_REGISTRY = {
   },
   firewall: {
     route: "/panel/firewall",
-    namespaces: ["components", "common", "firewall"],
+    namespaces: ["components", "common", "firewall", "panelLayout"],
     load: () => import("./views/pages_panel_firewall_index"),
     controller: () =>
       import("virtual:lxp-controller/pages_panel_firewall_index"),

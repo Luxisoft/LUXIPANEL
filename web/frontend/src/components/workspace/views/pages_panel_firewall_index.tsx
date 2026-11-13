@@ -26,7 +26,7 @@ export default function pages_panel_firewall_index(props: any) {
   const Astro = context.forView(props, slots);
   const document = context.scope.document;
   const window = context.scope.window;
-  const t = getPageMessages(Astro, ["firewall"]);
+  const t = getPageMessages(Astro, ["firewall", "panelLayout"]);
   const user = Astro.locals.user;
   const userModules = new Set(user?.modules ?? []);
   const canUseSecurityAudit =
@@ -41,12 +41,14 @@ export default function pages_panel_firewall_index(props: any) {
     { id: "related", label: fws.related, icon: "ti-apps" },
   ];
   const firewallView = Astro.url.searchParams.get("workspaceView");
-  const isolatedFirewallView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    !Astro.url.searchParams.has("settingsOverlay") &&
-    ["audit", "rules", "fail2ban"].includes(firewallView ?? "");
-  const showFirewallView = (view: string) =>
-    !isolatedFirewallView || firewallView === view;
+  const showFirewallView = (view: string) => view !== "audit" || canUseSecurityAudit;
+  const initialTab = ["audit", "rules", "fail2ban"].includes(firewallView ?? "") && showFirewallView(firewallView!)
+    ? firewallView : canUseSecurityAudit ? "audit" : "rules";
+  const tabs = [
+    ...(canUseSecurityAudit ? [{ id: "audit", label: t.panelLayout.workspaceViews.firewall.audit, panel: "security-audit-section" }] : []),
+    { id: "rules", label: t.firewall.ufwRules.title, panel: "fw-rules-panel" },
+    { id: "fail2ban", label: "Fail2ban", panel: "fw-fail2ban-panel" },
+  ];
 
   return (
     <Fragment>
@@ -155,6 +157,17 @@ export default function pages_panel_firewall_index(props: any) {
           </ViewSettingsModal>
         </div>
 
+        <div data-firewall-tabs-row className="mb-4 border-b border-border">
+          <div role="tablist" aria-label={t.firewall.pageTitle} className="flex flex-wrap gap-1">
+            {tabs.map(tab => <button key={tab.id} id={`fw-tab-${tab.id}`} type="button" role="tab"
+              data-firewall-tab={tab.id} aria-selected={initialTab === tab.id} aria-controls={tab.panel}
+              tabIndex={initialTab === tab.id ? 0 : -1}
+              className="rounded-t-lg px-3 py-2 text-sm font-medium text-muted-foreground aria-selected:bg-primary/10 aria-selected:text-primary">
+              {tab.label}
+            </button>)}
+          </div>
+        </div>
+
         {/** Install warning (hidden when UFW/Fail2ban are detected) */}
         <div
           id="fw-not-installed"
@@ -185,11 +198,13 @@ export default function pages_panel_firewall_index(props: any) {
         {/** Status card */}
         <div
           id="fw-status-card"
+          data-module-topbar-summary-row
           className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center"
         >
-          <div className="flex items-center gap-4 flex-1">
+          <div data-module-topbar-summary className="flex items-center gap-4 flex-1">
             <div
               id="fw-icon"
+              data-firewall-status-icon
               className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted"
             >
               <i className="ti ti-shield text-2xl text-muted-foreground"></i>
@@ -198,7 +213,7 @@ export default function pages_panel_firewall_index(props: any) {
               <p className="text-sm font-medium text-muted-foreground">
                 {t.firewall.statusCard.label}
               </p>
-              <p id="fw-status-label" className="text-xl font-bold">
+              <p id="fw-status-label" data-firewall-status-value className="text-xl font-bold">
                 {t.firewall.statusCard.verifying}
               </p>
               <p id="fw-policy" className="text-xs text-muted-foreground"></p>
@@ -207,6 +222,7 @@ export default function pages_panel_firewall_index(props: any) {
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <button
               id="btn-ai-analyze"
+              data-module-topbar-action
               className="rounded-lg bg-gradient-to-r from-primary/15 to-purple-500/15 px-4 py-2 text-sm font-medium text-primary hover:from-primary/25 hover:to-purple-500/25 transition-colors"
             >
               <i className="ti ti-sparkles mr-1.5"></i>
@@ -214,6 +230,7 @@ export default function pages_panel_firewall_index(props: any) {
             </button>
             <button
               id="btn-disable-fw"
+              data-module-topbar-action
               className="hidden rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
             >
               <i className="ti ti-shield-off mr-1.5"></i>
@@ -221,6 +238,7 @@ export default function pages_panel_firewall_index(props: any) {
             </button>
             <button
               id="btn-enable-fw"
+              data-module-topbar-action
               className="hidden rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors"
             >
               <i className="ti ti-shield-check mr-1.5"></i>
@@ -234,8 +252,10 @@ export default function pages_panel_firewall_index(props: any) {
           <Fragment>
             <div
               id="security-audit-section"
+              role="tabpanel"
+              aria-labelledby="fw-tab-audit"
               data-enabled={canUseSecurityAudit ? "true" : "false"}
-              className="mb-6"
+              className={initialTab === "audit" ? "mb-6" : "hidden mb-6"}
             >
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -397,16 +417,16 @@ export default function pages_panel_firewall_index(props: any) {
 
         <div
           id="fw-modules"
-          className={
-            isolatedFirewallView ? "grid gap-6" : "grid gap-6 lg:grid-cols-2"
-          }
+          className="grid gap-6"
         >
           {/** UFW Rules */}
           {showFirewallView("rules") && (
             <Fragment>
               <div
                 id="fw-rules-panel"
-                className="rounded-xl border border-border bg-card overflow-hidden"
+                role="tabpanel"
+                aria-labelledby="fw-tab-rules"
+                className={`${initialTab === "rules" ? "" : "hidden "}rounded-xl border border-border bg-card overflow-hidden`}
               >
                 <div className="flex items-center justify-between border-b border-border px-5 py-4">
                   <h2 className="text-base font-semibold">
@@ -457,6 +477,7 @@ export default function pages_panel_firewall_index(props: any) {
                     {t.firewall.ufwRules.loading}
                   </div>
                 </div>
+                <div id="rules-pagination" className="hidden"></div>
               </div>
             </Fragment>
           )}
@@ -466,7 +487,9 @@ export default function pages_panel_firewall_index(props: any) {
             <Fragment>
               <div
                 id="fw-fail2ban-panel"
-                className="rounded-xl border border-border bg-card overflow-hidden"
+                role="tabpanel"
+                aria-labelledby="fw-tab-fail2ban"
+                className={`${initialTab === "fail2ban" ? "" : "hidden "}rounded-xl border border-border bg-card overflow-hidden`}
               >
                 <div className="flex items-center justify-between border-b border-border px-5 py-4">
                   <h2 className="text-base font-semibold">Fail2ban</h2>
@@ -492,6 +515,7 @@ export default function pages_panel_firewall_index(props: any) {
                     {t.firewall.fail2ban.loading}
                   </div>
                 </div>
+                <div id="jails-pagination" className="hidden"></div>
               </div>
             </Fragment>
           )}

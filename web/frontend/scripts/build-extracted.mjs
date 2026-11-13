@@ -680,6 +680,8 @@ const entries = [
     entry: "src/scripts/extracted/pages/panel/firewall/index-script1.ts",
     outfile: "public/scripts/extracted/pages/panel/firewall/index-script1.js",
     target: "es2020",
+    bundle: true,
+    external: ["/scripts/extracted/lib/*"],
   },
   {
     entry: "src/scripts/extracted/pages/panel/bitninja/index-script1.ts",

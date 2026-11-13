@@ -64,7 +64,7 @@
   },
   "pages_panel_firewall_index": {
     "scripts": [
-      "\n  import \"/scripts/extracted/pages/panel/firewall/index-script1.js?v=20260928-focused-views-b\";\n",
+      "\n  import \"/scripts/extracted/pages/panel/firewall/index-script1.js?v=20261112-tabs-pages\";\n",
       "import \"/scripts/extracted/components/ui/view-settings-modal.js?v=20260928-sections\";"
     ],
     "directory": "src/pages/panel/firewall"

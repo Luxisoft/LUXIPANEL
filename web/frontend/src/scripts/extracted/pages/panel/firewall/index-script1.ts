@@ -11,6 +11,7 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
   import { confirmMutateReload } from "/scripts/extracted/lib/crud.js";
   import { openDialog } from "/scripts/extracted/lib/dom.js";
   import { readScopedPreference, writeScopedPreference } from "/scripts/extracted/lib/scoped-preferences.js";
+  import { listPage, renderPagination } from "./pagination";
 
   // F-03/T-08: trío i18n compartido; solo cambia el id del payload.
   const { loadI18n, t, fmt } = createPageI18n("firewall-i18n");
@@ -40,6 +41,10 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
   let auditAbort: AbortController | null = null;
   let auditSupported: boolean | null = null;
   let firewallRules: any[] = [];
+  let fail2banJails: any[] = [];
+  let rulesPage = 0, jailsPage = 0;
+  let activeFirewallTab = "";
+  let firewallInstalled: boolean | null = null;
 
   // Escape user/target-controlled strings before interpolating into innerHTML
   // (jail names, IPs, rule comments come from the connected server / user input).
@@ -57,6 +62,8 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
   function hideSecurityAuditSection() {
     const section = document.getElementById("security-audit-section");
     if (section) section.classList.add("hidden");
+    document.getElementById("fw-tab-audit")?.classList.add("hidden");
+    if (activeFirewallTab === "audit") selectFirewallTab("rules");
   }
   function isSecurityAuditEnabled(): boolean {
     const section = document.getElementById("security-audit-section");
@@ -68,16 +75,37 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
     showSharedToast(msg, ok, { durationMs: 3000 });
   }
 
-  // Toggle the whole page between "needs install" and the normal manager view.
-  // When UFW isn't present on the target we show only the install banner and
-  // hide the status card, security audit and the rules/jails grid.
+  function applyFirewallTab() {
+    for (const button of document.querySelectorAll<HTMLButtonElement>("[data-firewall-tab]")) {
+      const selected = button.dataset.firewallTab === activeFirewallTab;
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    }
+    document.getElementById("fw-rules-panel")?.classList.toggle("hidden", activeFirewallTab !== "rules" || firewallInstalled === false);
+    document.getElementById("fw-fail2ban-panel")?.classList.toggle("hidden", activeFirewallTab !== "fail2ban");
+    document.getElementById("security-audit-section")?.classList.toggle("hidden", activeFirewallTab !== "audit" || !isSecurityAuditEnabled() || auditSupported === false);
+    document.getElementById("fw-not-installed")?.classList.toggle("hidden", firewallInstalled !== false || activeFirewallTab !== "rules");
+  }
+
+  function selectFirewallTab(tab: string, load = true) {
+    if (!["audit", "rules", "fail2ban"].includes(tab)) tab = isSecurityAuditEnabled() && auditSupported !== false ? "audit" : "rules";
+    if (tab === "audit" && (!isSecurityAuditEnabled() || auditSupported === false)) tab = "rules";
+    activeFirewallTab = tab;
+    writeScopedPreference("firewall", "active-tab", tab);
+    applyFirewallTab();
+    if (load) {
+      if (tab === "rules") void loadRules();
+      else if (tab === "fail2ban") void loadJails();
+      else void loadAuditReports();
+    }
+  }
+
+  // UFW installation state belongs to its own tab; Fail2ban and the audit
+  // remain independently accessible on the selected server.
   function setInstalledView(installed: boolean) {
-    document.getElementById("fw-not-installed")?.classList.toggle("hidden", installed);
+    firewallInstalled = installed;
     document.getElementById("fw-status-card")?.classList.toggle("hidden", !installed);
-    document.getElementById("fw-modules")?.classList.toggle("hidden", !installed);
-    // Security audit has its own enablement gate; only reveal it when installed.
-    const audit = document.getElementById("security-audit-section");
-    if (audit) audit.classList.toggle("hidden", !installed || !isSecurityAuditEnabled());
+    applyFirewallTab();
   }
 
   async function loadStatus() {
@@ -126,6 +154,7 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
     if (!res.ok) {
       const el = document.getElementById("rules-list");
       if (el) el.textContent = res.error || t("runtime.rulesLoadError", "No se pudieron cargar las reglas.");
+      renderPagination(document.getElementById("rules-pagination"), 0, 0, () => {});
       return;
     }
     firewallRules = (res.data as any)?.rules ?? res.data ?? [];
@@ -140,11 +169,14 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
     const visible = firewallRules.filter((rule) =>
       (!actionFilter || String(rule.action || "").toUpperCase().split(/\s+/)[0] === actionFilter)
       && (!search || [rule.to, rule.from, rule.action, rule.comment].some((value) => String(value || "").toLowerCase().includes(search))));
+    const page = listPage(visible, rulesPage);
+    rulesPage = page.page;
+    renderPagination(document.getElementById("rules-pagination"), rulesPage, visible.length, next => { rulesPage = next; renderRules(); });
     if (visible.length === 0) {
       el.innerHTML = `<div class="px-5 py-5 text-center text-sm text-muted-foreground">${firewallRules.length ? t("runtime.noMatchingRules", "Ninguna regla coincide con el filtro.") : t("empty.noRules", "Sin reglas")}</div>`;
       return;
     }
-    el.innerHTML = visible.map((r: any) => {
+    el.innerHTML = page.items.map((r: any) => {
       const action = String(r.action ?? "").toUpperCase();
       const allowish = action === "ALLOW" || action === "LIMIT";
       const badgeCls = allowish ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive";
@@ -173,29 +205,49 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
     const epoch = firewallRunId;
     const myRun = ++jailsRun;
     const res = await api.get<any>("/api/firewall/fail2ban/jails");
-    if (!res.ok || myRun !== jailsRun || !isActiveRun(epoch)) return;
-    const jails: any[] = (res.data as any)?.jails ?? res.data ?? [];
+    if (myRun !== jailsRun || !isActiveRun(epoch)) return;
+    if (!res.ok) {
+      const el = document.getElementById("jails-list");
+      if (el) el.textContent = res.error || t("runtime.statusError", "No se pudo consultar el estado");
+      renderPagination(document.getElementById("jails-pagination"), 0, 0, () => {});
+      return;
+    }
+    fail2banJails = (res.data as any)?.jails ?? res.data ?? [];
+    renderJails();
+  }
+
+  function renderJails() {
     const el = document.getElementById("jails-list");
     if (!el) return;
-    if (jails.length === 0) {
+    // Page the actual blocked addresses, keeping empty jails visible too.
+    // No IP is truncated behind an inaccessible "+ more" label.
+    const entries: { jail: any; ip?: string }[] = fail2banJails.flatMap(jail =>
+      jail.bannedIPs?.length ? jail.bannedIPs.map((ip: string) => ({ jail, ip })) : [{ jail }]);
+    const page = listPage(entries, jailsPage);
+    jailsPage = page.page;
+    renderPagination(document.getElementById("jails-pagination"), jailsPage, entries.length, next => { jailsPage = next; renderJails(); });
+    if (entries.length === 0) {
       el.innerHTML = `<div class="px-5 py-5 text-center text-sm text-muted-foreground">${t("empty.noJails", "Sin jails activos")}</div>`;
       return;
     }
-    el.innerHTML = jails.map((j: any) => {
-      const ips: string[] = j.bannedIPs ?? [];
-      const count = j.currentlyBanned ?? ips.length;
+    const groups = new Map<any, string[]>();
+    for (const entry of page.items) {
+      if (!groups.has(entry.jail)) groups.set(entry.jail, []);
+      if (entry.ip) groups.get(entry.jail)!.push(entry.ip);
+    }
+    el.innerHTML = [...groups].map(([j, ips]) => {
+      const count = j.currentlyBanned ?? j.bannedIPs?.length ?? 0;
       return `
       <div class="px-5 py-3">
         <div class="flex items-center justify-between mb-1.5">
           <span class="text-sm font-medium">${esc(j.name)}</span>
           <span class="text-xs text-muted-foreground">${fmt(t("labels.bannedCount", "{count} baneadas"), { count })}</span>
         </div>
-        ${ips.slice(0, 5).map((ip: string) => `
-          <div class="flex items-center justify-between ml-3 py-0.5">
+        ${ips.map((ip: string) => `
+          <div data-fail2ban-entry class="flex items-center justify-between ml-3 py-0.5">
             <code class="text-xs text-muted-foreground">${esc(ip)}</code>
             <button onclick="unbanIp('${escapeJsAttr(j.name)}', '${escapeJsAttr(ip)}')" class="text-xs text-primary hover:underline">${t("actions.unban", "desbanear")}</button>
           </div>`).join("")}
-        ${ips.length > 5 ? `<p class="ml-3 text-xs text-muted-foreground">${fmt(t("labels.moreIps", "+{n} más"), { n: ips.length - 5 })}</p>` : ""}
       </div>`;
     }).join("");
   }
@@ -661,9 +713,20 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
     const filter = document.getElementById("fw-filter-action") as HTMLSelectElement | null;
     if (filter) {
       filter.value = readScopedPreference("firewall", "action-filter", "");
-      filter.addEventListener("change", () => { writeScopedPreference("firewall", "action-filter", filter.value); renderRules(); });
+      filter.addEventListener("change", () => { writeScopedPreference("firewall", "action-filter", filter.value); rulesPage = 0; renderRules(); });
     }
-    document.getElementById("fw-rule-search")?.addEventListener("input", renderRules);
+    document.getElementById("fw-rule-search")?.addEventListener("input", () => { rulesPage = 0; renderRules(); });
+    document.querySelectorAll<HTMLButtonElement>("[data-firewall-tab]").forEach(button => {
+      button.addEventListener("click", () => selectFirewallTab(button.dataset.firewallTab!));
+      button.addEventListener("keydown", event => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        const tabs = [...document.querySelectorAll<HTMLButtonElement>("[data-firewall-tab]:not(.hidden)")];
+        const index = tabs.indexOf(button);
+        const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+        event.preventDefault(); tabs[next]?.click(); tabs[next]?.focus();
+      });
+    });
     document.getElementById("fw-save-logging")?.addEventListener("click", async () => {
       const level = (document.getElementById("fw-log-level") as HTMLSelectElement | null)?.value;
       const button = document.getElementById("fw-save-logging") as HTMLButtonElement | null;
@@ -680,11 +743,15 @@ import { api } from "/scripts/extracted/lib/api-client.js?v=20260506a";
     }
     firewallRunId += 1;
     const drawerView = new URLSearchParams(location.search).get("workspaceView");
-    loadStatus();
-    if (!drawerView || drawerView === "rules") loadRules();
-    if (!drawerView || drawerView === "fail2ban") loadJails();
-    if (!drawerView || drawerView === "audit") loadAuditReports();
+    void loadStatus();
+    selectFirewallTab(drawerView || readScopedPreference("firewall", "active-tab", isSecurityAuditEnabled() ? "audit" : "rules"));
   }
+
+  document.addEventListener("lxp:module:visibility", () => {
+    if (document.hidden || !isFirewallPage()) return;
+    const requested = new URLSearchParams(location.search).get("workspaceView");
+    if (requested) selectFirewallTab(requested);
+  });
 
   document.addEventListener("astro:before-swap", () => {
     firewallRunId += 1;

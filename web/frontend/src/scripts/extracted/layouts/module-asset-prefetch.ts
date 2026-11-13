@@ -12,7 +12,7 @@ const ASSETS: Record<string, readonly string[]> = {
   databases: [page("databases", "20260928a")],
   expo: [page("expo", "20260929-progressive-load")],
   files: [page("files", "20260930-editor-drawer")],
-  firewall: [page("firewall", "20260928-focused-views-b")],
+  firewall: [page("firewall", "20261112-tabs-pages")],
   hosting: [page("hosting", "20260928a")],
   mail: [page("mail", "20260930-mail-refresh")],
   "module-dev": [page("module-dev", "20260929-modules4")],
