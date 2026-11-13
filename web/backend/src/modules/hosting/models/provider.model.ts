@@ -43,6 +43,7 @@ export interface HostingProvider {
 export interface ProviderAccountLink {
   storageRevision?: number;
   storageCapacityBytes?: number;
+  storagePendingCapacityBytes?: number | null;
   id: string;
   providerId: string;
   externalAccountId: string;
