@@ -15,11 +15,18 @@ function identity(account: HostingAccount) {
 /** Apparent bytes, no rounded MB and no silent zero on a failed probe. */
 export async function readProviderStorage(executor:Executor,account:HostingAccount) {
  identity(account);
- const result=await executor.exec(`sudo -n du -sb -- ${quoteArg(account.homeRoot)}`,{timeoutMs:60000});
+ // Container images and download caches are platform overhead. Persisted
+ // database/application volumes live inside the excluded container directory,
+ // so measure them separately rather than omitting customer data with images.
+ const result=await executor.exec(`sudo -n du -sb ${quoteArg('--exclude='+account.homeRoot+'/.local/share/containers')} ${quoteArg('--exclude='+account.homeRoot+'/.cache')} -- ${quoteArg(account.homeRoot)}`,{timeoutMs:60000});
  const raw=result.stdout.trim().split(/\s+/)[0]??'';
  if(result.exitCode!==0||!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw)))throw new ServiceUnavailableError('provider_storage_measurement_unavailable');
+ const probe="import os,sys,subprocess; p=sys.argv[1]\ntry: os.lstat(p)\nexcept FileNotFoundError: print(0)\nelse: print(subprocess.check_output(['du','-sb','--',p],text=True).split()[0])";
+ const volumes=await executor.exec(`sudo -n python3 -I -c ${quoteArg(probe)} ${quoteArg(account.homeRoot+'/.local/share/containers/storage/volumes')}`,{timeoutMs:60000});
+ const volumeBytes=volumes.stdout.trim();
+ if(volumes.exitCode!==0||!/^\d+$/.test(volumeBytes)||!Number.isSafeInteger(Number(raw)+Number(volumeBytes)))throw new ServiceUnavailableError('provider_storage_measurement_unavailable');
  const caps=await hostingRuntimeService.capabilities(executor);
- return {usedBytes:Number(raw),nativeQuota:caps.disk,measuredAt:new Date().toISOString()};
+ return {usedBytes:Number(raw)+Number(volumeBytes),nativeQuota:caps.disk,measuredAt:new Date().toISOString()};
 }
 /** Quota-only mutation: never reapply the jail or terminate customer processes. */
 export async function applyProviderStorage(executor:Executor,account:HostingAccount,capacityBytes:number) {
