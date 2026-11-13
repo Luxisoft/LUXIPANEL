@@ -33,7 +33,6 @@ unit=pathlib.Path('/etc/systemd/system/luxipanel-storage.service')
 unit.write_text('''[Unit]
 Description=Luxisoft quota-backed hosting storage
 After=local-fs.target
-Before=user@.service
 
 [Service]
 Type=oneshot
