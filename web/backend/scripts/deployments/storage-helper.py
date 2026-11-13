@@ -119,6 +119,7 @@ def harden_quadlets(home,caddy_images,active_units=None):
   if active_units is not None and file.stem+'.service' not in active_units:text=text.replace('WantedBy=default.target','# Inactive before quota migration')
   if 'SeccompProfile=' not in text:text=text.replace('[Container]','[Container]\nSeccompProfile=/usr/lib/luxipanel/storage-seccomp.json\nTmpfs=/root/.npm:rw,size=32m')
   if any(('Image='+image+'\n') in text for image in caddy_images) and 'Tmpfs=/config:' not in text:text=text.replace('[Container]','[Container]\nTmpfs=/config:rw,size=16m\nTmpfs=/data:rw,size=16m')
+  text=re.sub(r'^(Tmpfs=/(?:root/\.npm|tmp|run|config|data):[^\n]+)$',lambda match:match.group(1) if 'notmpcopyup' in match.group(1) else match.group(1)+',notmpcopyup',text,flags=re.M)
   file.write_text(text)
 
 def status(a):
@@ -196,10 +197,13 @@ def prepare(a,user,capacity):
  d=Dq();d.hard=capacity//1024;d.valid=1;quota(0x800008,project_id(a),d)
  receipt=json.loads(file.read_text());receipt['capacityBytes']=capacity;save(file,receipt)
  if receipt.get('managerWasActive'):
+  harden_quadlets(home,receipt.get('caddyImages',[]),{line.split()[0] for line in receipt.get('units',[])})
   run(['/usr/bin/systemctl','start',f'user@{user.pw_uid}.service'])
+  usercmd(user,['/usr/bin/systemctl','--user','daemon-reload'])
   for line in receipt.get('units',[]):
    unit=line.split()[0]
-   if re.fullmatch(r'luxi-[a-zA-Z0-9-]+\.service',unit):usercmd(user,['/usr/bin/systemctl','--user','start',unit])
+   if re.fullmatch(r'luxi-[a-zA-Z0-9-]+\.service',unit):
+    usercmd(user,['/usr/bin/systemctl','--user','reset-failed',unit]);usercmd(user,['/usr/bin/systemctl','--user','start',unit])
   receipt['managerWasActive']=False;save(file,receipt)
  return status(a)
 

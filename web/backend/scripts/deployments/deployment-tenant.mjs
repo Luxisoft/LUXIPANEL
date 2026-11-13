@@ -118,13 +118,13 @@ async function startContainer(
     `Network=${network ?? "slirp4netns:allow_host_loopback=false"}`,
     "ReadOnly=true",
     "SeccompProfile=/usr/lib/luxipanel/storage-seccomp.json",
-    "Tmpfs=/root/.npm:rw,size=32m",
-    "Tmpfs=/tmp:rw,size=128m",
-    "Tmpfs=/run:rw,size=32m",
+    "Tmpfs=/root/.npm:rw,size=32m,notmpcopyup",
+    "Tmpfs=/tmp:rw,size=128m,notmpcopyup",
+    "Tmpfs=/run:rw,size=32m,notmpcopyup",
     `PodmanArgs=--memory=${memory}m --cpus=1 --pids-limit=128`,
   ];
   const imageConfig=JSON.parse(await command("/usr/bin/podman",["image","inspect","--format","{{json .Config}}",image],{record:false}));
-  if ([...(imageConfig.Entrypoint??[]),...(imageConfig.Cmd??[])].some(token=>path.basename(token)==="caddy")) lines.push("Tmpfs=/config:rw,size=16m", "Tmpfs=/data:rw,size=16m");
+  if ([...(imageConfig.Entrypoint??[]),...(imageConfig.Cmd??[])].some(token=>path.basename(token)==="caddy")) lines.push("Tmpfs=/config:rw,size=16m,notmpcopyup", "Tmpfs=/data:rw,size=16m,notmpcopyup");
   if (await fs.stat(path.join(root, "retired")).catch(() => null))
     throw new Error("deployment_retired");
   if (resource)
