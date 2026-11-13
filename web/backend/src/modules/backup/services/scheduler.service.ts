@@ -39,6 +39,7 @@ export function cronMatches(expression: string, date: Date): boolean {
 
 export const backupSchedulerService = {
   start(): void {
+    if (process.env.DEMAND_RUNTIME_ENABLED === "1") return;
     if (_timer) return;
     _timer = setInterval(() => void this._tick(), 60_000);
     log.info("Backup scheduler started");
@@ -61,8 +62,7 @@ export const backupSchedulerService = {
    * reading them AND while running the backup — otherwise a scheduled backup
    * would always snapshot the panel host (the historical bug).
    */
-  async _tick(): Promise<void> {
-    const now = new Date();
+  async _tick(now = new Date()): Promise<void> {
 
     // 1) The panel host itself (localExecutor), exactly as before. The interval
     //    fires with NO executor in AsyncLocalStorage, so a per-server kv read
@@ -114,6 +114,7 @@ export const backupSchedulerService = {
 
     for (const sched of schedules) {
       if (!cronMatches(sched.schedule, now)) continue;
+      if (process.env.DEMAND_RUNTIME_ENABLED === "1" && sched.lastRunAt && sched.lastRunAt.getTime() >= Math.floor(now.getTime()/60000)*60000) continue;
       try {
         await this._runSchedule(sched, executor);
       } catch (err) {

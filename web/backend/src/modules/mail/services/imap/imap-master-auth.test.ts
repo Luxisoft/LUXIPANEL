@@ -7,8 +7,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { attempts, outcomes } = vi.hoisted(() => ({
+const { attempts, outcomes, tlsOptions } = vi.hoisted(() => ({
   attempts: [] as Array<{ host: string; user: string; pass: string }>,
+  tlsOptions: [] as unknown[],
   /** Per-user outcome: "ok" | "auth" | "conn". */
   outcomes: new Map<string, "ok" | "auth" | "conn">(),
 }));
@@ -16,8 +17,9 @@ const { attempts, outcomes } = vi.hoisted(() => ({
 vi.mock("imapflow", () => ({
   ImapFlow: class {
     private readonly opts: { host: string; auth: { user: string; pass: string } };
-    constructor(opts: { host: string; auth: { user: string; pass: string } }) {
+    constructor(opts: { host: string; auth: { user: string; pass: string }; tls?: unknown }) {
       this.opts = opts;
+      tlsOptions.push(opts.tls);
     }
     async connect() {
       attempts.push({ host: this.opts.host, user: this.opts.auth.user, pass: this.opts.auth.pass });
@@ -38,7 +40,7 @@ vi.mock("imapflow", () => ({
 }));
 
 vi.mock("../mail-target.js", () => ({
-  resolveMailTargetHost: async () => ({ targetHost: "203.0.113.7" }),
+  resolveMailTargetHost: async () => ({ targetHost: "203.0.113.7", tlsServername: "mail.shared.test" }),
 }));
 
 vi.mock("../../../../config/mail.js", () => ({
@@ -77,6 +79,7 @@ const MASTER_LOGIN = `${ADDRESS}*luxipanel-master`;
 
 beforeEach(() => {
   attempts.length = 0;
+  tlsOptions.length = 0;
   outcomes.clear();
   masterState.doc = null;
   masterState.lastError = null;
@@ -92,6 +95,7 @@ describe("withImap login order", () => {
     expect(result).toBe("opened");
     expect(attempts).toEqual([{ host: "203.0.113.7", user: MASTER_LOGIN, pass: "master-secret" }]);
     expect(markVerified).toHaveBeenCalledTimes(1);
+    expect(tlsOptions[0]).toEqual({ rejectUnauthorized: true, servername: "mail.shared.test" });
   });
 
   it("falls back to the per-account credential when the master login is rejected", async () => {

@@ -1,10 +1,60 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { mountModuleTopbar } from "./module-topbar";
+import { createControllerScope } from "./controller-scope";
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   vi.restoreAllMocks();
   document.body.innerHTML = "";
+});
+
+it("shows both Files headers, preserving scoped tab, close, root and create actions", async () => {
+  vi.stubGlobal("EventSource", class { close() {} });
+  vi.useFakeTimers();
+  document.body.innerHTML = `<div id="drawer"><header><div data-module-header-tabs-slot></div><div data-module-header-actions-slot></div><button>Configuración</button></header>
+    <div id="module" data-internal-module="files"><aside><div data-files-header-row="tree"><span>Carpetas</span><button id="files-tree-set-root">Raíz</button></div></aside>
+    <div data-files-header-row="folders"><div id="files-manager-tabs" role="tablist" aria-label="Carpetas abiertas"><div><button role="tab" data-manager-id="one" aria-selected="true">Uno</button><button data-manager-close="one">Cerrar</button></div><div><button role="tab" data-manager-id="two" aria-selected="false">Dos</button></div></div><button id="btn-new-files-manager-tab">Nueva pestaña</button><button id="btn-open-files">Archivos abiertos <span id="open-files-count">1</span></button></div></div></div>`;
+  const drawer = document.querySelector<HTMLElement>("#drawer")!;
+  const root = document.querySelector<HTMLElement>("#module")!;
+  const scope = createControllerScope(root, new URL("https://panel.example/panel/files"));
+  const created = vi.fn(), changedRoot = vi.fn(), closed = vi.fn();
+  scope.document.getElementById("btn-new-files-manager-tab")!.addEventListener("click", created);
+  scope.document.getElementById("files-tree-set-root")!.addEventListener("click", changedRoot);
+  scope.document.getElementById("files-manager-tabs")!.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest("button")!;
+    if (button.hasAttribute("data-manager-close")) { closed(); return; }
+    root.querySelectorAll("[data-manager-id]").forEach((tab) => tab.setAttribute("aria-selected", String(tab === button)));
+  });
+  scope.document.getElementById("files-manager-tabs")!.addEventListener("keydown", (event) => {
+    if (event.key === "Home") root.querySelector<HTMLButtonElement>('[data-manager-id="one"]')!.click();
+  });
+  const dispose = mountModuleTopbar(root, drawer);
+  const header = drawer.querySelector("header")!;
+  expect(header.querySelectorAll("[data-files-header-row]")).toHaveLength(2);
+  expect(document.querySelectorAll("#open-files-count")).toHaveLength(1);
+  header.querySelector<HTMLButtonElement>('[data-files-header-control="btn-new-files-manager-tab"]')!.click();
+  header.querySelector<HTMLButtonElement>('[data-files-header-control="files-tree-set-root"]')!.click();
+  expect(created).toHaveBeenCalledOnce();
+  expect(changedRoot).toHaveBeenCalledOnce();
+  const second = header.querySelector<HTMLButtonElement>('[data-manager-id="two"]')!;
+  second.focus();
+  second.click();
+  await vi.advanceTimersByTimeAsync(100);
+  expect(header.querySelector('[data-manager-id="two"]')?.getAttribute("aria-selected")).toBe("true");
+  expect(document.activeElement).toBe(header.querySelector('[data-manager-id="two"]'));
+  header.querySelector<HTMLButtonElement>('[data-manager-id="two"]')!.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+  expect(header.querySelector('[data-manager-id="one"]')?.getAttribute("aria-selected")).toBe("true");
+  expect(document.activeElement).toBe(header.querySelector('[data-manager-id="one"]'));
+  header.querySelector<HTMLButtonElement>("[data-manager-close]")!.click();
+  expect(closed).toHaveBeenCalledOnce();
+  root.querySelector("#open-files-count")!.textContent = "3";
+  await vi.advanceTimersByTimeAsync(100);
+  expect(header.querySelector('[data-files-header-control="btn-open-files"]')?.textContent).toContain("3");
+  dispose();
+  expect(header.querySelector("[data-files-header-row]")).toBeNull();
+  expect(root.querySelector("[data-module-topbar-source]")).toBeNull();
+  scope.dispose();
 });
 
 it("moves live terminal controls into the header and restores them for mobile and teardown", async () => {

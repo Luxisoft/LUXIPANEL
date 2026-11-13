@@ -31,6 +31,10 @@ import { AppError } from "../../../shared/errors/index.js";
 // The local SSH target vault is control-plane state of the panel host; reading
 // a target record to learn its host mirrors how ai-assistant resolves targets.
 import { targetsRepository } from "../../servers/index.js";
+import net from "node:net";
+import path from "node:path";
+import { mailConfig } from "../../../config/mail.js";
+import { configuredMailHostname } from "./mail-host.js";
 
 export interface MailTarget {
   /**
@@ -39,6 +43,8 @@ export interface MailTarget {
    * code then keeps its historical `localhost` fallback.
    */
   targetHost?: string;
+  /** Certificate identity from the selected server, never from another target. */
+  tlsServername?: string;
 }
 
 /**
@@ -73,5 +79,16 @@ export async function resolveMailTargetHost(): Promise<MailTarget> {
       "MAIL_REMOTE_HOST_UNRESOLVED",
     );
   }
-  return { targetHost: host };
+  let tlsServername: string | undefined;
+  if (net.isIP(host)) {
+    try {
+      const configPath = path.posix.join(path.posix.dirname(mailConfig.postfix.vmailbox), "main.cf");
+      tlsServername = configuredMailHostname(String(await executor.readFile(configPath, "utf8")));
+    } catch {
+      // Foreign/unreadable configuration keeps the existing strict TLS path.
+    }
+  }
+  // Dial the selected target's original address; the hostname only sets SNI
+  // and certificate validation, so DNS cannot move this socket to another box.
+  return { targetHost: host, ...(tlsServername ? { tlsServername } : {}) };
 }

@@ -81,7 +81,7 @@ export function createControllerScope(root: HTMLElement, initialUrl: URL) {
     event.stopImmediatePropagation();
     handler(...values);
   }
-  for (const type of ["click", "dblclick", "change", "input"]) {
+  for (const type of ["click", "dblclick", "contextmenu", "change", "input"]) {
     root.addEventListener(type, dispatchRowAction, true);
     cleanup.add(() => root.removeEventListener(type, dispatchRowAction, true));
   }

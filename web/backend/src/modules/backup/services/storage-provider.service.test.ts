@@ -20,6 +20,9 @@ vi.mock("node:fs", () => ({
   },
 }));
 vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
+vi.mock("../../../shared/logger/index.js", () => ({
+  createModuleLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+}));
 
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";

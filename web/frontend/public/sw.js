@@ -1,5 +1,5 @@
 /* LuxiPanel Service Worker */
-const SW_VERSION = "luxipanel-v35-20261001-internal-modules";
+const SW_VERSION = "luxipanel-v37-20261103-parallel-download";
 const RUNTIME_CACHE = `${SW_VERSION}-runtime`;
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 

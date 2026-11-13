@@ -26,11 +26,14 @@ const changingTargets = new Set<string>();
 export function beginBackupActivity(executor: Executor): () => void {
   const id = executor.target.id;
   if (changingTargets.has(id)) throw new ConflictError("La carpeta de backups está cambiando; inténtalo de nuevo al terminar.");
+  const activity = Reflect.get(globalThis, Symbol.for("luxisoft.demand.runtime"));
+  const release: () => void = activity?.hold("accepted_backup") ?? (() => {});
   busyTargets.set(id, (busyTargets.get(id) ?? 0) + 1);
   let released = false;
   return () => {
     if (released) return;
     released = true;
+    release();
     const remaining = (busyTargets.get(id) ?? 1) - 1;
     if (remaining > 0) busyTargets.set(id, remaining);
     else busyTargets.delete(id);

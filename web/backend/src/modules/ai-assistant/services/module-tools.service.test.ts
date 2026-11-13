@@ -20,7 +20,7 @@ vi.mock("../repositories/projects.repository.js", () => ({ projectsRepository: {
 vi.mock("../repositories/agent-roles.repository.js", () => ({ agentRolesRepository: { get: async () => null } }));
 import { hasAssignmentAdmission } from "./agent-assignment-lock.js";
 import { agentRunRegistry } from "./agent-run-registry.js";
-import { executeModuleTool, moduleDiscoveryTools, moduleToolRevision } from "./module-tools.service.js";
+import { executeModuleTool, moduleDiscoveryTools, moduleToolRevision, MODULE_APPROVAL_CHANNEL_REQUIRED } from "./module-tools.service.js";
 const executor = { target: { id: "A", name: "A" } } as Executor;
 const user = { userId: 7, username: "admin", displayName: "Admin", role: "admin", modules: [], kind: "admin" } as SessionUser;
 const handler = vi.fn(async () => ({ ok: true, output: getFileJailPaths() }));
@@ -54,8 +54,23 @@ describe("live module dispatch", () => {
     approve("allow"); expect(await pending).toMatchObject({ ok: false }); expect(handler).not.toHaveBeenCalled();
   }));
   it("denies actions with no approval channel and actions in plan mode", async () => scoped(async () => {
-    expect(await executeModuleTool("demo.edit", {}, { executor, user })).toMatchObject({ ok: false });
+    expect(await executeModuleTool("demo.edit", {}, { executor, user })).toEqual({ ok: false, output: MODULE_APPROVAL_CHANNEL_REQUIRED });
     state.mode = "plan"; expect(await executeModuleTool("demo.edit", {}, { executor, user, conversationId: "chat" })).toMatchObject({ ok: false });
+  }));
+  it("does not turn a conversation id supplied as tool input into an approval channel", async () => scoped(async () => {
+    state.decision = vi.fn(async () => "allow" as const);
+    expect(await executeModuleTool("demo.edit", { conversationId: "another-chat" }, { executor, user }))
+      .toEqual({ ok: false, output: MODULE_APPROVAL_CHANNEL_REQUIRED });
+    expect(state.decision).not.toHaveBeenCalled();
+    expect(handler).not.toHaveBeenCalled();
+  }));
+  it("executes the reviewed operation through its authenticated chat scope", async () => scoped(async () => {
+    state.decision = vi.fn(async () => "allow" as const);
+    const input = { value: "reviewed-change" };
+    expect(await executeModuleTool("demo.edit", input, { executor, user, conversationId: "chat" }))
+      .toMatchObject({ ok: true });
+    expect(state.decision).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledExactlyOnceWith(input);
   }));
   it("asks in manual mode even when the module disables its own confirmation flag", async () => scoped(async () => {
     state.access = { demo: { tools: { "demo.edit": { requireConfirm: false } } } };

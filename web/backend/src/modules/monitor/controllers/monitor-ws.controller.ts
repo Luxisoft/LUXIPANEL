@@ -73,7 +73,9 @@ async function pushStats(
   scope: string,
   opts: { fallbackCollect: boolean },
 ): Promise<void> {
-  const snap = scope === "local"
+  const snap = process.env.DEMAND_RUNTIME_ENABLED === "1"
+    ? await statsCollectorService.collectWithExecutorCached(executor, scope)
+    : scope === "local"
     ? (opts.fallbackCollect
         ? (statsCollectorService.getLatest(scope) ?? await systemStatsService.collect())
         : statsCollectorService.getLatest(scope))

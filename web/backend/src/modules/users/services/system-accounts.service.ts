@@ -265,8 +265,10 @@ async function upsertSystemUserInDatabase(systemUser: SystemAccount, precomputed
 }
 
 async function listInteractiveUsers(): Promise<SystemAccount[]> {
-  const output = await runCommand("getent", ["passwd"], { allowNonZeroExit: true });
-  if (!output) return [];
+  // A failed/empty enumeration is not evidence that every account was deleted.
+  // Abort before any upsert or missing-user disable can change the auth store.
+  const output = await runCommand("getent", ["passwd"]);
+  if (!output) throw new AppError("System account enumeration was empty", 500, "SYSTEM_SYNC_FAILED");
 
   const users: SystemAccount[] = [];
   const lines = output
@@ -276,7 +278,7 @@ async function listInteractiveUsers(): Promise<SystemAccount[]> {
 
   for (const line of lines) {
     const parsed = parsePasswdLine(line);
-    if (!parsed) continue;
+    if (!parsed) throw new AppError("System account enumeration was malformed", 500, "SYSTEM_SYNC_FAILED");
     if (NON_LOGIN_SHELLS.has(parsed.shell)) continue;
     users.push({ ...parsed, locked: false });
   }

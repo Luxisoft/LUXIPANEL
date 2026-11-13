@@ -1,0 +1,11 @@
+{
+  "title": "Archivos y estabilidad del panel",
+  "changes": [
+    "El menú de clic derecho vuelve a mostrar las opciones de archivos y carpetas, y las cabeceras del árbol y las pestañas del explorador se reúnen en la barra superior.",
+    "Las descargas grandes pueden usar conexiones paralelas y reanudar transferencias sin mezclar versiones del archivo.",
+    "El correo valida el certificado con la identidad configurada en el servidor seleccionado, también al conectarse por su dirección IP.",
+    "Una lectura fallida de los usuarios del sistema ya no deshabilita cuentas existentes.",
+    "La ejecución bajo demanda conserva el trabajo aceptado y los eventos programados, con recuperación de operaciones interrumpidas y despliegues compatibles con el gestor activo.",
+    "Los cambios en rutas de aplicaciones y registros de procesos se detectan mediante eventos para reducir consultas periódicas."
+  ]
+}

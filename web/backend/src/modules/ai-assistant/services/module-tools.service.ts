@@ -24,6 +24,12 @@ export const MODULE_RUN_EXPIRED = {
   nextStep: "Reanuda la tarea desde el chat para abrir una sesión nueva. Verifica el estado del trabajo anterior antes de repetir cambios.",
 } as const;
 
+export const MODULE_APPROVAL_CHANNEL_REQUIRED = {
+  code: "MCP_APPROVAL_CHANNEL_REQUIRED", operationStatus: "not_started",
+  message: "Esta conexión MCP no está vinculada a una conversación del panel donde solicitar aprobación.",
+  nextStep: "Continúa desde una conversación del proyecto en LUXIPANEL, usando su canal de herramientas. Crear el proyecto o aprobar en otro chat no vincula este cliente externo; reinstalar el token MCP general tampoco crea ese vínculo.",
+} as const;
+
 export function moduleToolRevision(moduleId: string, executor = getContextExecutor()): string {
   return `${agentCapabilityRegistry.revision(moduleId)}:${executor ? moduleStateRevision(executor.target.id) : 0}`;
 }
@@ -70,7 +76,7 @@ export async function executeModuleTool(name: string, input: unknown, scope: Sco
   if (tool.kind === "action" && approval?.mode === "plan") return { ok: false, output: "Plan mode does not permit changes" };
   const needsConfirm = await assistantModulesService.toolNeedsConfirm(name, scope.executor);
   if (needsConfirm || (tool.kind === "action" && approval?.mode === "manual")) {
-    if (!scope.conversationId) return { ok: false, output: "This operation requires approval in an active chat" };
+    if (!scope.conversationId) return { ok: false, output: MODULE_APPROVAL_CHANNEL_REQUIRED };
     if (approval?.mode !== "auto" && !approval?.autoApprove.has(name)) {
       const decision = await permissionBroker.request({ conversationId: scope.conversationId, tool: name, title: tool.title, detail: JSON.stringify(redactModuleData(snapshot)).slice(0, 2000) });
       if (decision !== "allow") return { ok: false, output: "Operation denied" };

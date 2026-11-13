@@ -647,6 +647,7 @@ export function bindFileScroll() {
         // GET is non-mutating so no CSRF is required.
         const blob = await downloadFileBlob(resolvePanelApiPath(`/api/files/download?${params.toString()}`), {
           headers,
+          parallel: !isDir,
           signal: controller.signal,
           onRetry: () => { if (isCurrent()) panel.retry(); },
           onProgress: ({ received, total }) => {

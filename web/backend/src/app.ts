@@ -44,6 +44,7 @@ import { chatCallsPublicRouter } from "./modules/chat/routes/call-webhook.routes
 import { providerRouter } from "./modules/hosting/routes/provider.routes.js";
 import { deploymentProviderRouter } from "./modules/hosting/routes/deployment-provider.routes.js";
 import { apiErrorMessage } from "./shared/i18n/errors.js";
+import { registerResourceMaintenance } from "./resource-maintenance.js";
 
 const log = createModuleLogger("app");
 
@@ -115,6 +116,7 @@ export function createApp(modules: ModuleRegistrar[] = []): express.Application 
   app.use(cookieParser());
   app.use(localeDetector);
   app.use(telemetryRouter);
+  registerResourceMaintenance(app);
 
   // ---- Anti-indexing headers (global) ----
   app.use((_req, res, next) => {

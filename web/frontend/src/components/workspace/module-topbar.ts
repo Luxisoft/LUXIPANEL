@@ -2,6 +2,8 @@
 /** Mirror module navigation into the workspace header. The real controls stay
  * inside their controller scope, so existing listeners, permissions and tab
  * state continue to belong to the module. */
+import { mountFilesTopbar } from "./files-topbar";
+
 const TAB_SELECTOR = "button.tab-btn, button.mail-main-tab, button.repo-tab-btn, button.cf-tab, button.db-tab, button[role='tab'], button[data-tab], button[data-mail-main-tab]";
 const ACTION_SELECTOR = [
   "button[id^='btn-new-']", "button#btn-new", "button[id^='btn-create-']",
@@ -69,6 +71,7 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
   const tabsSlot = drawer.querySelector<HTMLElement>("[data-module-header-tabs-slot]");
   const actionsSlot = drawer.querySelector<HTMLElement>("[data-module-header-actions-slot]");
   if (!tabsSlot || !actionsSlot) return () => {};
+  if (root.dataset.internalModule === "files") return mountFilesTopbar(root, tabsSlot, actionsSlot);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
   // Terminal tabs are live DOM nodes (rename/close/status listeners). Move the

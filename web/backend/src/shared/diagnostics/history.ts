@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { watch } from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { localExecutor } from "../executor/index.js";
@@ -9,7 +10,7 @@ import { sanitizeText } from "./sanitize.js";
 
 interface Cursor { inode: number; offset: number; pending?: { text: string; position: number } }
 interface Source { name: string; file: string; source: string; stderr: boolean }
-let running = false; let started = false;
+let running = false; let started = false; let dirty = false;
 const cursors: Record<string, Cursor> = {};
 let sources: Source[] = [];
 function parse(source: Source, line: string, position: number, historical: boolean): void {
@@ -18,6 +19,10 @@ function parse(source: Source, line: string, position: number, historical: boole
 }
 async function discover(): Promise<void> {
   try {
+    if (process.env.PANEL_DEMAND_LOG_SOURCES) {
+      sources = JSON.parse(await fs.readFile(process.env.PANEL_DEMAND_LOG_SOURCES,"utf8"));
+      return;
+    }
     const result = await localExecutor.exec("pm2 jlist", { timeoutMs: 8000 });
     if (result.exitCode !== 0) throw new Error("PM2 no disponible");
     const rows = JSON.parse(result.stdout) as { name: string; pm2_env?: { pm_out_log_path?: string; pm_err_log_path?: string } }[];
@@ -32,7 +37,7 @@ async function discover(): Promise<void> {
   } catch { diagnosticsStore.health.history.pm2 = { status: "PM2 no disponible. La captura directa sigue activa.", offset: 0 }; }
 }
 async function poll(historical = false): Promise<void> {
-  if (running) return; running = true;
+  if (running) { dirty = true; return; } running = true;
   try {
     for (const source of sources) {
       try {
@@ -43,6 +48,7 @@ async function poll(historical = false): Promise<void> {
         // Direct backend hooks own new events. The PM2 importer owns its historical backfill.
         if (!backfill && source.source === "backend") { cursor.offset = stat.size; continue; }
         const handle = await fs.open(source.file, "r");
+        let continueBackfill = false;
         try {
           let budget = 2 * 1024 * 1024;
           while (cursor.offset < stat.size && budget > 0) {
@@ -64,20 +70,33 @@ async function poll(historical = false): Promise<void> {
             }
             await diagnosticsStore.flush();
           }
+          continueBackfill = cursor.offset < stat.size && budget <= 0;
           if (cursor.offset >= stat.size && cursor.pending) { parse(source, cursor.pending.text, cursor.pending.position, backfill); cursor.pending = undefined; }
         } finally { await handle.close(); }
-        diagnosticsStore.health.history[source.name + (source.stderr ? ":stderr" : ":stdout")] = { status: cursor.offset < stat.size ? "Importando historial" : "Activo", offset: cursor.offset };
+        const more = cursor.offset < stat.size;
+        diagnosticsStore.health.history[source.name + (source.stderr ? ":stderr" : ":stdout")] = { status: more ? "Importando historial" : "Activo", offset: cursor.offset };
+        if (continueBackfill) dirty = true;
       } catch (err) { diagnosticsStore.health.history[source.name + (source.stderr ? ":stderr" : ":stdout")] = { status: String((err as Error).message), offset: 0 }; }
     }
     await diagnosticsStore.flush();
     await atomicJson(path.join(diagnosticsRoot(), "history-cursors.json"), cursors);
   } catch (err) { diagnosticsStore.health.error = String((err as Error).message); }
-  finally { running = false; }
+  finally { running = false; if(dirty){dirty=false;setImmediate(()=>void poll());} }
 }
 export async function startDiagnostics(): Promise<void> {
   if (started) return; started = true; installRuntimeDiagnostics();
   try { Object.assign(cursors, JSON.parse(await fs.readFile(path.join(diagnosticsRoot(), "history-cursors.json"), "utf8"))); } catch { /* first start */ }
-  await diagnosticsStore.warmConfigs(); await discover(); await poll(true);
-  const timer = setInterval(() => { void poll(); }, 3000); timer.unref();
-  const cleanup = setInterval(() => { void diagnosticsStore.pruneAll().catch(() => undefined); }, 60_000); cleanup.unref();
+  await diagnosticsStore.warmConfigs(); await discover();
+  let debounce: ReturnType<typeof setTimeout> | undefined;
+  const changed = () => { clearTimeout(debounce); debounce=setTimeout(()=>void poll(),50);debounce.unref(); };
+  for(const directory of new Set(sources.map(source=>path.dirname(source.file)))) {
+    const names=new Set(sources.filter(source=>path.dirname(source.file)===directory).map(source=>path.basename(source.file)));
+    try {
+      const watcher=watch(directory,(_event,file)=>{if(!file||names.has(String(file)))changed();});
+      watcher.on("error",()=>{diagnosticsStore.health.error="No se pudo observar el historial de procesos.";});
+      watcher.unref();
+    }catch{diagnosticsStore.health.error="No se pudo observar el historial de procesos.";}
+  }
+  await poll(true);
+  await diagnosticsStore.pruneAll().catch(()=>undefined);
 }

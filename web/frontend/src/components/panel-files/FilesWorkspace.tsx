@@ -112,7 +112,7 @@ export function FilesWorkspace({ canUseAssistant = true, canExpo = false, locale
           <div className="border-b border-border">
             {/* Folder tabs share an edge with the current folder. The editor's
                 open-file list is a separate control at the right end. */}
-            <div className="flex min-w-0 items-end gap-1 border-b border-border bg-muted/25 px-3 pt-2">
+            <div data-files-header-row="folders" className="flex min-w-0 items-end gap-1 border-b border-border bg-muted/25 px-3 pt-2">
               <div id="files-manager-tabs" role="tablist" className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto scrollbar-none" aria-label={t("managerTabsAria")}></div>
               <button
                 id="btn-new-files-manager-tab"
@@ -724,7 +724,8 @@ export function FilesWorkspace({ canUseAssistant = true, canExpo = false, locale
           Vive fuera de #files-browser para mantener su posición fija. */}
       <div
         id="files-context-menu"
-        className="hidden fixed z-[100] min-w-[180px] rounded-lg border border-border bg-card py-1 shadow-2xl"
+        popover="manual"
+        className="hidden fixed inset-auto m-0 z-[100] max-h-[calc(100dvh-12px)] max-w-[calc(100vw-12px)] min-w-[180px] overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-2xl"
         role="menu"
       ></div>
 

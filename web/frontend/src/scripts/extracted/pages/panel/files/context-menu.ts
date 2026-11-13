@@ -27,13 +27,14 @@ import { requestAssistant } from "/scripts/extracted/lib/assistant-request.js?v=
   export function hideContextMenu() {
     const menu = document.getElementById("files-context-menu");
     if (menu) {
+      menu.hidePopover?.();
       menu.classList.add("hidden");
       menu.innerHTML = "";
     }
   }
 
   export function buildContextMenu(path: string, name: string, isDir: boolean, kind: "entry" | "route" = "entry"): string {
-    const escName = name.replace(/'/g, "\\'");
+    const escName = escapeAttr(name);
     // Map each context-menu action to the file permission it needs. Actions not
     // listed (open/edit/copy-path/scans…) only need browse/read, always shown.
     const ACTION_PERM: Record<string, string> = {
@@ -141,13 +142,16 @@ import { requestAssistant } from "/scripts/extracted/lib/assistant-request.js?v=
     return `<div data-menu-kind="entry" data-path="${escapeAttr(path)}" data-name="${escName}" data-is-dir="${isDir}">${items.join("")}</div>`;
   }
 
-  (window as any).showFileContextMenu = (e: MouseEvent, path: string, name: string, isDir: boolean) => {
+  function showContextMenu(e: MouseEvent, path: string, name: string, isDir: boolean, kind: "entry" | "route") {
     e.preventDefault();
     e.stopPropagation();
     const menu = document.getElementById("files-context-menu");
     if (!menu) return;
-    menu.innerHTML = buildContextMenu(path, name, isDir, "entry");
+    menu.innerHTML = buildContextMenu(path, name, isDir, kind);
     menu.classList.remove("hidden");
+    // The workspace sheet is transformed and clips its descendants. A popover
+    // stays in this controller's DOM scope while using viewport coordinates.
+    menu.showPopover?.();
 
     const margin = 6;
     const { innerWidth, innerHeight } = window;
@@ -158,25 +162,14 @@ import { requestAssistant } from "/scripts/extracted/lib/assistant-request.js?v=
     if (y + rect.height + margin > innerHeight) y = innerHeight - rect.height - margin;
     menu.style.left = `${Math.max(margin, x)}px`;
     menu.style.top = `${Math.max(margin, y)}px`;
+  }
+
+  (window as any).showFileContextMenu = (e: MouseEvent, path: string, name: string, isDir: boolean) => {
+    showContextMenu(e, path, name, isDir, "entry");
   };
 
   (window as any).showRouteContextMenu = (e: MouseEvent, path: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const menu = document.getElementById("files-context-menu");
-    if (!menu) return;
-    menu.innerHTML = buildContextMenu(path, getBaseName(path) || t("labels.route", "Ruta"), true, "route");
-    menu.classList.remove("hidden");
-
-    const margin = 6;
-    const { innerWidth, innerHeight } = window;
-    const rect = menu.getBoundingClientRect();
-    let x = e.clientX;
-    let y = e.clientY;
-    if (x + rect.width + margin > innerWidth) x = innerWidth - rect.width - margin;
-    if (y + rect.height + margin > innerHeight) y = innerHeight - rect.height - margin;
-    menu.style.left = `${Math.max(margin, x)}px`;
-    menu.style.top = `${Math.max(margin, y)}px`;
+    showContextMenu(e, path, getBaseName(path) || t("labels.route", "Ruta"), true, "route");
   };
 
   document.addEventListener("click", async (evt: any) => {
@@ -293,6 +286,12 @@ import { requestAssistant } from "/scripts/extracted/lib/assistant-request.js?v=
     }
   });
 
-  document.addEventListener("scroll", hideContextMenu, true);
+  document.addEventListener("scroll", (event) => {
+    const menu = document.getElementById("files-context-menu");
+    if (event.target instanceof Node && menu?.contains(event.target)) return;
+    hideContextMenu();
+  }, true);
+  document.addEventListener("lxp:module:visibility", hideContextMenu);
+  document.addEventListener("lxp:module:dispose", hideContextMenu);
   window.addEventListener("resize", hideContextMenu);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideContextMenu(); });

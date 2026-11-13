@@ -393,6 +393,8 @@ export const agentRunRegistry = {
     // resolve to the right server even after the request that kicked it off
     // has ended.
     const translate = params.translate;
+    const activity = Reflect.get(globalThis, Symbol.for("luxisoft.demand.runtime"));
+    const release: () => void = activity?.hold("accepted_panel_agent") ?? (() => {});
     run.completion = runWithExecutor(params.executor, async () => {
       let errored = false;
       let terminalError: string | undefined;
@@ -652,7 +654,7 @@ export const agentRunRegistry = {
       // 4th arg pins the run owner into the executor context so detached tool
       // handlers (no `req`) can enforce the same per-group permission/path
       // policy as the HTTP layer (e.g. files.* canAccessPath).
-    }, params.user?.userId, params.user);
+    }, params.user?.userId, params.user).finally(release);
 
     return run;
   },
