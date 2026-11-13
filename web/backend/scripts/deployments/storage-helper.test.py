@@ -29,6 +29,18 @@ class Storage(unittest.TestCase):
    root=pathlib.Path(d);(root/'accounts').mkdir();file=root/'accounts/1.json';file.write_text(json.dumps({'phase':'ready'}))
    with patch.object(m,'ROOT',root),patch.object(m,'identity',return_value=({},None)):m.rollback_incomplete('1')
    self.assertTrue(file.exists())
+ def test_reused_hosting_id_gets_a_new_quota_identity_without_old_data(self):
+  with tempfile.TemporaryDirectory() as d:
+   root=pathlib.Path(d);pool=root/'pool';pool.mkdir();accounts=root/'accounts';accounts.mkdir();legacy=root/'legacy';legacy.mkdir();name='hp'+'a'*20
+   (pool/name).mkdir();(pool/name/'old-data').write_text('retained original');(legacy/name).mkdir()
+   file=accounts/'19.json';file.write_text(json.dumps({'phase':'retired','accountId':19,'username':name,'accountCreatedAt':'old','projectId':1500000019}))
+   with patch.object(m,'ROOT',root),patch.object(m,'POOL',pool):
+    m.archive_retired({'id':19,'username':name,'createdAt':'new'},file)
+    first=m.new_project();second=m.new_project()
+   self.assertEqual(first,1500000020);self.assertEqual(second,1500000021);self.assertFalse(file.exists())
+   self.assertEqual(next((pool/'.retired').glob('*/old-data')).read_text(),'retained original')
+ def test_active_identity_cannot_be_replaced_by_another_owner(self):
+  self.assertFalse(m.same_owner({'username':'other','createdAt':'new'},{'username':'original','accountCreatedAt':'old'}))
  def test_existing_ports_are_preserved_and_root_is_read_only(self):
   with tempfile.TemporaryDirectory() as d:
    home=pathlib.Path(d);q=home/'.config/containers/systemd';q.mkdir(parents=True)
