@@ -17,6 +17,7 @@ export const providerRepository = {
   findAccount: (providerId: string, externalAccountId: string) =>
     accounts().find((a) => a.providerId === providerId && a.externalAccountId === externalAccountId),
   createAccount: (data: ProviderAccountLink) => accounts().create(data),
+  updateAccount: (id: string, patch: Partial<ProviderAccountLink>) => accounts().update(id, patch),
   deleteAccount: (id: string) => accounts().delete(id),
   findSite: (providerId: string, externalSiteId: string) =>
     sites().find((s) => s.providerId === providerId && s.externalSiteId === externalSiteId),

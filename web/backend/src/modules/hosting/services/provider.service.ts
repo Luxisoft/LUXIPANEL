@@ -1,3 +1,4 @@
+import { readProviderStorage, applyProviderStorage } from "./provider-storage.js";
 import { hostingTemplateService } from "./hosting-template.service.js";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 LUXISOFT
@@ -210,6 +211,21 @@ export const providerService = {
     });
   },
 
+  async storage(provider: HostingProvider, externalId: string) {
+    const {link,account,executor}=await ownedAccount(provider,externalId);
+    return {...await readProviderStorage(executor,account),version:1,capacityBytes:link.storageCapacityBytes??0,revision:link.storageRevision??0};
+  },
+  async setStorage(provider:HostingProvider,externalId:string,input:{revision:number;capacityBytes:number}) {
+    return withLock(`${provider.id}:account:${externalId}`,async()=>{
+      const {link,account,executor}=await ownedAccount(provider,externalId);
+      const revision=link.storageRevision??0;
+      if(input.revision===revision-1&&input.capacityBytes===link.storageCapacityBytes)return this.storage(provider,externalId);
+      if(input.revision!==revision)throw new ConflictError('provider_storage_revision_conflict');
+      await applyProviderStorage(executor,account,input.capacityBytes);
+      await providerRepository.updateAccount(link.id,{storageRevision:revision+1,storageCapacityBytes:input.capacityBytes});
+      return this.storage(provider,externalId);
+    });
+  },
   async usage(provider: HostingProvider, externalId: string) {
     const { account, executor } = await ownedAccount(provider, externalId);
     const measured = await readTenantUsage(executor, account);
