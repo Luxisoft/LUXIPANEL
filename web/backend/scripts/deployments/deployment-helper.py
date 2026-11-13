@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Restricted supervisor: metadata and systemd only; customer code runs as its
 hosting identity in rootless containers. Installed root-owned by install.sh."""
-import base64, fcntl, hashlib, json, math, os, pathlib, pwd, re, stat, subprocess, sys, time, signal
+import contextlib, base64, fcntl, hashlib, json, math, os, pathlib, pwd, re, stat, subprocess, sys, time, signal
 sys.path.insert(0, '/usr/lib/luxipanel')
 from deployment_policy import healthy_components
 
@@ -31,7 +31,6 @@ require(os.geteuid() == 0, 'supervisor_requires_root')
 # Migrations take the exclusive lock; accepted deployment/data operations keep
 # their shared lock for their entire lifetime, including finite subprocesses.
 storage_lock=os.open('/run/lock/luxipanel-storage.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
-fcntl.flock(storage_lock,fcntl.LOCK_SH)
 
 regular(POLICY, [0])
 policy = json.loads(pathlib.Path(POLICY).read_text())
@@ -44,6 +43,12 @@ require(re.fullmatch(r'[a-f0-9]{64}/(?:jobs/[a-f0-9-]{36}/(?:input|state)\.json|
 task = json.loads(file.read_text())
 operation = sys.argv[2] if len(sys.argv) == 3 else 'run'
 require(operation in ['run','activate','cleanup','retire','resume','data'], 'invalid_operation')
+# Match installer lock ordering. A queued build must not hold the storage lease
+# while waiting for the global build slot; migrations may own that slot.
+if operation=='run':
+    heavy_build_lock=open('/run/lock/luxisoft-heavy-build.lock','a')
+    fcntl.flock(heavy_build_lock,fcntl.LOCK_EX)
+fcntl.flock(storage_lock,fcntl.LOCK_SH)
 budget = task.get('executionBudget') if operation == 'run' else None
 if budget is not None:
     require(isinstance(budget, dict) and set(budget) == {'version', 'maxExecutionSeconds'}, 'invalid_execution_budget')
@@ -112,7 +117,7 @@ try:
         payload['archive']=base64.b64encode(archive).decode()
         # One lock across all accounts. Runner holds it through installation,
         # compilation and validation; platform build adapters share this lock.
-        with open('/run/lock/luxisoft-heavy-build.lock','a') as lock:
+        with contextlib.nullcontext(heavy_build_lock) as lock:
             fcntl.flock(lock,fcntl.LOCK_EX)
             execution_started = time.monotonic()
             try:
