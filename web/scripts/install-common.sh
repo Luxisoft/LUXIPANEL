@@ -248,6 +248,11 @@ start_pm2_app() {
   local clean_env="${6:-false}"
 
   cd "${root_dir}"
+  if systemctl --user is-enabled "backend-demand-${app}.socket" >/dev/null 2>&1; then
+    systemctl --user try-restart "backend-demand-${app}.service"
+    info "${ready_msg} (activación bajo demanda)"
+    return
+  fi
   if [[ "${clean_env}" == "true" ]]; then
     env -u PORT -u HOST pm2 start "${root_dir}/ecosystem.config.cjs" --only "${app}" --update-env
   else

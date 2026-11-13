@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isLoopbackHost, mailTlsOptions } from "./mail-host.js";
+import { configuredMailHostname, isLoopbackHost, mailTlsOptions } from "./mail-host.js";
 
 describe("mailTlsOptions", () => {
   it("loopback: relaxed validation and no servername", () => {
@@ -40,5 +40,28 @@ describe("mailTlsOptions", () => {
 
   it("IP literal without a usable domain: strict validation, no servername", () => {
     expect(mailTlsOptions("198.51.100.7", "not-an-address")).toEqual({ rejectUnauthorized: true });
+  });
+
+  it("validates a shared server identity while keeping the selected target IP", () => {
+    expect(mailTlsOptions("198.252.105.131", "luna@tolqia.com", "mail.luxisoft.com")).toEqual({
+      rejectUnauthorized: true, servername: "mail.luxisoft.com",
+    });
+    expect(mailTlsOptions("mail.other.test", "luna@tolqia.com", "mail.luxisoft.com")).toEqual({
+      rejectUnauthorized: true,
+    });
+  });
+});
+
+describe("configuredMailHostname", () => {
+  it("reads the final literal identity and ignores commented assignments", () => {
+    expect(configuredMailHostname("# myhostname = ignored.test\nmyhostname=old.test\nmyhostname = Mail.Luxisoft.COM. # shared server\n"))
+      .toBe("mail.luxisoft.com");
+  });
+
+  it("leaves unresolved variables, IPs, local names and malformed names unset", () => {
+    for (const value of ["$mydomain", "mail.$mydomain", "localhost", "198.252.105.131", "mail..test", "-mail.example.com", "mail.example.com extra"]) {
+      expect(configuredMailHostname(`myhostname = ${value}\n`)).toBeUndefined();
+    }
+    expect(configuredMailHostname("# myhostname = mail.example.com\n")).toBeUndefined();
   });
 });

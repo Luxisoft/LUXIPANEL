@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, watch } from "node:fs";
 import http from "node:http";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat } from "node:fs/promises";
@@ -229,17 +229,38 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
   return { server, reload, routes: () => catalog };
 }
 
+export function watchRouteCatalog(directory, reload, reportError = console.error) {
+  let timer, running = false, dirty = false, closed = false;
+  const refresh = async () => {
+    if (closed) return;
+    if (running) { dirty = true; return; }
+    running = true;
+    try { await reload(); } catch (error) { reportError(error); }
+    finally { running = false; if (dirty && !closed) { dirty = false; timer = setTimeout(refresh, 50); } }
+  };
+  const watcher = watch(directory, { recursive: true }, () => {
+    clearTimeout(timer); timer = setTimeout(refresh, 50);
+  });
+  watcher.on('error', reportError);
+  return () => { closed = true; clearTimeout(timer); watcher.close(); };
+}
+
 async function main() {
   const runtime = JSON.parse(await readFile(process.env.LUXIPANEL_DEPLOYMENT_RUNTIME_CONFIG ?? "/etc/luxipanel-deployment-runtime.json", "utf8"));
   const routesRoot = path.join(runtime.configRoot, "hosting", "deployments"), cacheRoot = process.env.PROJECT_GATEWAY_CACHE_ROOT ?? "/var/lib/luxipanel/project-gateway";
   const trusted = parseTrustedIps(process.env.PROJECT_GATEWAY_TRUSTED_IPS ?? "198.252.105.131,127.0.0.1,::1");
   const gateway = createGateway({ routesRoot, cacheRoot, trustedIps: trusted });
   await gateway.reload();
-  const timer = setInterval(() => gateway.reload().catch((error) => process.stderr.write(`project_gateway_reload_failed ${String(error.message).slice(0, 180)}\n`)), 2_000);
-  timer.unref();
+  const stopWatching = watchRouteCatalog(routesRoot, () => gateway.reload(), error => {
+    process.stderr.write(`project_gateway_reload_failed ${String(error.message).slice(0, 180)}\n`);
+    // A broken watch must recover through systemd, never serve stale routes.
+    process.exit(1);
+  });
+  // Changes during watch registration are included too.
+  await gateway.reload();
   const port = Number(process.env.PROJECT_GATEWAY_PORT ?? 3460), host = process.env.PROJECT_GATEWAY_HOST ?? "0.0.0.0";
   gateway.server.listen(port, host, () => process.stdout.write(`luxisoft-project-gateway listening on ${host}:${port}\n`));
-  const shutdown = () => { clearInterval(timer); gateway.server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
+  const shutdown = () => { stopWatching(); gateway.server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 5_000).unref(); };
   process.on("SIGTERM", shutdown); process.on("SIGINT", shutdown);
 }
 

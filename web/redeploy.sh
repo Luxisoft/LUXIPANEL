@@ -22,23 +22,39 @@ TARGET="${1:-all}"
 # .claude/scripts/build.sh. SSOT for the names is ecosystem.config.cjs.
 source "${ROOT}/scripts/lib/build-flow.sh"
 
-if ! command -v pm2 >/dev/null 2>&1; then
-  echo "pm2 no está en PATH. Instala con: npm install -g pm2" >&2
-  exit 1
-fi
+case "$TARGET" in
+  backend) required_apps=("$PM2_BACKEND") ;;
+  frontend) required_apps=("$PM2_FRONTEND") ;;
+  all|both|"") required_apps=("$PM2_BACKEND" "$PM2_FRONTEND") ;;
+  *) echo "Uso: $0 [backend|frontend|all]" >&2; exit 2 ;;
+esac
+for app in "${required_apps[@]}"; do
+  if ! systemctl --user is-enabled "backend-demand-${app}.socket" >/dev/null 2>&1 && ! command -v pm2 >/dev/null 2>&1; then
+    echo "No hay un socket habilitado para ${app} y pm2 no está en PATH." >&2
+    exit 1
+  fi
+done
 
 build_backend() {
   echo "==> backend: npm run build"
   build_project "$ROOT" backend
   echo "==> backend: pm2 restart ${PM2_BACKEND}"
-  pm2 restart "${PM2_BACKEND}" --update-env
+  if systemctl --user is-enabled "backend-demand-${PM2_BACKEND}.socket" >/dev/null 2>&1; then
+    systemctl --user try-restart "backend-demand-${PM2_BACKEND}.service"
+  else
+    pm2 restart "${PM2_BACKEND}" --update-env
+  fi
 }
 
 build_frontend() {
   echo "==> frontend: npm run build"
   build_project "$ROOT" frontend
   echo "==> frontend: pm2 restart ${PM2_FRONTEND}"
-  pm2 restart "${PM2_FRONTEND}" --update-env
+  if systemctl --user is-enabled "backend-demand-${PM2_FRONTEND}.socket" >/dev/null 2>&1; then
+    systemctl --user try-restart "backend-demand-${PM2_FRONTEND}.service"
+  else
+    pm2 restart "${PM2_FRONTEND}" --update-env
+  fi
 }
 
 case "$TARGET" in
@@ -52,5 +68,8 @@ case "$TARGET" in
     ;;
 esac
 
-echo "==> pm2 status"
-pm2 list
+if command -v pm2 >/dev/null 2>&1; then
+  pm2 list
+else
+  systemctl --user list-units 'backend-demand-luxipanel-*' --no-pager
+fi

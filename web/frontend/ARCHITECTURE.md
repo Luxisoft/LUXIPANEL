@@ -502,11 +502,17 @@ Una barra persistente sobre la lista muestra nombre, porcentaje, bytes y velocid
 permite cancelar la transferencia y conserva el resultado o error hasta cerrarlo.
 Los reintentos tienen estado visible y la barra respeta los temas, móvil y movimiento
 reducido. La regresión DOM está en `files/download-progress.test.ts`.
-Cuando el target admite rangos, cada petición transfiere como máximo 512 KiB y
-un fallo de red reintenta solo ese bloque hasta tres veces. ETag e If-Range impiden
-mezclar archivos de distintas compilaciones. Los targets sin rangos conservan la
-transferencia completa. El APK completo se verifica por SHA-256 en la prueba HTTP
-local con un corte de conexión simulado.
+Las descargas mantienen flujos continuos sin límite de velocidad. Un rango de
+un byte descubre tamaño, ETag y soporte de rangos; los archivos de al menos
+16 MiB reparten el resto en cuatro conexiones simultáneas, con progreso conjunto
+y ensamblado en orden. Los archivos pequeños continúan en una conexión. Si el
+target ignora Range, la respuesta completa se consume sin duplicar la descarga;
+los ZIP generados conservan un único flujo. Cada conexión puede reanudar desde
+su último byte hasta tres veces. ETag e If-Range impiden mezclar compilaciones;
+un cambio de archivo o cancelación cierra todos los flujos. Las verificaciones
+HTTP y Chromium comprueban SHA-256, cortes y el orden de los bytes.
+La versión `luxipanel-v37-20261103-parallel-download` del service worker
+invalida los assets anteriores para que las pestañas actualicen el descargador.
 Se conservan las cabeceras de sesión por pestaña, se deduplican clics sobre la
 misma descarga y se descartan resultados de otro target. La URL del blob se libera
 con demora para permitir que el navegador inicie el guardado de archivos grandes.

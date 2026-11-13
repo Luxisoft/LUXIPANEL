@@ -107,7 +107,7 @@ export const smtpService = {
   ): Promise<{ messageId: string }> {
     // Per-server isolation: for a remote session submit through the target's
     // host (never localhost); fail-closed if the target can't be resolved.
-    const { targetHost } = await resolveMailTargetHost();
+    const { targetHost, tlsServername } = await resolveMailTargetHost();
     const candidates = buildSubmissionCandidates(address, smtpHost, smtpPort, targetHost);
     const logins = await mailMasterService.resolveAuthCandidates(address, encryptedPassword);
     if (logins.length === 0) {
@@ -136,7 +136,7 @@ export const smtpService = {
           // host derived from the domain (`mail.<domain>`, …) with TLS validation
           // OFF let any MITM / DNS hijack capture it (audit §5). Only loopback
           // (a locally-run submission agent, self-signed) is exempted.
-          tls: mailTlsOptions(host, address),
+          tls: mailTlsOptions(host, address, host === normalizeHost(targetHost) ? tlsServername : undefined),
         } as SMTPTransport.Options);
 
         try {

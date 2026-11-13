@@ -119,7 +119,7 @@ export function extractErrorMessage(err: unknown): string {
   return value.message || "Unknown error";
 }
 
-function newClient(host: string, port: number, address: string, user: string, pass: string): ImapFlow {
+function newClient(host: string, port: number, address: string, user: string, pass: string, servername?: string): ImapFlow {
   return new ImapFlow({
     host,
     port,
@@ -128,7 +128,7 @@ function newClient(host: string, port: number, address: string, user: string, pa
     // 993, or via STARTTLS which ImapFlow attempts automatically on other
     // ports) — except on loopback. Blunts credential capture by a MITM / DNS
     // hijack presenting a bogus cert (audit §5).
-    tls: mailTlsOptions(host, address),
+    tls: mailTlsOptions(host, address, servername),
     auth: { user, pass },
     connectionTimeout: MAIL_CONNECTION_TIMEOUT_MS,
     greetingTimeout: MAIL_GREETING_TIMEOUT_MS,
@@ -156,7 +156,7 @@ export async function withImap<T>(
 ): Promise<T> {
   // Per-server isolation: for a remote session dial the target's host (never
   // localhost); resolveMailTargetHost throws fail-closed if it can't decide.
-  const { targetHost } = await resolveMailTargetHost();
+  const { targetHost, tlsServername } = await resolveMailTargetHost();
   const hostCandidates = buildHostCandidates(address, host, targetHost);
   const logins = await mailMasterService.resolveAuthCandidates(address, encryptedPassword);
   if (logins.length === 0) {
@@ -177,7 +177,8 @@ export async function withImap<T>(
   for (const login of logins) {
     let reached = false;
     for (const hostCandidate of hostCandidates) {
-      const client = newClient(hostCandidate, port, address, login.user, login.pass);
+      const client = newClient(hostCandidate, port, address, login.user, login.pass,
+        hostCandidate === normalizeHost(targetHost) ? tlsServername : undefined);
       try {
         await client.connect();
       } catch (err) {
@@ -264,11 +265,12 @@ export async function verifyLogin(
   /** Login name when it differs from the mailbox (master user: `addr*master`). */
   authUser: string = address,
 ): Promise<{ ok: true } | { ok: false; reason: "auth" | "unreachable"; detail: string }> {
-  const { targetHost } = await resolveMailTargetHost();
+  const { targetHost, tlsServername } = await resolveMailTargetHost();
   const hostCandidates = buildHostCandidates(address, host, targetHost);
   let lastError: unknown;
   for (const hostCandidate of hostCandidates) {
-    const client = newClient(hostCandidate, port, address, authUser, plainPassword);
+    const client = newClient(hostCandidate, port, address, authUser, plainPassword,
+      hostCandidate === normalizeHost(targetHost) ? tlsServername : undefined);
     try {
       await client.connect();
       try {

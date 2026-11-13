@@ -18,6 +18,14 @@ Los WebSockets se centralizan en el router de upgrades correspondiente. Respetar
 
 El login verifica usuarios Linux y aplica roles/permisos del panel. La primera elevación administrativa y las políticas de acceso están en `modules/auth`. No mezclar recuperación 2FA con recuperación de contraseña del sistema por email.
 
+La sincronización de cuentas solo deshabilita usuarios ausentes tras una
+enumeración Linux válida. Un error de `getent passwd`, una salida vacía o una
+fila malformada abortan antes de modificar cuentas. El preload de ejecución
+bajo demanda conserva el contrato promisificado de Node para `exec/execFile`
+(`stdout`, `stderr` y `promise.child`). Corrección instalada el 2026-11-03 tras
+una lectura vacía falsa que deshabilitó la proyección local de `jmarin`; se
+restauró su estado activo sin cambiar contraseña ni passkeys.
+
 La vinculación obligatoria con GitHub se limita a la identidad local de la instalación. Las identidades SSH directas pueden administrar sus servidores sin vincular GitHub; publicar cambios sigue requiriendo su propia credencial verificada. Los tokens con `githubIdentityDirect` conservan el origen firmado de la identidad al seleccionar otro target: cambiar el ejecutor no comparte credenciales ni elimina el requisito de una identidad local.
 
 `shared/lp-api-key.ts` conserva la integración activa con LP: la clave nombrada se lee del archivo de instancia y, si no existe, de `LP_PANEL_CREDENTIAL`. La validación online contra `/panel-api/server-key` falla cerrada: clave ausente/inválida 403 y servicio no disponible 503. El endpoint de nombre histórico no registra servidores. `modules/license/panel-api.client.ts` tiene consumidores de catálogo y desarrollo; revisar llamadas antes de eliminarlo.

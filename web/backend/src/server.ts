@@ -118,7 +118,7 @@ async function bootstrap() {
     // SSH-usage/worklog reporting to LP, and no shared-secret rotation store.
 
     // ---- 3. Start background services ----
-    statsCollectorService.start();
+    await statsCollectorService.start();
     // Wire the event-bus → remote-cache bridge once. The dataStore mutators
     // already trigger targeted refresh on every write; this listener is
     // defense-in-depth for sidecars written outside dataStore (e.g.

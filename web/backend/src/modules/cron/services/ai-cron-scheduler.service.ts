@@ -132,6 +132,7 @@ export function buildAgentReportEmail(input: AgentReportEmailInput): { subject: 
 
 export const aiCronSchedulerService = {
   start(): void {
+    if (process.env.DEMAND_RUNTIME_ENABLED === "1") return;
     if (_timer) return;
     _timer = setInterval(() => void this._tick(), 60_000);
     _timer.unref?.();
@@ -142,8 +143,7 @@ export const aiCronSchedulerService = {
     if (_timer) { clearInterval(_timer); _timer = null; }
   },
 
-  async _tick(): Promise<void> {
-    const now = new Date();
+  async _tick(waitForCompletion = false, now = new Date()): Promise<void> {
     let jobs: Array<AiAgentJob & { id: string }>;
     try {
       jobs = await aiAgentJobRepository.listEnabled(localExecutor);
@@ -153,10 +153,12 @@ export const aiCronSchedulerService = {
     for (const job of jobs) {
       const norm = normalizeSchedule(job.schedule);
       if (!norm || !cronMatches(norm, now)) continue;
+      if (process.env.DEMAND_RUNTIME_ENABLED === "1" && job.lastRunAt && new Date(job.lastRunAt).getTime() >= Math.floor(now.getTime()/60000)*60000) continue;
       if (_running.has(job.id)) continue;
-      void this.runJob(job, localExecutor).catch((err) => {
+      const work = this.runJob(job, localExecutor).catch((err) => {
         log.warn({ err, jobId: job.id }, "Scheduled AI-agent job run failed");
       });
+      if (waitForCompletion) await work;
     }
   },
 
@@ -168,6 +170,8 @@ export const aiCronSchedulerService = {
   async runJob(job: AiAgentJob & { id: string }, executor: Executor, chain: ReadonlySet<string> = new Set()): Promise<void> {
     if (_running.has(job.id)) return;
     _running.add(job.id);
+    const activity = Reflect.get(globalThis, Symbol.for("luxisoft.demand.runtime"));
+    const release: () => void = activity?.hold("accepted_panel_cron") ?? (() => {});
     // try/finally guarantees the job is cleared from `_running` even if an
     // unexpected throw escapes below — otherwise the id stays "running" forever
     // and the scheduler never runs it again (audit §5).
@@ -259,6 +263,7 @@ export const aiCronSchedulerService = {
     if (!job.requireApproval) await this._runChained(job, executor, chain);
     } finally {
       _running.delete(job.id);
+      release();
     }
   },
 

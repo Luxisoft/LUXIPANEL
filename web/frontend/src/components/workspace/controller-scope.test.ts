@@ -66,6 +66,34 @@ describe("internal module lifecycle", () => {
     label.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     expect(open).toHaveBeenCalledTimes(3);
   });
+  it.each(["oncontextmenu", "data-lxp-handler-contextmenu"])("dispatches %s for file rows and cards only in the visible module", (attribute) => {
+    const root = document.createElement("div");
+    root.innerHTML = `<div ${attribute}="showFileContextMenu(event, '/tmp/report.txt', 'report.txt', false)"><span>report.txt</span></div>`;
+    document.body.append(root);
+    const scope = createControllerScope(root, new URL("https://panel.example/panel/files"));
+    const show = vi.fn();
+    (scope.window as any).showFileContextMenu = show;
+    const label = root.querySelector("span")!;
+    const open = () => {
+      const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 120, clientY: 85 });
+      label.dispatchEvent(event);
+      return event;
+    };
+    const first = open();
+    expect(show).toHaveBeenCalledWith(first, "/tmp/report.txt", "report.txt", false);
+    expect(first.defaultPrevented).toBe(true);
+    open();
+    expect(show).toHaveBeenCalledTimes(2);
+    scope.setVisible(false);
+    open();
+    expect(show).toHaveBeenCalledTimes(2);
+    scope.setVisible(true);
+    open();
+    expect(show).toHaveBeenCalledTimes(3);
+    scope.dispose();
+    open();
+    expect(show).toHaveBeenCalledTimes(3);
+  });
   it("isolates DOM/actions, closes locally, aborts reads while allowing an operation to finish", async () => {
     const first = document.createElement("div"),
       second = document.createElement("div");

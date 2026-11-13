@@ -25,9 +25,12 @@ export function registerMailModule(app: Express): void {
   // System emails requested by OTHER modules (cron reports, approval links…)
   // via the event bus — modules never import each other directly.
   eventBus.on(Events.SYSTEM_MAIL_SEND, (payload: SystemMailMessage & { executor?: Executor | null }) => {
+    const activity = Reflect.get(globalThis, Symbol.for("luxisoft.demand.runtime"));
+    const release: () => void = activity?.hold("accepted_system_mail") ?? (() => {});
     void mailOutboundService
       .sendSystemMail(payload.executor ?? null, payload)
-      .catch((err) => log.warn({ err: errMessage(err), to: payload.to }, "System mail send failed"));
+      .catch((err) => log.warn({ err: errMessage(err), to: payload.to }, "System mail send failed"))
+      .finally(release);
   });
 
   log.info("Mail module registered");

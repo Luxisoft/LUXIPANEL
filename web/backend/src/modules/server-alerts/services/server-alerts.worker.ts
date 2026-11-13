@@ -207,10 +207,9 @@ export async function processRules(executor: Executor, now: Date): Promise<void>
 
 // ── Tick + lifecycle ───────────────────────────────────────────────────────
 
-async function tick(): Promise<void> {
+async function tick(now = new Date()): Promise<void> {
   if (ticking) return; // never overlap ticks
   ticking = true;
-  const now = new Date();
   try {
     const targets = await targetsRepository.listView();
     const executors: Executor[] = [localExecutor];
@@ -239,7 +238,9 @@ async function tick(): Promise<void> {
 }
 
 export const serverAlertsWorker = {
+  async runOnce(now = new Date()): Promise<void> { if (env.SERVER_ALERTS_WORKER_ENABLED) await tick(now); },
   start(): void {
+    if (process.env.DEMAND_RUNTIME_ENABLED === "1") return;
     if (timer) return;
     if (!env.SERVER_ALERTS_WORKER_ENABLED) {
       log.info("Server-alerts worker disabled (SERVER_ALERTS_WORKER_ENABLED=false)");

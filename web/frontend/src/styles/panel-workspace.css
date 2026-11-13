@@ -156,6 +156,13 @@ html[data-lxp-workspace-shell] #sidebar-mobile nav[data-lxp-subnav-open='true'] 
 .lxp-workspace-quick-header[data-module-topbar-runtime] > h2 { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .lxp-workspace-header-tabs { display: flex; flex: 1; min-width: 0; align-items: center; gap: .25rem; align-self: stretch; overflow-x: auto; scrollbar-width: thin; }
 .lxp-workspace-header-tabs:empty, .lxp-workspace-header-actions:empty, .lxp-workspace-header-controls:empty { display: none; }
+.lxp-workspace-header-tabs[data-files-topbar] { gap: .75rem; overflow: hidden; }
+.lxp-files-header-tree { display: none; width: 16rem; flex: none; align-items: center; justify-content: space-between; gap: .5rem; padding-right: .75rem; border-right: 1px solid var(--border); }
+.lxp-files-header-folders { display: flex; min-width: 0; flex: 1; align-items: center; gap: .25rem; }
+.lxp-files-header-folders [role='tablist'] { align-items: center; }
+.lxp-files-header-folders [role='presentation'] { height: 2.75rem; margin-bottom: 0; border-radius: .5rem; border-bottom-color: var(--border); }
+.lxp-files-header-folders > button { margin-bottom: 0; }
+@media (min-width: 1024px) { .lxp-files-header-tree { display: flex; } }
 .lxp-workspace-header-controls { display: flex; min-width: 0; flex: 1; align-items: center; }
 .lxp-workspace-quick-drawer[data-module='codebase-graph'] .lxp-workspace-header-tabs { flex: none; }
 .lxp-codebase-header-controls { display: flex; min-width: 0; width: 100%; align-items: center; gap: .5rem; overflow-x: auto; scrollbar-width: thin; }

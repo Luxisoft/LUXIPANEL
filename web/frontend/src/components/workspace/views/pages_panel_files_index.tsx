@@ -655,7 +655,7 @@ export default function pages_panel_files_index(props: any) {
             id="files-tree-pane"
             className="hidden lg:flex min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card"
           >
-            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+            <div data-files-header-row="tree" className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2">
                 <i className="ti ti-folders text-base text-primary"></i>
                 <span className="truncate text-sm font-semibold">

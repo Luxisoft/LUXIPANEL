@@ -24,6 +24,19 @@ async function waitFor(pred: () => boolean, timeout = 1000): Promise<void> {
   }
 }
 
+it("holds accepted background work after its SSE listener disconnects",async()=>{
+  const symbol=Symbol.for("luxisoft.demand.runtime"),previous=Reflect.get(globalThis,symbol);
+  let releases=0,finish!:()=>void;
+  const gate=new Promise<void>(resolve=>{finish=resolve;});
+  Reflect.set(globalThis,symbol,{hold(){return()=>{releases++;};}});
+  try{
+    const key=`demand-lease-${Math.random()}`;
+    const run=agentRunRegistry.start({key,executor,makeGen:async function*(){await gate;yield {type:"done"} as AgentEvent;},onComplete:vi.fn()});
+    const detach=agentRunRegistry.attach(key,0,()=>{},executor.target.id,{runId:run.runId});detach?.();
+    expect(releases).toBe(0);finish();await run.completion;expect(releases).toBe(1);
+  }finally{Reflect.set(globalThis,symbol,previous);}
+});
+
 describe("agentRunRegistry", () => {
   it("persists exactly once with the accumulated text after the run finishes", async () => {
     const onComplete = vi.fn();

@@ -14,6 +14,7 @@ import { systemStatsService, type StatsSnapshot } from "./system-stats.service.j
 import { getRedis } from "../../../shared/redis/index.js";
 import { createModuleLogger } from "../../../shared/logger/index.js";
 import { localExecutor, type Executor } from "../../../shared/executor/index.js";
+import { alertRepository } from "../repositories/alert.repository.js";
 
 // Lazy import to avoid circular dep — evaluator is hooked in after collection
 type AlertEvaluatorService = {
@@ -49,8 +50,14 @@ function redisLatestKey(scope = "local"): string {
 
 export const statsCollectorService = {
   /** Start the background collection loop. Call once at bootstrap. */
-  start(): void {
+  async start(): Promise<void> {
     if (_timer) return;
+    // An open monitor collects on demand. Only explicitly enabled local
+    // alert rules justify continuous collection without a viewer.
+    if (process.env.DEMAND_RUNTIME_ENABLED === "1") {
+      const rules = await alertRepository.findEnabledRules(localExecutor);
+      if (!rules.length || _timer) return;
+    }
 
     // Collect immediately, then on interval
     this._collect();
@@ -176,6 +183,7 @@ export const statsCollectorService = {
   /** Internal: collect one snapshot and persist it. */
   async _collect(): Promise<void> {
     try {
+      if (process.env.DEMAND_RUNTIME_ENABLED === "1" && !(await alertRepository.findEnabledRules(localExecutor)).length) { this.stop(); return; }
       const snapshot = await systemStatsService.collect();
       await this.recordSnapshot(snapshot, "local", localExecutor);
     } catch (err) {

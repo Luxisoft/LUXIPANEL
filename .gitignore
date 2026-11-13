@@ -50,6 +50,7 @@ node_modules/
 .idea/
 .vscode/
 /.lxp/
+**/.luxipanel/
 /.releases/
 /.worktrees/
 /backend
