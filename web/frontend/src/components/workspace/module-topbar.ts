@@ -70,10 +70,12 @@ function proxy(button: HTMLButtonElement, kind: "tab" | "action"): HTMLButtonEle
 export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () => void {
   const tabsSlot = drawer.querySelector<HTMLElement>("[data-module-header-tabs-slot]");
   const actionsSlot = drawer.querySelector<HTMLElement>("[data-module-header-actions-slot]");
+  const controlsSlot = drawer.querySelector<HTMLElement>("[data-module-header-controls-slot]");
   if (!tabsSlot || !actionsSlot) return () => {};
   if (root.dataset.internalModule === "files") return mountFilesTopbar(root, tabsSlot, actionsSlot);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
+  let ownsSummary = false;
   // Terminal tabs are live DOM nodes (rename/close/status listeners). Move the
   // complete row instead of cloning it. Mobile owns its existing tabs drawer.
   const desktopTerminal = root.dataset.internalModule === "terminal"
@@ -107,7 +109,17 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
     const group = tabs[0]?.parentElement;
     const actions = [...root.querySelectorAll<HTMLButtonElement>(ACTION_SELECTOR)]
       .filter((button) => isModuleControl(button) && visibleInModule(button, root));
-    const wanted = new Set<HTMLElement>([...actions, ...(group ? [group] : [])]);
+    const summaryRow = controlsSlot ? root.querySelector<HTMLElement>("[data-module-topbar-summary-row]") : null;
+    const summary = summaryRow && visibleInModule(summaryRow, root)
+      ? summaryRow.querySelector<HTMLElement>("[data-module-topbar-summary]") : null;
+    if (summary && controlsSlot) {
+      const copy = summary.cloneNode(true) as HTMLElement;
+      copy.className = "lxp-module-header-summary";
+      for (const element of copy.querySelectorAll("[id]")) element.removeAttribute("id");
+      controlsSlot.replaceChildren(copy);
+      ownsSummary = true;
+    } else if (ownsSummary) controlsSlot?.replaceChildren();
+    const wanted = new Set<HTMLElement>([...actions, ...(group ? [group] : []), ...(summary && summaryRow ? [summaryRow] : [])]);
     for (const source of root.querySelectorAll<HTMLElement>("[data-module-topbar-source]")) {
       if (!wanted.has(source)) source.removeAttribute("data-module-topbar-source");
     }
@@ -117,7 +129,8 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
     // Hide the now empty row as well, avoiding a blank divider in the body.
     const moduleId = root.dataset.internalModule;
     const row = group?.parentElement;
-    const sourceRow = (moduleId === "users" || moduleId === "mail") ? row : null;
+    const sourceRow = moduleId === "firewall" ? group?.closest<HTMLElement>("[data-firewall-tabs-row]")
+      : (moduleId === "users" || moduleId === "mail") ? row : null;
     for (const oldRow of root.querySelectorAll<HTMLElement>("[data-module-topbar-source-row]")) {
       if (oldRow !== sourceRow) oldRow.removeAttribute("data-module-topbar-source-row");
     }
@@ -168,6 +181,7 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
     restoreTerminal();
     tabsSlot.replaceChildren();
     actionsSlot.replaceChildren();
+    if (ownsSummary) controlsSlot?.replaceChildren();
     tabsSlot.onkeydown = null;
     for (const source of root.querySelectorAll<HTMLElement>("[data-module-topbar-source]")) source.removeAttribute("data-module-topbar-source");
     for (const row of root.querySelectorAll<HTMLElement>("[data-module-topbar-source-row]")) row.removeAttribute("data-module-topbar-source-row");

@@ -1,0 +1,7 @@
+{
+  "title": "Firewall organizado por pestañas",
+  "changes": [
+    "Auditoría, Reglas UFW y Fail2ban tienen pestañas independientes; el estado del firewall y sus acciones aparecen en una barra superior que se adapta al ancho disponible sin scroll horizontal.",
+    "Las reglas UFW y los bloqueos de Fail2ban se muestran en páginas de diez resultados, con acceso a todas las IP bloqueadas y filtros que vuelven a la primera página."
+  ]
+}

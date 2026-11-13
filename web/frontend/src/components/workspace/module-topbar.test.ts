@@ -161,3 +161,22 @@ it("uses visible module tabs and excludes settings dialog tabs", () => {
   expect(drawer.querySelector("[data-module-header-actions-slot] button")?.textContent).toBe("Nuevo webhook");
   dispose();
 });
+
+it("refreshes the firewall summary and activation actions when the source status changes", async () => {
+  vi.useFakeTimers();
+  document.body.innerHTML = `<div id="drawer"><header><div data-module-header-tabs-slot></div><div data-module-header-controls-slot></div><div data-module-header-actions-slot></div></header>
+    <div id="module" data-internal-module="firewall"><div data-module-topbar-summary-row><div data-module-topbar-summary><span id="status">Activo</span></div><button id="disable" data-module-topbar-action>Desactivar</button><button id="enable" data-module-topbar-action class="hidden">Activar</button></div></div></div>`;
+  const drawer = document.querySelector<HTMLElement>("#drawer")!;
+  const root = document.querySelector<HTMLElement>("#module")!;
+  const dispose = mountModuleTopbar(root, drawer);
+  try {
+    expect(drawer.querySelector("header")?.textContent).toBe("ActivoDesactivar");
+    root.querySelector("#status")!.textContent = "Inactivo";
+    root.querySelector("#disable")!.classList.add("hidden");
+    root.querySelector("#enable")!.classList.remove("hidden");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(drawer.querySelector("header")?.textContent).toBe("InactivoActivar");
+    expect(document.querySelectorAll("#status")).toHaveLength(1);
+  } finally { dispose(); }
+  expect(drawer.querySelector("[data-module-header-controls-slot]")?.childElementCount).toBe(0);
+});

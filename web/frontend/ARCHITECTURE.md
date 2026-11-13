@@ -70,6 +70,14 @@ src/
 
 ## Modelo actual: panel autohospedado y cuenta separada
 
+Firewall conserva Auditoría, Reglas UFW y Fail2ban montados bajo su controlador,
+pero muestra solo la pestaña seleccionada. La navegación lateral activa esas
+pestañas, conservando permisos y preferencias por usuario y target. Las reglas
+y los bloqueos se paginan de diez en diez; Fail2ban agrupa las IP de la página
+por jail sin truncarlas. El topbar refleja el estado UFW y las acciones de la
+pestaña activa, manteniendo los controles originales dentro de su scope. Sus
+acciones usan una fila de ancho completo que se adapta sin scroll horizontal.
+
 El frontend sirve el login y workspace del panel instalado. El backend autentica Linux y ejecuta operaciones locales o SSH directo. No configurar MANAGED_BY_LICENSE_SERVER ni un bridge central de LP. El control API KEY vincula servicios de cuenta mediante una clave con nombre; las funciones protegidas pueden exigir validación online. App móvil consume APIs directas; Desktop abre esta interfaz web en una vista aislada.
 
 ## Scripts extraídos por módulo (`scripts/extracted/pages/panel/<mod>/`)
