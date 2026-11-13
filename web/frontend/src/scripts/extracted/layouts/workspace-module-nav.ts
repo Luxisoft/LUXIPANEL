@@ -44,7 +44,7 @@ const DEFAULT_VIEWS = [v("overview", "Vista general", "Overview", "[data-panel-c
 const DIRECT_ONLY_MODULES = new Set([
   "bitninja", "databases", "obsidian", "expo",
   "hosting", "repository-store",
-  "monitor",
+  "monitor", "files",
 ]);
 const VIEW_ICONS: Record<string, string[]> = {
   users: ["ti-users", "ti-users-group"],

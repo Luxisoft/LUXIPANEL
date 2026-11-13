@@ -1,0 +1,6 @@
+{
+  "title": "Acceso único a Archivos",
+  "changes": [
+    "Archivos abre directamente desde un único botón del menú lateral, sin desplegar las opciones Explorador y Editor."
+  ]
+}

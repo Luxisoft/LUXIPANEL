@@ -91,7 +91,7 @@ export default async function initScript({
   // Reload once when this bundle first reaches that tab so the old title
   // updater cannot keep rewriting the freshly rendered page title.
   const runtime = window as any;
-  const runtimeVersion = "20261013-dev-fixed";
+  const runtimeVersion = "20261112-files-single-entry";
   if (runtime.__lxp_panel_init_done && runtime.__lxp_panel_runtime_version !== runtimeVersion) {
     runtime.__lxp_panel_runtime_version = runtimeVersion;
     window.location.reload();
@@ -422,38 +422,6 @@ export default async function initScript({
     });
   }
 
-  // ── Files editor toggle (sub-action under the "Archivos" module link) ──
-  // Only on /panel/files: injects a <button data-files-editor-toggle> right
-  // after the Files link in #nav-modules-group (desktop + mobile). Clicking it
-  // calls window.toggleEditor (defined by the files page script) to swap the
-  // right-hand pane between the browser and the editor. Removed off /files.
-  function isFilesRoute(): boolean {
-    const p = normalizeNavPath(window.location.pathname);
-    return p === "/files" || p.startsWith("/files/");
-  }
-
-  function syncFilesEditorSidebarAction(): void {
-    const onFiles = isFilesRoute();
-    for (const sidebarId of ["sidebar", "sidebar-mobile"]) {
-      const group = document.querySelector(`#${sidebarId} #nav-modules-group`);
-      if (!group) continue;
-      const existing = group.querySelector("[data-files-editor-toggle]");
-      if (!onFiles) { existing?.remove(); continue; }
-      if (existing) continue;
-      const filesLink = group.querySelector('a[data-module="files"]');
-      if (!filesLink) continue;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.setAttribute("data-files-editor-toggle", "");
-      btn.setAttribute("aria-controls", "files-editor-panel");
-      btn.setAttribute("aria-pressed", "false");
-      btn.className =
-        "sidebar-mod-subaction flex w-full items-center gap-2.5 rounded-lg py-1.5 pl-9 pr-3 text-xs font-medium text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground";
-      btn.innerHTML = `<i class="ti ti-code text-sm shrink-0" aria-hidden="true"></i><span>${escapeHtml(i18nPanel.actions.toggleFilesEditor)}</span>`;
-      filesLink.insertAdjacentElement("afterend", btn);
-    }
-  }
-
   // ── Mobile sidebar refs (persisted elements) ──────────────────────────
   const DESKTOP_SIDEBAR_STORAGE_KEY = "lxp-panel-sidebar-collapsed";
   const mobileSidebar = document.getElementById("sidebar-mobile");
@@ -751,7 +719,7 @@ export default async function initScript({
   syncCurrentTargetUiPrefs();
   // updateActiveNav runs AFTER loadInstalledModules so module links are
   // already in the sidebar when we try to highlight the active one.
-  void loadInstalledModules().then(() => { updateActiveNav(); syncFilesEditorSidebarAction(); });
+  void loadInstalledModules().then(() => { updateActiveNav(); });
 
   // ── One-time event listener setup ─────────────────────────────────────
   // Guard prevents duplicate listeners when initScript re-runs on SPA
@@ -772,7 +740,6 @@ export default async function initScript({
     document.addEventListener("astro:after-swap", async () => {
       await loadInstalledModules();
       updateActiveNav();
-      syncFilesEditorSidebarAction();
     });
     document.addEventListener("astro:after-swap", closeSidebar);
     window.addEventListener("lxp:sidebar:close", closeSidebar);
@@ -781,12 +748,10 @@ export default async function initScript({
     window.addEventListener("luxipanel:modules-changed", async () => {
       await loadInstalledModules();
       updateActiveNav();
-      syncFilesEditorSidebarAction();
     });
     window.addEventListener("luxipanel:target-changed", async () => {
       await loadInstalledModules();
       updateActiveNav();
-      syncFilesEditorSidebarAction();
     });
 
     // ── Theme button ──────────────────────────────────────────────────
@@ -850,13 +815,6 @@ export default async function initScript({
     document.addEventListener("click", (e) => {
       const t = e.target as Element | null;
       if (!t) return;
-      if (t.closest?.("[data-files-editor-toggle]")) {
-        (window as any).toggleEditor?.();
-        // On mobile the sidebar overlays the content: close it so the toggled
-        // editor is actually visible.
-        if (mobileSidebar && !mobileSidebar.classList.contains("hidden")) closeSidebar();
-        return;
-      }
       if (t.closest?.("#sidebar-desktop-toggle")) { toggleDesktopSidebar(); return; }
       if (t.closest?.("#sidebar-toggle")) { openSidebar(); return; }
       if (t.id === "sidebar-overlay")     { closeSidebar(); return; }

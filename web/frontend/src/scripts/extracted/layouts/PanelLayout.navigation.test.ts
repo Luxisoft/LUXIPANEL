@@ -22,7 +22,7 @@ beforeEach(() => {
     <aside id="sidebar"><nav><div id="nav-modules-group"><div></div></div></nav><a href="/modules" data-tool>Módulos</a></aside>
     <aside id="sidebar-mobile"><nav><div id="nav-modules-group"><div></div></div></nav></aside>
   </div>`;
-  Object.assign(window, { __lxp_panel_init_done: true, __lxp_panel_runtime_version: "20261002-sidebar-load", __lxp_cmd_items: undefined });
+  Object.assign(window, { __lxp_panel_init_done: true, __lxp_panel_runtime_version: "20261112-files-single-entry", __lxp_cmd_items: undefined });
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, data: [
     { id: "files" }, { id: "monitor" }, { id: "firewall", showInSidebar: false },
   ] }))));

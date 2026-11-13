@@ -878,9 +878,9 @@ const workspaceToolGroups = navGroups.map((group) => ({
   type="module"
   define:vars={{ locale, canLoadInstalledModules, canAccessSettings, canAccessUsers, sidebarPermissions, isAdminUser, directSession, workspaceShell }}
 >
-  import initScript from "/scripts/extracted/layouts/PanelLayout-define-vars-script1.js?v=dev-fixed-20261013";
+  import initScript from "/scripts/extracted/layouts/PanelLayout-define-vars-script1.js?v=20261112-files-single-entry";
   if (workspaceShell) await Promise.all([
-    import("/scripts/extracted/layouts/workspace-module-nav.js?v=20260929-drawer-speed-v2"),
+    import("/scripts/extracted/layouts/workspace-module-nav.js?v=20261112-files-single-entry"),
   ]);
   void initScript({ locale, canLoadInstalledModules, canAccessSettings, canAccessUsers, sidebarPermissions, isAdminUser, directSession });
 </script>}
