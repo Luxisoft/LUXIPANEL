@@ -2,8 +2,6 @@ import type { Executor } from '../../../shared/executor/types.js';
 import { quoteArg } from '../../../shared/executor/quote.js';
 import { ForbiddenError, ServiceUnavailableError } from '../../../shared/errors/index.js';
 import type { HostingAccount } from '../models/hosting-account.model.js';
-import { hostingRuntimeService } from './hosting-runtime.service.js';
-import { PROJECT_QUOTA_SETUP } from './hosting-project-quota.js';
 import { applyStepsOrThrow } from '../../../shared/remote-cache/apply-steps.js';
 import type { MutationStep } from '../../../shared/remote-cache/submit-mutation.js';
 
@@ -14,7 +12,15 @@ function identity(account: HostingAccount) {
 }
 /** Apparent bytes, no rounded MB and no silent zero on a failed probe. */
 export async function readProviderStorage(executor:Executor,account:HostingAccount) {
- identity(account);
+ const id=identity(account);
+ const native=await executor.exec(`if test -x /usr/lib/luxipanel/storage-helper; then sudo -n /usr/lib/luxipanel/storage-helper status ${id}; else printf '{}'; fi`,{timeoutMs:60000});
+ if(native.exitCode!==0)throw new ServiceUnavailableError('provider_storage_measurement_unavailable');
+ let state:{ready?:boolean;available?:boolean;usedBytes?:number;capacityBytes?:number};
+ try {state=JSON.parse(native.stdout);}catch{throw new ServiceUnavailableError('provider_storage_measurement_unavailable');}
+ if(state.ready){
+  if(!Number.isSafeInteger(state.usedBytes)||state.usedBytes!<0||!Number.isSafeInteger(state.capacityBytes))throw new ServiceUnavailableError('provider_storage_measurement_unavailable');
+  return {usedBytes:state.usedBytes!,nativeQuota:true,kernelCapacityBytes:state.capacityBytes,measuredAt:new Date().toISOString()};
+ }
  // Container images and download caches are platform overhead. Persisted
  // database/application volumes live inside the excluded container directory,
  // so measure them separately rather than omitting customer data with images.
@@ -25,18 +31,12 @@ export async function readProviderStorage(executor:Executor,account:HostingAccou
  const volumes=await executor.exec(`sudo -n python3 -I -c ${quoteArg(probe)} ${quoteArg(account.homeRoot+'/.local/share/containers/storage/volumes')}`,{timeoutMs:60000});
  const volumeBytes=volumes.stdout.trim();
  if(volumes.exitCode!==0||!/^\d+$/.test(volumeBytes)||!Number.isSafeInteger(Number(raw)+Number(volumeBytes)))throw new ServiceUnavailableError('provider_storage_measurement_unavailable');
- const caps=await hostingRuntimeService.capabilities(executor);
- return {usedBytes:Number(raw)+Number(volumeBytes),nativeQuota:caps.disk,measuredAt:new Date().toISOString()};
+ return {usedBytes:Number(raw)+Number(volumeBytes),nativeQuota:state.available===true,measuredAt:new Date().toISOString()};
 }
 /** Quota-only mutation: never reapply the jail or terminate customer processes. */
 export async function applyProviderStorage(executor:Executor,account:HostingAccount,capacityBytes:number) {
  const id=identity(account);
  if(!Number.isSafeInteger(capacityBytes)||capacityBytes<1024||capacityBytes%1024)throw new ForbiddenError('Invalid provider storage capacity');
- const caps=await hostingRuntimeService.capabilities(executor);
- if(!caps.disk)throw new ServiceUnavailableError('provider_native_storage_quota_unavailable');
- const project=1500000000+id;
- const steps:MutationStep[]=[{type:'sh',argv:['python3','-c',PROJECT_QUOTA_SETUP,account.homeRoot,String(project)],sudo:true}];
- if(caps.quota.xfsQuota)steps.push({type:'sh',argv:['xfs_quota','-x','-c',`limit -p bhard=${capacityBytes/1024}k ${project}`,caps.quota.mount],sudo:true});
- else steps.push({type:'sh',argv:['setquota','-P',String(project),'0',String(capacityBytes/1024),'0','0',caps.quota.mount],sudo:true});
- await applyStepsOrThrow(executor,{module:'hosting',collection:'accounts',op:'update',steps,refresh:[],notConfirmedMessage:'Provider storage quota not confirmed',notConfirmedCode:'HOSTING_JAIL_NOT_CONFIRMED'});
+ const steps:MutationStep[]=[{type:'sh',argv:['/usr/lib/luxipanel/storage-helper','prepare',String(id),String(capacityBytes)],sudo:true,timeoutMs:600000}];
+ await applyStepsOrThrow(executor,{module:'hosting',collection:'accounts',op:'update',steps,refresh:[],syncWaitMs:600000,notConfirmedMessage:'Provider storage quota not confirmed',notConfirmedCode:'HOSTING_JAIL_NOT_CONFIRMED'});
 }

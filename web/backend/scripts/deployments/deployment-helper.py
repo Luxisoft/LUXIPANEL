@@ -28,6 +28,11 @@ def run(argv, **kwargs):
     if process.returncode: raise subprocess.CalledProcessError(process.returncode,argv,output,error)
     return subprocess.CompletedProcess(argv,process.returncode,output,error)
 require(os.geteuid() == 0, 'supervisor_requires_root')
+# Migrations take the exclusive lock; accepted deployment/data operations keep
+# their shared lock for their entire lifetime, including finite subprocesses.
+storage_lock=os.open('/run/lock/luxipanel-storage.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+fcntl.flock(storage_lock,fcntl.LOCK_SH)
+
 regular(POLICY, [0])
 policy = json.loads(pathlib.Path(POLICY).read_text())
 service = pwd.getpwnam(policy['serviceUser'])
