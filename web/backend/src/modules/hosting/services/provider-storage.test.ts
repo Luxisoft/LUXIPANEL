@@ -17,11 +17,11 @@ describe('provider-owned storage',()=>{
   await expect(applyProviderStorage({} as any,account,1024*1024)).rejects.toThrow('provider_native_storage_quota_unavailable');
   const {applyStepsOrThrow}=await import('../../../shared/remote-cache/apply-steps.js');expect(applyStepsOrThrow).not.toHaveBeenCalled();
  });
- it('applies a finite project quota without restarting the jail or touching another home',async()=>{
+ it.each([12,'12'])('applies a finite project quota without restarting the jail or touching another home (%s)',async(id)=>{
   const {hostingRuntimeService}=await import('./hosting-runtime.service.js');
   vi.mocked(hostingRuntimeService.capabilities).mockResolvedValueOnce({disk:true,quota:{xfsQuota:false,extProjectQuota:true,mount:'/'}} as any);
   const {applyStepsOrThrow}=await import('../../../shared/remote-cache/apply-steps.js');
-  await applyProviderStorage({} as any,account,64*1024**2);
+  await applyProviderStorage({} as any,{...account,id},64*1024**2);
   const args=vi.mocked(applyStepsOrThrow).mock.calls.at(-1)![1];
   expect(args.steps).toHaveLength(2);
   expect(args.steps[1]).toMatchObject({argv:['setquota','-P','1500000012','0','65536','0','0','/']});
