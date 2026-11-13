@@ -61,6 +61,26 @@ def identity(number):
  if user.pw_dir!=a['homeRoot'] or user.pw_uid<1000:raise RuntimeError('invalid_linux_identity')
  return a,user
 
+def receipt_project(receipt):return int(receipt.get('projectId',1500000000+int(receipt['accountId'])))
+def project_id(a):
+ file=ROOT/'accounts'/f"{int(a['id'])}.json"
+ return receipt_project(json.loads(file.read_text())) if file.exists() else 1500000000+int(a['id'])
+def same_owner(a,receipt):
+ return receipt.get('username')==a['username'] and (not receipt.get('accountCreatedAt') or receipt['accountCreatedAt']==a.get('createdAt'))
+def new_project():
+ file=ROOT/'next-project.json';last=int(json.loads(file.read_text())) if file.exists() else 1500000000
+ for receipt in (ROOT/'accounts').glob('*.json'):last=max(last,receipt_project(json.loads(receipt.read_text())))
+ if last>=2147483647:raise RuntimeError('project_quota_identity_exhausted')
+ save(file,last+1);return last+1
+
+def archive_retired(a,file):
+ receipt=json.loads(file.read_text())
+ if receipt.get('phase')!='retired' or same_owner(a,receipt):raise RuntimeError('retired_storage_identity')
+ stamp=str(__import__('time').time_ns());name=receipt['username']
+ for source,parent in [(POOL/name,POOL/'.retired'),(ROOT/'legacy'/name,ROOT/'legacy-retired')]:
+  if source.exists():parent.mkdir(mode=0o700,exist_ok=True);source.rename(parent/(name+'-'+stamp))
+ file.rename(file.with_name('retired-'+str(receipt_project(receipt))+'-'+stamp+'.json'))
+
 def bind(source,target):
  target.mkdir(parents=True,exist_ok=True)
  if not mounted(target):run(['/usr/bin/mount','--bind',source,target])
@@ -84,7 +104,7 @@ def restore(a,receipt):
   fd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
   try:
    value=bytearray(28);fcntl.ioctl(fd,0x801c581f,value,True);flags,_,_,pid,_,_=struct.unpack('=IIIII8s',value)
-   if pid!=1500000000+int(a['id']) or not flags&0x200:raise RuntimeError('quota_inheritance_missing')
+   if pid!=project_id(a) or not flags&0x200:raise RuntimeError('quota_inheritance_missing')
   finally:os.close(fd)
 
 def usercmd(user,args):
@@ -105,17 +125,24 @@ def status(a):
  number=int(a['id']);file=ROOT/'accounts'/f'{number}.json'
  if not file.exists():return {'ready':False,'available':True}
  receipt=json.loads(file.read_text())
+ if receipt.get('phase')=='retired':return {'ready':False,'available':not same_owner(a,receipt)}
+ if not same_owner(a,receipt):raise RuntimeError('storage_identity_changed')
+ if not receipt.get('accountCreatedAt'):
+  receipt['accountCreatedAt']=a.get('createdAt');save(file,receipt)
  if receipt.get('phase')!='ready':raise RuntimeError('storage_migration_incomplete')
  restore(a,receipt)
- d=Dq();quota(0x800007,1500000000+number,d)
- return {'ready':True,'available':True,'usedBytes':d.space,'capacityBytes':d.hard*1024,'project':1500000000+number}
+ d=Dq();quota(0x800007,project_id(a),d)
+ return {'ready':True,'available':True,'usedBytes':d.space,'capacityBytes':d.hard*1024,'project':project_id(a)}
 
 def prepare(a,user,capacity):
  number=int(a['id']);file=ROOT/'accounts'/f'{number}.json';home=pathlib.Path(a['homeRoot']);tenant=POOL/a['username'];legacy=ROOT/'legacy'/a['username']
+ if file.exists() and json.loads(file.read_text()).get('phase')=='retired':archive_retired(a,file)
  if file.exists():
   receipt=json.loads(file.read_text())
+  if not same_owner(a,receipt):raise RuntimeError('storage_identity_changed')
   if receipt.get('phase')!='ready':raise RuntimeError('storage_migration_incomplete')
   restore(a,receipt)
+  admit_capacity(a,capacity)
  else:
   if home.is_symlink() or mounted(home) or not home.is_dir() or legacy.exists() or tenant.exists():raise RuntimeError('unsafe_migration_source')
   used=int(run(['/usr/bin/du','-s','-B1','--exclude='+str(home/'.local/share/containers'),'--exclude='+str(home/'.cache'),home]).split()[0])
@@ -126,7 +153,7 @@ def prepare(a,user,capacity):
   # A direct shell would bypass the mandatory container ioctl filter.
   cron=pathlib.Path('/var/spool/cron/crontabs')/a['username']
   if cron.exists() and cron.stat().st_size:raise RuntimeError('unmanaged_tenant_cron_requires_review')
-  receipt={'accountId':number,'username':a['username'],'phase':'copying','capacityBytes':capacity,'units':[],'originalShell':user.pw_shell}
+  receipt={'accountId':number,'username':a['username'],'accountCreatedAt':a.get('createdAt'),'projectId':new_project(),'phase':'copying','capacityBytes':capacity,'units':[],'originalShell':user.pw_shell}
   # Retain exact Quadlets and every original byte for recovery. Stop only this
   # hosting user's manager; no shared platform service or other tenant is killed.
   active=subprocess.run(['/usr/bin/systemctl','is-active',f'user@{user.pw_uid}.service'],capture_output=True,text=True).returncode==0
@@ -140,12 +167,13 @@ def prepare(a,user,capacity):
     if any(pathlib.Path(token).name=='caddy' for token in (config.get('Entrypoint') or [])+(config.get('Cmd') or [])):
      receipt['caddyImages'].append(image['Id'] if image['Id'].startswith('sha256:') else 'sha256:'+image['Id'])
   receipt['managerWasActive']=active;save(file,receipt)
+  admit_capacity(a,capacity)
   if active:run(['/usr/bin/systemctl','stop',f'user@{user.pw_uid}.service'])
   # Abort rather than copy a live writer (including a persistent Podman pause).
   processes=subprocess.run(['/usr/bin/pgrep','-u',str(user.pw_uid)],capture_output=True,text=True)
   if processes.returncode==0:raise RuntimeError('tenant_processes_still_running')
   tenant.mkdir(mode=0o700);(tenant/'home').mkdir();(tenant/'volumes').mkdir()
-  project(tenant/'home',1500000000+number);project(tenant/'volumes',1500000000+number)
+  project(tenant/'home',project_id(a));project(tenant/'volumes',project_id(a))
   os.chown(tenant/'volumes',user.pw_uid,user.pw_gid)
   run(['/usr/bin/rsync','-aHAX','--numeric-ids','--exclude=/.local/share/containers/','--exclude=/.cache/',str(home)+'/',str(tenant/'home')+'/'])
   if volumes.exists():run(['/usr/bin/rsync','-aHAX','--numeric-ids',str(volumes)+'/',str(tenant/'volumes')+'/'])
@@ -165,7 +193,7 @@ def prepare(a,user,capacity):
   (drop/'luxipanel-storage.conf').write_text('[Unit]\nRequires=luxipanel-storage.service\nAfter=luxipanel-storage.service\n')
   run(['/usr/bin/systemctl','daemon-reload'])
   receipt['phase']='ready';save(file,receipt)
- d=Dq();d.hard=capacity//1024;d.valid=1;quota(0x800008,1500000000+number,d)
+ d=Dq();d.hard=capacity//1024;d.valid=1;quota(0x800008,project_id(a),d)
  receipt=json.loads(file.read_text());receipt['capacityBytes']=capacity;save(file,receipt)
  if receipt.get('managerWasActive'):
   run(['/usr/bin/systemctl','start',f'user@{user.pw_uid}.service'])
@@ -197,15 +225,15 @@ def rollback_incomplete(number):
    unit=line.split()[0]
    if re.fullmatch(r'luxi-[a-zA-Z0-9-]+\.service',unit):usercmd(user,['/usr/bin/systemctl','--user','start',unit])
 
-def admit_capacity(number,capacity):
- current=Dq();quota(0x800007,1500000000+int(number),current)
+def admit_capacity(a,capacity):
+ own=project_id(a);current=Dq();quota(0x800007,own,current)
  if capacity<=current.hard*1024:return
- held=0;used=0
+ held=max(capacity,current.space);used=current.space;seen={own}
  for file in (ROOT/'accounts').glob('*.json'):
-  if not file.stem.isdigit():continue
-  data=Dq();quota(0x800007,1500000000+int(file.stem),data)
-  held+=max(capacity if file.stem==str(number) else data.hard*1024,data.space);used+=data.space
- if not (ROOT/'accounts'/f'{number}.json').exists():held+=capacity
+  pid=receipt_project(json.loads(file.read_text()))
+  if pid in seen:continue
+  seen.add(pid);data=Dq();quota(0x800007,pid,data)
+  held+=max(data.hard*1024,data.space);used+=data.space
  if held-used>shutil.disk_usage(ROOT).free-RESERVE:raise RuntimeError('host_storage_capacity')
  if held+512*1024**2>shutil.disk_usage(POOL).total:
   size=((held+1024**3-1)//1024**3+1)*1024**3
@@ -233,7 +261,7 @@ def main():
    if receipt.get('phase')!='ready':
     rollback_incomplete(file.stem);continue
    restore(a,receipt)
-   d=Dq();d.hard=receipt['capacityBytes']//1024;d.valid=1;quota(0x800008,1500000000+int(a['id']),d)
+   d=Dq();d.hard=receipt['capacityBytes']//1024;d.valid=1;quota(0x800008,project_id(a),d)
   return {'restored':True}
  a,user=identity(args.account)
  if args.operation=='status':return status(a)
@@ -244,20 +272,21 @@ def main():
   run(['/usr/bin/systemctl','stop',f'user@{user.pw_uid}.service'])
   for target in [home/'.local/share/containers/storage/volumes',home/'.local/share/containers',home/'.cache',home]:
    if mounted(target):run(['/usr/bin/umount',target])
-  receipt['phase']='retired';save(file,receipt)
+  data=Dq();quota(0x800007,project_id(a),data);data.hard=max(1,(data.space+1023)//1024);data.valid=1;quota(0x800008,project_id(a),data)
+  receipt['capacityBytes']=data.hard*1024;receipt['phase']='retired';save(file,receipt)
   return {'detached':True}
  if args.capacity is None or args.capacity<1024 or args.capacity%1024:raise RuntimeError('invalid_capacity')
  capacity_lock=os.open('/run/lock/luxipanel-storage-capacity.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600);fcntl.flock(capacity_lock,fcntl.LOCK_EX)
- admit_capacity(args.account,args.capacity)
  if args.operation=='prepare':
   try:return prepare(a,user,args.capacity)
   except Exception:
    rollback_incomplete(args.account)
    raise
  current=status(a)
+ admit_capacity(a,args.capacity)
  if not current['ready']:raise RuntimeError('storage_not_prepared')
  file=ROOT/'accounts'/f"{int(a['id'])}.json";receipt=json.loads(file.read_text());receipt['capacityBytes']=args.capacity;save(file,receipt)
- d=Dq();d.hard=args.capacity//1024;d.valid=1;quota(0x800008,1500000000+int(a['id']),d)
+ d=Dq();d.hard=args.capacity//1024;d.valid=1;quota(0x800008,project_id(a),d)
  return status(a)
 if __name__=='__main__':
  try:print(json.dumps(main()))
