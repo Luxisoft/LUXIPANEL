@@ -109,7 +109,7 @@ providerRouter.put("/api/hosting/v1/accounts/:externalId/storage", asyncHandler(
   const input=z.object({revision:z.number().int().min(0),capacityBytes:z.number().int().min(1024).max(Number.MAX_SAFE_INTEGER).refine(n=>n%1024===0)}).strict().parse(req.body);
   res.json({ok:true,data:await providerService.setStorage(current(res),ref.parse(req.params.externalId),input)});
 }));
-providerRouter.get("/api/hosting/v1/accounts/:externalId/storage/items",asyncHandler(async(req,res)=>{res.set("cache-control","no-store");res.json({ok:true,data:await providerStorageInventory(current(res),String(req.params.externalId))});}));
+providerRouter.get("/api/hosting/v1/accounts/:externalId/storage/items",asyncHandler(async(req,res)=>{const q=z.object({page:z.coerce.number().int().min(1).default(1),limit:z.coerce.number().int().min(1).max(100).default(100)}).parse(req.query);res.set("cache-control","no-store");const inventory=await providerStorageInventory(current(res),String(req.params.externalId));res.json({ok:true,data:{version:1,total:inventory.items.length,page:q.page,limit:q.limit,items:inventory.items.slice((q.page-1)*q.limit,q.page*q.limit)}});}));
 providerRouter.post("/api/hosting/v1/accounts/:externalId/storage/purge",asyncHandler(async(req,res)=>{const body=z.object({projectId:z.string().uuid(),revision:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);res.json({ok:true,data:await purgeProviderStorage(current(res),String(req.params.externalId),body.projectId,body.revision)});}));
 providerRouter.put("/api/hosting/v1/accounts/:externalId", asyncHandler(async (req, res) => {
   allowed(res, "accounts.write");
