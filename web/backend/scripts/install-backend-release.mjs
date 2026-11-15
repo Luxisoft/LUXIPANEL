@@ -21,5 +21,5 @@ await probe();checkSource();cpSync('dist',next,{recursive:true});verify(next);
 const restart=()=>execFileSync('node',[runtime+'/scripts/on-demand/restart-app.mjs','luxipanel-backend'],{stdio:'inherit'});
 let swapped=false;
 try{renameSync(runtime+'/dist',previous);renameSync(next,runtime+'/dist');swapped=true;restart();verify(runtime+'/dist');await probe();}
-catch(error){if(swapped&&existsSync(previous)){renameSync(runtime+'/dist',next+'.failed');renameSync(previous,runtime+'/dist');restart();}throw error;}
+catch(error){if(existsSync(previous)){if(existsSync(runtime+'/dist'))renameSync(runtime+'/dist',next+'.failed');renameSync(previous,runtime+'/dist');restart();}throw error;}
 console.log(JSON.stringify({commit:source.commit,artifactHash:built.artifactHash,backup:previous}));
