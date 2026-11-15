@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import net from "node:net";
-import { optionalDirectoryEntries, finalizePreview, discardCandidate, runtimeCapacity } from "./runtime-policy.mjs";
+import { optionalDirectoryEntries, finalizePreview, discardCandidate, runtimeCapacity, assertRuntimeDiskCapacity } from "./runtime-policy.mjs";
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 const job = JSON.parse(input),
@@ -338,9 +338,9 @@ try {
     }).then((output) => output.split(/\s/)[0]),
   );
   if (disk > job.limits.diskMb) throw new Error("disk_quota_exceeded");
-  const space = await fs.statfs(root);
-  if (space.bavail * space.bsize < 2 * 1024 ** 3)
-    throw new Error("runtime_disk_capacity");
+  const hostSpace = await fs.statfs('/');
+  const tenantSpace = await fs.statfs(root);
+  assertRuntimeDiskCapacity(hostSpace.bavail * hostSpace.bsize, tenantSpace.bavail * tenantSpace.bsize);
   const manifest = job.snapshot.manifest,
     images = await json(path.join(versionRoot, "images.json"), {}),
     components = [],

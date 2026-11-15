@@ -12,7 +12,7 @@ const runner = await readFile(process.env.DEPLOYMENT_RUNNER_PATH ?? new URL('./d
 const policy = await readFile(new URL('./runtime-policy.mjs', import.meta.url), 'utf8');
 const missing = () => Object.assign(new Error('missing'), { code: 'ENOENT' });
 async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
-  surface = 'http', disk = 10, maxDatabases = 4, digest, home = '/home/fixture', hostMib = 4500, usedMib = 110 } = {}) {
+  surface = 'http', disk = 10, maxDatabases = 4, digest, home = '/home/fixture', hostMib = 4500, usedMib = 110, hostDiskBytes = 10 * 1024 ** 3, tenantDiskBytes = 128 * 1024 ** 2 } = {}) {
   const commands = [], reads = [], archive = Buffer.from('owned source');
   const job = { projectId: 'a'.repeat(32), home, versionId: 'v1', requestId: 'r1',
     environment: 'preview', archive: archive.toString('base64'), limits: { diskMb: 100, maxDatabases },
@@ -25,7 +25,7 @@ async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
     stdout: { write: value => { output += value; } }, exitCode: 0 };
   const fs = { mkdir: async () => {}, realpath: async value => value,
     stat: async () => { throw missing(); }, writeFile: async () => {},
-    statfs: async () => ({ bavail: 10 * 1024 ** 3, bsize: 1 }),
+    statfs: async file => ({ bavail: file==='/' ? hostDiskBytes : tenantDiskBytes, bsize: 1 }),
     readFile: async file => {
       reads.push(file);
       if (file === '/proc/meminfo') return `MemAvailable: ${hostMib * 1024} kB\n`;
@@ -100,4 +100,9 @@ test('real host or account pressure rejects before allocation and never stops ex
     assert.equal(result.error,'runtime_memory_capacity');
     assert.ok(!commands.some(cmd => ['pull','build','stop','rm','rmi'].includes(cmd[1])));
   }
+});
+
+test('physical host reserve and exhausted tenant quota remain enforced before allocation',async()=>{
+ assert.equal((await admit({hostDiskBytes:1024 ** 3})).result.error,'runtime_disk_capacity');
+ assert.equal((await admit({tenantDiskBytes:0})).result.error,'disk_quota_exceeded');
 });

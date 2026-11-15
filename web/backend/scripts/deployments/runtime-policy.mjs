@@ -50,3 +50,11 @@ export function runtimeCapacity({ hostAvailableMib, accountUsedMib, accountMaxMi
     || hostAvailableMib < 0 || accountUsedMib < 0 || accountMaxMib <= 0) return false;
   return hostAvailableMib >= neededMib && accountMaxMib - accountUsedMib >= neededMib;
 }
+
+/** Host reserve and native tenant quota are separate budgets. */
+export function assertRuntimeDiskCapacity(hostAvailableBytes, tenantAvailableBytes) {
+  if (!Number.isSafeInteger(hostAvailableBytes) || hostAvailableBytes < 2 * 1024 ** 3)
+    throw new Error('runtime_disk_capacity');
+  if (!Number.isSafeInteger(tenantAvailableBytes) || tenantAvailableBytes <= 0)
+    throw new Error('disk_quota_exceeded');
+}

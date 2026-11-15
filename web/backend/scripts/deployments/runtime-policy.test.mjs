@@ -39,3 +39,14 @@ test('capacity admits idle hosting services and rejects real pressure without lo
   assert.equal(runtimeCapacity({hostAvailableMib:4500,accountUsedMib:3000,accountMaxMib:4096}),false);
   assert.equal(runtimeCapacity({hostAvailableMib:NaN,accountUsedMib:110,accountMaxMib:4096}),false);
 });
+
+import { assertRuntimeDiskCapacity } from './runtime-policy.mjs';
+test('native quota below 2 GiB is not exhausted host capacity', () => {
+  assert.doesNotThrow(()=>assertRuntimeDiskCapacity(24 * 1024 ** 3, 128 * 1024 ** 2));
+  assert.throws(()=>assertRuntimeDiskCapacity(1024 ** 3, 128 * 1024 ** 2), /runtime_disk_capacity/);
+  assert.throws(()=>assertRuntimeDiskCapacity(24 * 1024 ** 3, 0), /disk_quota_exceeded/);
+  for(const invalid of [NaN,Infinity,-1,undefined]) {
+    assert.throws(()=>assertRuntimeDiskCapacity(invalid,128 * 1024 ** 2));
+    assert.throws(()=>assertRuntimeDiskCapacity(24 * 1024 ** 3,invalid));
+  }
+});
