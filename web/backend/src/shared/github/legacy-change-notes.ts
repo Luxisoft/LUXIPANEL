@@ -5,6 +5,7 @@ import type { PublicChangeNote } from "./change-notes.js";
  * Empty entries are test-only changes, without a new user-facing feature.
  */
 export const legacyChangeNotes: Record<string, PublicChangeNote[]> = {
+  "bea42d92b80bc4ba18b3401b92b51cb986772048": [{title:"Protección de despliegues",changes:["Los despliegues comprueban la versión publicada y las capacidades de almacenamiento, conservando respaldo para revertir fallos."]}],
   "a66898ae4b45d80ccc4d33e1bf6fa843b242db7e": [{ title: "Modelos disponibles y continuidad del chat", changes: ["La configuración del asistente muestra los modelos disponibles de cada proveedor para elegir con información actualizada.", "Cuando un modelo deja de estar disponible, el chat puede continuar con una alternativa compatible."] }],
   "c6285e342eac7fca5d67dd25515c9a7eb926c9cb": [{ title: "Agentes IA con acceso al proyecto Luxisoft", changes: ["Los agentes del proyecto Luxisoft consultan su código y sus conversaciones relacionadas desde el workspace del propio proyecto.", "Las tareas normales de lectura, cambio y ejecución se resuelven en ese workspace, sin desviarse a módulos ajenos."] }],
   "335beabe6f4c186171c380fc67a450703fcd9d65": [
