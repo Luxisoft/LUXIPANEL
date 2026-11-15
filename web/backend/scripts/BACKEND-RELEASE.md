@@ -1,0 +1,4 @@
+# Published backend releases
+Builds require a clean worktree at the current published Luxisoft/LUXIPANEL developer commit. Building in the execution checkout is rejected before touching dist. Preserve all unrelated local changes.
+`pnpm redeploy` serializes build/installation, validates source and artifact hashes, rejects removed storage capabilities/routes, retains unique backups and rolls back a failed activation. Active CLI tasks block restart.
+Authenticated GET probes are mandatory: supply existing provider credentials through environment LUXIPANEL_RELEASE_PROBE_BASE (hosting API base), LUXIPANEL_RELEASE_PROBE_KEY, LUXIPANEL_RELEASE_PROBE_ACCOUNT (existing account). Never print or commit credentials. No account/project/AI creation is performed. This guard covers the official build/redeploy entrypoints; it cannot prevent arbitrary privileged manual writes.
