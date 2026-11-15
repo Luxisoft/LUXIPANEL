@@ -75,3 +75,5 @@ the separate filesystem can grow online within that physical budget.
 The deployed runner preserves the already-installed preview finalization and
 measured-memory admission fixes from `68a7e12`; installing storage must not restore
 the older count-based memory checks or loopback health check in tenant isolation.
+
+La reserva física de 2 GiB se mide en `/`, fuera del directorio sujeto a cuota. La lectura del directorio del cliente comprueba agotamiento de su cuota; una cuota nativa válida de 128 MiB no significa que el host esté lleno. La cuota del kernel y diskMb conservan sus límites. No aumentar cupos para resolver runtime_disk_capacity con espacio físico disponible.
