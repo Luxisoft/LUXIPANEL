@@ -56,8 +56,11 @@ export function parseRouteRecord(value, source) {
   const hosts = value.hosts.map((host) => {
     const hostname = normalizeHost(host.hostname);
     if (!HOST_RE.test(hostname) || !names.has(host.defaultComponent)) throw new Error("invalid_route_host");
-    return { hostname, defaultComponent: host.defaultComponent };
+    if (host.redirectTo && (!HOST_RE.test(host.redirectTo) || host.redirectTo === hostname || !Number.isFinite(Date.parse(host.expiresAt)))) throw new Error("invalid_route_redirect");
+    if (host.expiresAt && !host.redirectTo) throw new Error("invalid_route_redirect");
+    return { hostname, defaultComponent: host.defaultComponent, ...(host.redirectTo ? {redirectTo:host.redirectTo,expiresAt:host.expiresAt} : {}) };
   });
+  if (hosts.some(host => host.redirectTo && !hosts.some(target => target.hostname === host.redirectTo && !target.redirectTo))) throw new Error("invalid_route_redirect_target");
   if (new Set(hosts.map((host) => host.hostname)).size !== hosts.length) throw new Error("duplicate_route_host");
   return { ...value, hosts, source, components: value.components.map((component) => ({ ...component })) };
 }
@@ -84,7 +87,7 @@ export async function loadRouteCatalog(root) {
       files += 1;
       for (const host of record.hosts) {
         if (next.has(host.hostname)) { conflicts.add(host.hostname); next.delete(host.hostname); continue; }
-        if (!conflicts.has(host.hostname)) next.set(host.hostname, { ...record, defaultComponent: host.defaultComponent });
+        if (!conflicts.has(host.hostname)) next.set(host.hostname, { ...record, defaultComponent: host.defaultComponent, redirectTo:host.redirectTo,expiresAt:host.expiresAt });
       }
     } catch (error) {
       if (error.code !== "ENOENT") process.stderr.write(`project_gateway_route_invalid ${file} ${String(error.message).slice(0, 160)}\n`);
@@ -196,6 +199,10 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
       if (url.pathname === "/_health") return sendJson(res, 200, { ok: true, service: "luxisoft-project-gateway", routes: catalog.size, revision });
       const route = catalog.get(host);
       if (!route) return sendJson(res, 421, { ok: false, error: "unmanaged_host" });
+      if (route.redirectTo) {
+        if (Date.now() >= Date.parse(route.expiresAt)) return sendJson(res, 421, {ok:false,error:"unmanaged_host"});
+        res.writeHead(307, {location:`https://${route.redirectTo}${url.pathname}${url.search}`,"cache-control":"no-store","cdn-cache-control":"no-store"});res.end();return;
+      }
       const component = chooseComponent(route, url.pathname);
       if (!component) return sendJson(res, 503, { ok: false, error: "project_route_invalid" });
       if (component.surface === "static") return serveStatic(req, res, url, route, component, routesRoot, cacheRoot);
@@ -211,7 +218,7 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
       socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n"); return;
     }
     const route = catalog.get(host), url = new URL(req.url ?? "/", "http://project.local"), component = chooseComponent(route, url.pathname);
-    if (!component || component.surface !== "http") {
+    if (route.redirectTo || !component || component.surface !== "http") {
       socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n"); return;
     }
     const headers = { ...req.headers, host, "x-forwarded-host": host, "x-forwarded-proto": "https", connection: "Upgrade", upgrade: req.headers.upgrade };
