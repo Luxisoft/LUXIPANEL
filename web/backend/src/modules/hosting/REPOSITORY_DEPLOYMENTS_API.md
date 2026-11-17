@@ -94,3 +94,13 @@ desde ambos commits publicados mediante sudo python3 backend/scripts/deployments
 Conserva wrapper de red, política, runtime de builds y respaldos; cambia solo
 su hash del supervisor y habilita entradas privadas data/UUID.json. Instalar
 también la ruta publicada y el módulo ESM del backend del proveedor.
+
+## Redirecciones de dominio con vencimiento
+
+Cada entrada de `hosts` puede incluir `redirectTo` (hostname) y `expiresAt`
+(ISO UTC). El destino debe ser otro host normal del mismo catálogo; se rechazan
+ciclos, destinos ausentes y vencimientos sin redirección. El gateway devuelve
+307 preservando ruta y consulta, con Cache-Control y CDN-Cache-Control no-store.
+Al vencer responde 421 sin consultar el plano de control. Los upgrades WebSocket
+no se relevan mediante una entrada de redirección. El contrato anterior de hosts
+sin estos campos permanece válido.
