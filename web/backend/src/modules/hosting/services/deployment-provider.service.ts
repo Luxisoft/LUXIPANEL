@@ -130,6 +130,8 @@ export const deploymentProductionRoutesSchema = z.object({
   hosts: z.array(z.object({
     hostname: deploymentHostname,
     defaultComponent: name,
+    redirectTo: deploymentHostname.optional(),
+    expiresAt: z.string().datetime().optional(),
   }).strict()).min(1).max(30).refine(
     (rows) => new Set(rows.map((row) => row.hostname)).size === rows.length,
     "Dominio duplicado",
@@ -538,6 +540,11 @@ export const deploymentProviderService = {
           routePrefix: manifest.routePrefix ?? null,
           staticArchive: { archive, sha256: meta.sha256, bytes: meta.bytes, spa: ["vite", "expo"].includes(manifest.stack) },
         });
+      }
+      for (const host of input.hosts) {
+        if (host.redirectTo && (!host.expiresAt || host.hostname === host.redirectTo || !input.hosts.some(target => target.hostname === host.redirectTo && !target.redirectTo)))
+          throw new ConflictError("Destino de redirección inválido");
+        if (host.expiresAt && !host.redirectTo) throw new ConflictError("Vencimiento sin redirección");
       }
       const publicNames = new Set(components.map((part) => String(part.name)));
       for (const host of input.hosts)

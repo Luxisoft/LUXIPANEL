@@ -90,19 +90,41 @@ export function runJob(job, { spawnProcess = spawn } = {}) {
   });
 }
 
+// A failed finite launch must release its database socket so the clock can exit
+// and retry at its next scheduled time, including when memory is unavailable.
+export async function runScheduledOnce(config, selected, { Client, run = runJob, environment = readEnvironment }) {
+  const databases = (config.databases || []).map(database => ({ ...database,
+    selectedJobs: [...(database.jobs || []), ...(database.scheduled || [])].filter(job => job.id === selected) })).filter(database => database.selectedJobs.length);
+  if (!databases.length) throw new Error('unknown_finite_job');
+  for (const database of databases) {
+    const vars = await environment(database.envFile);
+    const client = new Client({ connectionString: vars[database.urlKey || 'DATABASE_URL'], connectionTimeoutMillis: 5000 });
+    try {
+      await client.connect();
+      for (const job of database.selectedJobs) {
+        if (job.enabledFlag) {
+          const values = await environment(job.envFile);
+          if (!['1', 'true', 'yes', 'on'].includes(String(values[job.enabledFlag] || '').toLowerCase())) continue;
+        }
+        if ((await client.query(job.checkSql || 'SELECT true AS ready')).rows[0]?.ready === true) await run(job);
+      }
+    } finally { await client.end(); }
+  }
+}
+
 async function main() {
   const [configFile, mode, selected] = process.argv.slice(2);
   const config = JSON.parse(await readFile(configFile, 'utf8'));
   const { Client } = await import('pg');
+  if (mode === '--once') return runScheduledOnce(config, selected, { Client });
   const clients = new Map(), coordinators = [], watches = [];
-  if (mode === '--once' && !(config.databases || []).some(database => [...(database.jobs || []), ...(database.scheduled || [])].some(job => job.id === selected))) throw new Error('unknown_finite_job');
   let closing = false;
   for (const database of config.databases || []) {
-    if (mode !== '--once' && !(database.jobs || []).length) continue;
+    if (!(database.jobs || []).length) continue;
     const vars = await readEnvironment(database.envFile);
     const client = new Client({ connectionString: vars[database.urlKey || 'DATABASE_URL'], connectionTimeoutMillis: 5000 });
     clients.set(database.id, client); await client.connect();
-    const jobs = (mode === '--once' ? [...(database.jobs || []), ...(database.scheduled || [])].filter(job => job.id === selected) : database.jobs || []);
+    const jobs = database.jobs || [];
     const query = async job => {
       if (job.enabledFlag) {
         const values = await readEnvironment(job.envFile);
@@ -112,10 +134,6 @@ async function main() {
       const nextAt = !row.ready && job.nextSql ? (await client.query(job.nextSql)).rows[0]?.next_at : undefined;
       return { ready: row.ready === true, nextAt };
     };
-    if (mode === '--once') {
-      for (const job of jobs) if ((await query(job)).ready) await runJob(job);
-      continue;
-    }
     const coordinator = new DemandCoordinator({ jobs, query, run: runJob });
     coordinators.push(coordinator);
     client.on('notification', event => {
@@ -127,7 +145,6 @@ async function main() {
     await coordinator.scan();
     client.on('error', () => { if (!closing) { console.error('demand_dispatch_database_disconnected'); process.exit(1); } });
   }
-  if (mode === '--once') { for (const client of clients.values()) await client.end(); return; }
   const fileCoordinator = new DemandCoordinator({ jobs: config.fileJobs || [], run: runJob,
     query: async job => ({ ready: (await readdir(job.watchPath)).some(name => job.filename ? name === job.filename : name.endsWith(job.pendingExtension || '.pending.json')) }) });
   coordinators.push(fileCoordinator);
