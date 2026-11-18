@@ -40,11 +40,11 @@ function findSelect(node){
  ts.forEachChild(node,findSelect);
 }
 findSelect(viewAst);
-if(labels.length!==1||view.includes('provider-frontend-target'))throw Error('unexpected_hosting_view');
+if(labels.length!==1)throw Error('unexpected_hosting_view');
 const label=labels[0],snippet=label.getText(viewAst);
 const added=snippet.replace(/([a-zA-Z_$][\w$]*)\.managedServer\b/,'($1.frontendServer??"Frontend")').replace('provider-target','provider-frontend-target');
 if(added===snippet||!added.includes('frontendServer'))throw Error('label_clone_failed');
-const nextView=view.slice(0,label.end)+','+added+view.slice(label.end);
+const nextView=view.includes('provider-frontend-target') ? view : view.slice(0,label.end)+','+added+view.slice(label.end);
 if(ts.createSourceFile('new.js',nextView,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS).parseDiagnostics.length)throw Error('invalid_view_overlay');
 const nextViewName='pages_panel_hosting_index.hosting-'+hash(nextView).slice(0,12)+'.js';
 await write('client/_luxi/'+nextViewName,nextView);

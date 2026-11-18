@@ -6,7 +6,7 @@ import { baseGroupTemplate, setModuleSelection, type GroupTemplate, type ModuleS
 type Catalog = PolicyCatalog & { modules: ModuleSurface[]; descriptions: Record<string,string> };
 type Provider = Record<string, any> & { id: string; name: string; allowedModules: string[]; groupTemplate: GroupTemplate; operations: string[] };
 const quotaDefaults = { diskQuotaMb: 10240, bandwidthQuotaMb: 102400, maxDomains: 10, maxEmailAccounts: 20, maxDatabases: 0, maxSubUsers: 0 };
-const operations = ["accounts.read", "accounts.write", "accounts.status", "usage.read", "sites.write", "access.issue", "accounts.delete", "expo.read", "expo.write", "expo.build", "expo.submit"];
+const operations = ["accounts.read", "accounts.write", "accounts.status", "usage.read", "sites.write", "access.issue", "accounts.delete", "expo.read", "expo.write", "expo.build", "expo.submit", "deployments.read", "deployments.write", "deployments.build", "deployments.publish"];
 const { loadI18n, t } = createPageI18n("hosting-i18n");
 
 export function initProviderSettings(): void {
