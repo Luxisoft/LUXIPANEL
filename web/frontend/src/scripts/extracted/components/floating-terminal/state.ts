@@ -68,6 +68,7 @@ export type TerminalSession = {
   reconnectAttempts: number;
   reconnectTimer: ReturnType<typeof setTimeout> | null;
   connecting?: boolean;
+  connectionPending?: boolean;
   outputTail?: string;
   cdOnConnect: string | null;
   initialCommand: string | null;

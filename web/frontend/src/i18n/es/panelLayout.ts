@@ -349,16 +349,16 @@ const panelLayout = {
       "global-filters": "Filtros"
     },
     "dns": {
-      "overview": "Estado",
-      "sites": "Sitios y HTTPS",
+      "overview": "Resumen",
+      "sites": "Sitios",
       "proxy": "Tráfico",
       "perf": "Rendimiento",
       "logs": "Registros",
       "status": "Servicio"
     },
     "nginx": {
-      "overview": "Estado",
-      "sites": "Sitios y HTTPS",
+      "overview": "Resumen",
+      "sites": "Sitios",
       "proxy": "Tráfico",
       "perf": "Rendimiento",
       "logs": "Registros",

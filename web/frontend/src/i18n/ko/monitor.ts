@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "최근 5분 · 실시간",
+    "collecting": "샘플 수집 중",
+    "received": "수신",
+    "sent": "송신",
+    "available": "사용 가능",
+    "emptyProcesses": "기록된 프로세스 없음"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "종료"
   },
   "history": {
+    "gapLegend": "빨간색: 데이터 없음",
+    "gapLabel": "데이터 없음",
+    "gapDuration": "기간: {duration}",
+
     "workspaceLabel": "모니터",
     "coverageLabel": "기록 범위",
     "availableSince": "데이터 시작 시점",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "{name}을(를) 설치할 수 없습니다."
   },
   "topFolders": {
+    "retry": "다시 시도",
+    "loading": "폴더 측정 중…",
     "measureError": "폴더별 사용량을 측정할 수 없습니다.",
     "empty": "사용량이 기록된 폴더가 없습니다."
   },

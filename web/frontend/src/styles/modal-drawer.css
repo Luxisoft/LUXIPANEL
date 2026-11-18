@@ -376,3 +376,102 @@ body dialog:is(#confirm-modal-wrapper, #prompt-modal-wrapper)[open] button[id$="
   min-width: 2.75rem;
   min-height: 2.75rem;
 }
+
+/* Explicit auxiliary regions replace positional layout guesses. */
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) {
+  padding: 0;
+  overflow: hidden;
+}
+[data-aux-header]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-height: 3.5rem;
+  margin: 0;
+  padding: .5rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+[data-aux-header]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) h3 { min-width: 0; font-size: 1rem; line-height: 1.5; }
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > [data-aux-form]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)),
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-form]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-form]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > * { margin-block: 0; }
+[data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) { min-width: 0; }
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) {
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 1.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  container-type: inline-size;
+}
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > :is(div,form)[class*="px-6"],
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > :is(div,form)[class*="px-4"] { padding-inline: 0; }
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > :is(div,form)[class*="max-h-"] { max-height: none; }
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > * + * { margin-top: 1rem; }
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)).flex > * + * { margin-top: 0; }
+[data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)), body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin: 0;
+  padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+[data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > button, [data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 6rem;
+  padding: .625rem 1rem;
+  font-size: .875rem;
+  font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-aux-header]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) button { min-width: 2.75rem; min-height: 2.75rem; }
+[data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) :is(button,input,select,textarea):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.lxp-aux-folder {
+  display: flex; width: 100%; min-height: 3.5rem; align-items: center; gap: .75rem;
+  padding: .75rem; border: 1px solid transparent; border-radius: .625rem;
+}
+.lxp-aux-folder:hover { background: var(--accent); }
+.lxp-aux-folder[aria-checked="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); }
+.lxp-aux-folder:disabled { opacity: .45; cursor: default; }
+#move-error[hidden] { display: none; }
+@media (max-width: 639px) {
+  [data-aux-header]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) { padding-inline: 1rem; }
+  body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) { padding: 1rem; }
+  [data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)), body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) { padding-inline: 1rem; }
+  [data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > button { flex: 1 1 0%; min-width: 0; }
+}
+/* Explicit footer wins over the legacy last-body fallback. */
+body dialog[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)):not([data-lxp-modal-keep]) [data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)):last-child {
+  flex: none;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+[data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > .hidden,
+[data-aux-footer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) > [hidden] { display: none; }
+body dialog#dialog-toggle-loading[open][data-aux-drawer]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) [data-aux-body]:not(:where([data-lxp-module-settings], [data-lxp-module-settings] *)) {
+  display: grid;
+  place-items: center;
+}

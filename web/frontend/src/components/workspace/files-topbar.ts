@@ -45,6 +45,9 @@ export function mountFilesTopbar(root: HTMLElement, tabsSlot: HTMLElement, actio
           });
         }
       });
+      // A mirrored row owns its decorative indicator independently of its source.
+      for (const thumb of copy.querySelectorAll(".lxp-rubber-thumb")) thumb.remove();
+      for (const element of [copy, ...copy.querySelectorAll<HTMLElement>("*")]) for (const name of ["data-rubber-segment", "data-rubber-item", "data-rubber-active", "data-rubber-orientation"]) element.removeAttribute(name);
       copies.push(copy);
     }
     tabsSlot.replaceChildren(...copies);

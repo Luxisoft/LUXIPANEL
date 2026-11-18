@@ -196,7 +196,7 @@ function showCloudflareDnsBanner(domain: string) {
 // ── Tabs ───────────────────────────────────────────────────────
 function availableTabs(): string[] {
   const admin = document.getElementById("nginx-tabs")?.getAttribute("data-admin") === "true";
-  return ["tab-overview", "tab-sites", ...(admin ? ["tab-proxy", "tab-perf"] : []), "tab-logs", ...(admin ? ["tab-status"] : [])];
+  return ["tab-overview", "tab-sites", ...(admin ? ["tab-proxy"] : []), "tab-logs"];
 }
 function isAdminPage(): boolean { return document.getElementById("nginx-tabs")?.getAttribute("data-admin") === "true"; }
 function isHostingPage(): boolean { return document.getElementById("nginx-tabs")?.getAttribute("data-hosting") === "true"; }
@@ -209,6 +209,8 @@ function activateTabUI(tabId: string) {
   if (idx < 0) return;
   const direction = tabDirection(TABS.indexOf(currentNginxTab), idx);
   currentNginxTab = tabId;
+  document.body.dataset.nginxTab = tabId.replace("tab-", "");
+  syncLogTimer();
   TABS.forEach((id, i) => {
     const btn = document.getElementById(id);
     const active = i === idx;
@@ -226,12 +228,10 @@ function activateTabUI(tabId: string) {
 }
 
 function loadTabData(tabId: string) {
-  if (tabId === "tab-overview") { void loadStatus(); void loadSites(); }
-  if (tabId === "tab-sites") { void loadSites(true); void loadRenewalStatus(); }
+  if (tabId === "tab-overview") { void loadStatus(); void loadSites(true); void loadRenewalStatus(); if (isAdminPage()) void loadPerf(); }
+  if (tabId === "tab-sites") void loadSites(true);
   if (tabId === "tab-proxy") void loadUpstreams();
-  if (tabId === "tab-status") void loadStatus();
-  if (tabId === "tab-perf") void loadPerf();
-  if (tabId === "tab-logs") void loadSites();
+  if (tabId === "tab-logs") void loadSites().then(() => refreshLogs());
 }
 
 // activateTab = UI + fetch (used by user clicks).
@@ -248,6 +248,7 @@ function savedTabId(): string {
   let tab = params.get("workspaceView") || params.get("tab") || "";
   if (!tab) { try { tab = localStorage.getItem("nginx-active-tab") || ""; } catch {} }
   tab = legacy[tab] ?? (tab.startsWith("tab-") ? tab : `tab-${tab}`);
+  if (["tab-perf", "tab-performance", "tab-status"].includes(tab)) tab = "tab-overview";
   return availableTabs().includes(tab) ? tab : "tab-overview";
 }
 
@@ -402,6 +403,7 @@ function renderOverview() {
   const https = sitesCatalog.filter((site) => site.ssl).length;
   const items: Array<[string, string, boolean]> = [
     [t("labels.service", "Servicio"), s.running ? t("labels.running", "Activo") : t("labels.stopped", "Detenido"), !!s.running],
+    [t("labels.version", "Versión"), s.version || "—", true],
     ["nginx -t", s.configTest?.ok ? t("labels.ok", "OK") : t("labels.error", "Error"), !!s.configTest?.ok],
     [t("labels.activeSites", "Sitios activos"), `${s.enabledSites} / ${s.availableSites}`, true],
     ["HTTPS", `${https} / ${sitesCatalog.length}`, true],
@@ -620,11 +622,20 @@ async function testRenewal(output: HTMLElement) {
 
 // ═══ LOGS ═══
 let logTimer: any = null;
+function syncLogTimer() {
+  if (logTimer) { clearInterval(logTimer); logTimer = null; }
+  if (currentNginxTab === "tab-logs" && !document.hidden && (document.getElementById("log-auto") as HTMLInputElement | null)?.checked) {
+    logTimer = setInterval(() => void refreshLogs(), 5000);
+  }
+}
+document.addEventListener("lxp:module:visibility", syncLogTimer);
+document.addEventListener("visibilitychange", syncLogTimer);
 async function refreshLogs() {
   // Page guard: after an SPA nav away from nginx the log controls are gone but
   // the 5s auto-refresh timer could still fire. Bail (and stop the timer) so we
   // don't throw a TypeError every tick or spam /api/nginx/logs off-page.
   const siteEl = document.getElementById("log-site") as HTMLSelectElement | null;
+  if (currentNginxTab !== "tab-logs" || document.hidden) return;
   if (!siteEl) { if (logTimer) { clearInterval(logTimer); logTimer = null; } return; }
   const site = siteEl.value;
   if (!site && !isAdminPage()) {
@@ -651,23 +662,13 @@ async function loadStatus() {
   const res = await api.get("/api/nginx/status");
   if (scope !== resolveTargetScope() || !document.getElementById("nginx-tabs")) return;
   const s = unwrap(res);
-  const cards = document.getElementById("status-cards")!;
   if (!s) {
-    const message = errMsg(res, t("toasts.errorLoadStatus", "No se pudo obtener el estado"));
-    cards.textContent = message;
     const overview = document.getElementById("overview-health");
-    if (overview) overview.textContent = message;
+    if (overview) overview.textContent = errMsg(res, t("toasts.errorLoadStatus", "No se pudo obtener el estado"));
     return;
   }
   latestStatus = s;
   renderOverview();
-  const card = (label: string, value: string, cls = "") =>
-    `<div class="rounded-xl border border-border bg-card p-4"><p class="text-xs text-muted-foreground">${esc(label)}</p><p class="mt-1 text-lg font-semibold ${cls}">${esc(value)}</p></div>`;
-  cards.innerHTML =
-    card(t("labels.service", "Servicio"), s.running ? t("labels.running", "Activo") : t("labels.stopped", "Detenido"), s.running ? "text-emerald-500" : "text-destructive") +
-    card(t("labels.version", "Versión"), s.version || "—") +
-    card(t("labels.activeSites", "Sitios activos"), `${s.enabledSites} / ${s.availableSites}`) +
-    card("nginx -t", s.configTest?.ok ? t("labels.ok", "OK") : t("labels.error", "Error"), s.configTest?.ok ? "text-emerald-500" : "text-destructive");
   if (!isAdminPage()) return;
   const confPrev = document.getElementById("conf-preview")!;
   const cRes = await api.get("/api/nginx/config");
@@ -677,7 +678,12 @@ async function loadStatus() {
 }
 
 // ═══ RENDIMIENTO ═══
-async function loadPerf() {
+let perfLoaded = false;
+let perfLoading = false;
+async function loadPerf(force = false) {
+  if (perfLoading || (perfLoaded && !force)) return;
+  perfLoading = true;
+  try {
   const scope = resolveTargetScope();
   const res = await api.get("/api/nginx/performance");
   if (scope !== resolveTargetScope() || !document.getElementById("nginx-tabs")) return;
@@ -692,6 +698,8 @@ async function loadPerf() {
   (document.getElementById("perf-keepalive") as HTMLInputElement).value = String(p.keepaliveTimeout ?? 65);
   (document.getElementById("perf-workers") as HTMLInputElement).value = String(p.workerProcesses ?? "auto");
   (document.getElementById("perf-conns") as HTMLInputElement).value = String(p.workerConnections ?? 1024);
+  perfLoaded = true;
+  } finally { perfLoading = false; }
 }
 
 // ── Window listeners (module-eval, persisten cross-nav) ────────
@@ -742,6 +750,7 @@ function init() {
     cacheScope = resolveTargetScope();
     initLastAt = 0;
     latestStatus = null;
+    perfLoaded = false;
     sitesData = [];
     delete cache[SITES_TABLE];
     delete cache[UPSTREAMS_TABLE];
@@ -790,14 +799,6 @@ function init() {
 
   document.getElementById("overview-new-site")?.addEventListener("click", () => { activateTab("tab-sites"); openSiteDialog(); }, { signal });
   document.getElementById("overview-open-sites")?.addEventListener("click", () => activateTab("tab-sites"), { signal });
-  document.getElementById("overview-test")?.addEventListener("click", async () => {
-    const out = document.getElementById("overview-action-result")!;
-    out.textContent = t("overview.checking", "Comprobando la configuración…");
-    const res = await api.post("/api/nginx/service", { action: "test" });
-    const data = unwrap(res);
-    out.textContent = data?.output ?? errMsg(res, t("toasts.svcActionFailed", "No se pudo comprobar NGINX"));
-    void loadStatus();
-  }, { signal });
   document.getElementById("nginx-ai-overview")?.addEventListener("click", () => void askAssistant("overview", t("overview.aiOverviewPrompt", "Analiza el estado y los sitios NGINX del servidor conectado con nginx.status y nginx.list_sites. Si tienes permiso, comprueba nginx -t y el error log. Explica las evidencias, prioriza problemas y propón pasos concretos sin ejecutar cambios.")), { signal });
   document.getElementById("nginx-ai-site")?.addEventListener("click", () => {
     const name = (document.getElementById("nginx-ai-site-select") as HTMLSelectElement).value;
@@ -985,8 +986,8 @@ function init() {
   document.getElementById("log-refresh")?.addEventListener("click", () => void refreshLogs(), { signal });
   document.getElementById("log-auto")?.addEventListener("change", (e) => {
     const on = (e.target as HTMLInputElement).checked;
-    if (logTimer) { clearInterval(logTimer); logTimer = null; }
-    if (on) { void refreshLogs(); logTimer = setInterval(() => void refreshLogs(), 5000); }
+    syncLogTimer();
+    if (on) void refreshLogs();
   }, { signal });
 
   // Status / svc / conf
@@ -1032,7 +1033,7 @@ function init() {
       workerConnections: Number((document.getElementById("perf-conns") as HTMLInputElement).value) || 1024,
     };
     const res = await api.put<{ ok?: boolean }>("/api/nginx/performance", payload);
-    if (res.ok && (res.data?.ok ?? true)) { toast(t("toasts.perfApplied", "Rendimiento aplicado y validado")); void loadPerf(); }
+    if (res.ok && (res.data?.ok ?? true)) { toast(t("toasts.perfApplied", "Rendimiento aplicado y validado")); void loadPerf(true); }
     else { errBox.textContent = errMsg(res, t("errors.nginxTestFailedApply", "nginx -t falló o no se pudo aplicar")); errBox.classList.remove("hidden"); }
   }, { signal });
 
@@ -1062,6 +1063,7 @@ window.addEventListener("luxipanel:target-changed", () => {
   if (logTimer) { clearInterval(logTimer); logTimer = null; }
   cacheScope = "";
   latestStatus = null;
+  perfLoaded = false;
   sitesData = [];
   delete cache[SITES_TABLE];
   delete cache[UPSTREAMS_TABLE];

@@ -1,3 +1,4 @@
+import { sanitizeEmailDocument } from "../mail-document-sanitizer.js";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 LUXISOFT
 /**
@@ -242,6 +243,7 @@ export async function fetchMessage(
         date: normalizeDateIso(parsedMail?.date) || normalizeDateIso(m.envelope?.date),
         preview: encrypted ? "Mensaje cifrado con OpenPGP" : preview,
         text: encrypted ? "" : text,
+        htmlDocument: encrypted ? "" : sanitizeEmailDocument(unsafeHtml || parsedMail?.textAsHtml || ""),
         html: encrypted ? "" : html || sanitizeEmailHtml(parsedMail?.textAsHtml || ""),
         attachments: encrypted ? [] : attachments,
         hasAttachments: encrypted ? false : attachments.length > 0 || hasAttachmentsFromBodyStructure(m.bodyStructure),

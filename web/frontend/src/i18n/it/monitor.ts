@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "Ultimi 5 minuti · in tempo reale",
+    "collecting": "Raccolta campioni",
+    "received": "Ricezione",
+    "sent": "Invio",
+    "available": "Disponibile",
+    "emptyProcesses": "Nessun processo registrato"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "Termina"
   },
   "history": {
+    "gapLegend": "Rosso: nessun dato",
+    "gapLabel": "Nessun dato",
+    "gapDuration": "Durata: {duration}",
+
     "workspaceLabel": "Monitor",
     "coverageLabel": "Copertura cronologia",
     "availableSince": "Dati disponibili dal",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "Impossibile installare {name}."
   },
   "topFolders": {
+    "retry": "Riprova",
+    "loading": "Misurazione delle cartelle…",
     "measureError": "Impossibile misurare l'utilizzo per cartella.",
     "empty": "Nessuna cartella con consumo registrato."
   },

@@ -9,7 +9,7 @@ const probe=async()=>{
  const base=process.env.LUXIPANEL_RELEASE_PROBE_BASE,key=process.env.LUXIPANEL_RELEASE_PROBE_KEY,account=process.env.LUXIPANEL_RELEASE_PROBE_ACCOUNT;
  if(!base||!key||!account)throw Error('authenticated_provider_release_probe_required');
  for(const path of ['/capabilities',`/accounts/${encodeURIComponent(account)}/storage`,`/accounts/${encodeURIComponent(account)}/storage/items`]){
-  const response=await fetch(base.replace(/\/$/,'')+path,{headers:{authorization:'Bearer '+key},signal:AbortSignal.timeout(15000)});const body=await response.json();
+  const response=await fetch(base.replace(/\/$/,'')+path,{headers:{authorization:'Bearer '+key,connection:'close'},signal:AbortSignal.timeout(15000)});const body=await response.json();
   if(!response.ok||!body.ok)throw Error('provider_release_probe_failed');
   if(path==='/capabilities'&&(body.data.storageMeteringVersion!==1||body.data.storageInventoryVersion!==1))throw Error('provider_storage_contract_missing');
   if(path!=='/capabilities'&&body.data.version!==1)throw Error('provider_storage_response_invalid');

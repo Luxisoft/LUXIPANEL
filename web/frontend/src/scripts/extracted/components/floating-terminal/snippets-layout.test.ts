@@ -1,0 +1,21 @@
+import {afterEach,expect,it,vi} from 'vitest';
+vi.mock('./editor',()=>({applyShellHighlight:vi.fn(),initSnippetCommandEditor:vi.fn()}));
+vi.mock('./history',()=>({pushHistory:vi.fn()}));
+vi.mock('@/lib/api-client',()=>({api:{get:vi.fn(),post:vi.fn()}}));
+vi.mock('@/lib/confirm',()=>({openConfirm:vi.fn(),openAlert:vi.fn()}));
+import {S} from './state';
+import {renderSnippetUI} from './snippets';
+afterEach(()=>{vi.restoreAllMocks();document.body.replaceChildren();});
+it('keeps edit/delete alongside the saved command title with isolated click actions',()=>{
+ document.body.innerHTML='<div id="panel-snippets"><select id="snippet-cat"></select><div id="snippet-tag-filters"></div><div id="snippet-list"></div></div>';
+ S.snippetState={categories:[{id:1,name:'Tools'}],tags:[],snippets:[{id:7,name:'Service status',command:'systemctl status nginx',categoryId:1,tagIds:[]}]};
+ renderSnippetUI();
+ const card=document.querySelector('[data-snippet-card="7"]')!,header=card.querySelector('[data-saved-command-heading]')!;
+ expect(header.querySelectorAll('[data-saved-command-actions] button')).toHaveLength(2);
+ expect(header.querySelector('[data-lxp-handler-click="runSnippet(7)"]')).not.toBeNull();
+ expect(card.querySelector('button button')).toBeNull();
+ const run=vi.spyOn(window as any,'runSnippet').mockImplementation(()=>{}),edit=vi.spyOn(window as any,'editSnippet').mockImplementation(()=>{}),remove=vi.spyOn(window as any,'deleteSnippet').mockImplementation(()=>{});
+ (header.querySelector('[data-lxp-handler-click="editSnippet(7)"]') as HTMLButtonElement).click();expect(edit).toHaveBeenCalledWith(7);expect(run).not.toHaveBeenCalled();
+ (header.querySelector('[data-lxp-handler-click="deleteSnippet(7)"]') as HTMLButtonElement).click();expect(remove).toHaveBeenCalledWith(7);expect(run).not.toHaveBeenCalled();
+ expect(document.getElementById('snippet-tag-filters')?.hidden).toBe(true);expect(document.getElementById('snippet-tag-filters')?.textContent).toBe('');
+});

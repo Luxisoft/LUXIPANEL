@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "Close (terminals remain active)"
   },
   "sidebar": {
-    "tabSnippets": "Snippets",
+    "tabSnippets": "Saved commands",
     "tabHistory": "History",
     "tabConfig": "Configuration",
     "closePanel": "Close sidebar",
     "closePanelTitle": "Close sidebar"
   },
   "snippets": {
-    "heading": "Snippets",
-    "newSnippet": "New snippet",
-    "searchPlaceholder": "Search snippet...",
-    "searchAria": "Search snippets",
+    "heading": "Saved commands",
+    "newSnippet": "New command",
+    "searchPlaceholder": "Search commands...",
+    "searchAria": "Search saved commands",
     "filterByCategoryAria": "Filter by category",
     "allCategories": "All categories"
   },

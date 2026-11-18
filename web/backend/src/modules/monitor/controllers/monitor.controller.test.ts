@@ -166,3 +166,18 @@ describe("monitor killProcess — authorization + typed errors", () => {
     expect(raw.body).toBeUndefined(); // no JSON body written on the throw path
   });
 });
+
+it("records local HTTP fallback snapshots through the scoped collector", async () => {
+  const { statsCollectorService } = await import("../services/stats-collector.service.js");
+  const ex = remoteExecutor("local", async () => ({stdout:"",stderr:"",exitCode:0,durationMs:1}));
+  mockedResolve.mockResolvedValue(ex);
+  const snapshot = {ts:Date.now(),cpu:{usagePercent:10}};
+  const collect = vi.spyOn(statsCollectorService,"collectWithExecutorCached").mockResolvedValue(snapshot as never);
+  try {
+    const {req,res,raw,next,done}=makeReqRes();
+    await invoke(monitorController.snapshot,req,res,next,done);
+    expect(next).not.toHaveBeenCalled();
+    expect(collect).toHaveBeenCalledWith(ex,"local");
+    expect(raw.body).toEqual({ok:true,data:snapshot});
+  } finally {collect.mockRestore();}
+});

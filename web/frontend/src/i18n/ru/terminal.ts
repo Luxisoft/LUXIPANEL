@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "Закрыть (терминалы остаются активными)"
   },
   "sidebar": {
-    "tabSnippets": "Фрагменты",
+    "tabSnippets": "Сохранённые команды",
     "tabHistory": "История",
     "tabConfig": "Настройки",
     "closePanel": "Закрыть боковую панель",
     "closePanelTitle": "Закрыть панель"
   },
   "snippets": {
-    "heading": "Фрагменты",
-    "newSnippet": "Новый фрагмент",
-    "searchPlaceholder": "Поиск фрагмента...",
-    "searchAria": "Поиск фрагментов",
+    "heading": "Сохранённые команды",
+    "newSnippet": "Новая команда",
+    "searchPlaceholder": "Поиск команд...",
+    "searchAria": "Поиск сохранённых команд",
     "filterByCategoryAria": "Фильтр по категории",
     "allCategories": "Все категории"
   },

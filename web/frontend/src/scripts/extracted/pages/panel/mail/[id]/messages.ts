@@ -1,7 +1,11 @@
 // Mailbox inbox viewer — message list + single-message reader (fetch, render
 // rows, open a message into the viewer with HTML iframe / text fallback +
 // attachments). Owns the last-fetch cache and the open-generation guard.
-import { api, resolvePanelApiPath, scopeHeaders } from "/scripts/extracted/lib/mail-api-client.js?v=20260930a";
+import {
+  api,
+  resolvePanelApiPath,
+  scopeHeaders,
+} from "/scripts/extracted/lib/mail-api-client.js?v=20260930a";
 import { accountId, fallback, PAGE_SIZE, S } from "./state";
 import { escapeHtml, formatAddress, formatBytes } from "./helpers";
 import {
@@ -11,15 +15,32 @@ import {
   renderMailboxCredentialBlockedState,
   renderMessagesLoading,
 } from "./status-render";
-import { DEFAULT_CUSTOM_LAYOUT_COLOR } from "@/lib/layout-palettes";
+import { createMessageReader } from "./reader-state";
+const reader = createMessageReader(document);
+let readController: AbortController | undefined;
+let resumeUid: number | null = null;
 
 let lastLoadedMessages: any[] = [];
 /** Incremented on every openMessage call; stale async operations check this
  *  before touching the DOM so rapid clicks don't paint the wrong content. */
 let openGeneration = 0;
+let listGeneration = 0;
 
-export async function loadMessages(options: { autoOpenLatest?: boolean; showLoading?: boolean; loadingText?: string } = {}) {
+export function invalidateMessageLoads() {
+  ++openGeneration;
+  ++listGeneration;
+  readController?.abort();
+  reader.reset();
+  (window as any)._currentUid = null;
+}
+
+export async function loadMessages(
+  options: { autoOpenLatest?: boolean; showLoading?: boolean; loadingText?: string } = {},
+) {
   const autoOpenLatest = options.autoOpenLatest ?? true;
+  const generation = ++listGeneration,
+    folder = S.currentFolder,
+    page = S.currentPage;
   const showLoading = options.showLoading ?? true;
   const loadingText = options.loadingText ?? fallback("inbox.loading", "Cargando mensajes...");
   if (S.mailboxCredentialBroken) {
@@ -35,11 +56,15 @@ export async function loadMessages(options: { autoOpenLatest?: boolean; showLoad
   const email = (document.getElementById("msg-filter-email") as HTMLInputElement | null)?.value.trim() || "";
   const dateFrom = (document.getElementById("msg-filter-date-from") as HTMLInputElement | null)?.value || "";
   const dateTo = (document.getElementById("msg-filter-date-to") as HTMLInputElement | null)?.value || "";
-  const sort = ((document.getElementById("msg-sort-order") as HTMLSelectElement | null)?.value || "desc").toLowerCase() === "asc"
-    ? "asc"
-    : "desc";
+  const sort =
+    (
+      (document.getElementById("msg-sort-order") as HTMLSelectElement | null)?.value || "desc"
+    ).toLowerCase() === "asc"
+      ? "asc"
+      : "desc";
 
   const res = await api.get<any>(`/api/mail/${accountId}/messages`, {
+    fresh: true,
     params: {
       folder: S.currentFolder,
       page: S.currentPage,
@@ -52,6 +77,13 @@ export async function loadMessages(options: { autoOpenLatest?: boolean; showLoad
     },
   });
 
+  if (
+    generation !== listGeneration ||
+    folder !== S.currentFolder ||
+    page !== S.currentPage ||
+    document.hidden
+  )
+    return;
   const list = document.getElementById("messages-list")!;
 
   if (!res.ok || !res.data) {
@@ -62,6 +94,12 @@ export async function loadMessages(options: { autoOpenLatest?: boolean; showLoad
       return;
     }
 
+    if (options.showLoading === false) {
+      const refresh = document.getElementById("btn-refresh");
+      if (refresh)
+        refresh.title = res.error || fallback("inbox.error.loadMessages", "Error al cargar mensajes");
+      return;
+    }
     if (isMailboxImapUnavailable(res)) {
       list.innerHTML = `<div class="p-4 text-center text-xs text-amber-200">${fallback("inbox.imapUnavailable", "No se pudo conectar al servidor IMAP para cargar mensajes.")}</div>`;
       return;
@@ -71,6 +109,8 @@ export async function loadMessages(options: { autoOpenLatest?: boolean; showLoad
     return;
   }
 
+  const refresh = document.getElementById("btn-refresh");
+  if (refresh) refresh.title = fallback("inbox.titleRefresh", "Actualizar");
   const data = res.data as any;
   const messages: any[] = Array.isArray(data) ? data : (data.messages ?? []);
   S.totalMessages = data.total ?? messages.length;
@@ -104,14 +144,16 @@ export async function loadMessages(options: { autoOpenLatest?: boolean; showLoad
     document.getElementById("page-info")!.textContent =
       `${(S.currentPage - 1) * PAGE_SIZE + 1}–${Math.min(S.currentPage * PAGE_SIZE, S.totalMessages)} ${fallback("inbox.paginationOf", "de")} ${S.totalMessages}`;
     (document.getElementById("btn-prev-page") as HTMLButtonElement).disabled = S.currentPage <= 1;
-    (document.getElementById("btn-next-page") as HTMLButtonElement).disabled = S.currentPage * PAGE_SIZE >= S.totalMessages;
+    (document.getElementById("btn-next-page") as HTMLButtonElement).disabled =
+      S.currentPage * PAGE_SIZE >= S.totalMessages;
   } else {
     pagEl.classList.add("hidden");
   }
 
   if (!autoOpenLatest || messages.length === 0) return;
 
-  const selectedStillVisible = S.currentUid !== null && messages.some((item) => Number(item.uid) === S.currentUid);
+  const selectedStillVisible =
+    S.currentUid !== null && messages.some((item) => Number(item.uid) === S.currentUid);
   if (!selectedStillVisible) {
     const firstUid = Number(messages[0]?.uid || 0);
     if (firstUid > 0) {
@@ -126,7 +168,10 @@ function renderMessageRow(m: any): string {
   const now = new Date();
   const sameDay = date.toDateString() === now.toDateString();
   const dateStr = sameDay
-    ? date.toLocaleTimeString(document.documentElement.lang || undefined, { hour: "2-digit", minute: "2-digit" })
+    ? date.toLocaleTimeString(document.documentElement.lang || undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : date.toLocaleDateString(document.documentElement.lang || undefined, { day: "2-digit", month: "short" });
 
   const from = m.from?.name || m.from?.address || m.from || fallback("inbox.noSender", "Sin remitente");
@@ -137,7 +182,7 @@ function renderMessageRow(m: any): string {
   const previewEsc = escapeHtml(String(m.preview || m.snippet || ""));
   const dateStrEsc = escapeHtml(String(dateStr));
   return `
-    <div onclick="openMessage(${Number(m.uid) || 0})"
+    <div data-mail-uid="${Number(m.uid) || 0}" tabindex="0" role="button" onclick="openMessage(${Number(m.uid) || 0})"
       class="msg-row p-3 cursor-pointer transition-colors hover:bg-accent ${S.currentUid === m.uid ? "bg-primary/5 border-l-2 border-primary" : ""} ${unread ? "bg-muted/20" : ""}">
       <div class="flex items-center justify-between gap-2 mb-1">
         <span class="text-xs ${unread ? "font-semibold text-foreground" : "font-medium text-muted-foreground"} truncate">${fromEsc}</span>
@@ -160,95 +205,32 @@ function rerenderMessageList() {
   list.innerHTML = lastLoadedMessages.map((m) => renderMessageRow(m)).join("");
 }
 
-/**
- * Fit the message iframe to its own content height so the whole email shows and
- * the outer container scrolls (never a clipped inner scrollbar). Readable now
- * that the frame is same-origin (sandbox `allow-same-origin`, still no scripts).
- * Re-measured a few times because images/fonts load after the initial `load`.
- */
-function autoSizeMessageIframe(iframe: HTMLIFrameElement) {
-  const measure = () => {
-    try {
-      const doc = iframe.contentDocument;
-      if (!doc || !doc.body) return;
-      const content = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
-      // Fill the whole viewer pane for short emails (never a tiny frame), and
-      // grow past it for long ones so the OUTER container scrolls. The scroll
-      // container is the `.flex-1.overflow-y-auto` wrapper around the iframe.
-      const pane = iframe.parentElement as HTMLElement | null;
-      const avail = pane ? pane.clientHeight : 0;
-      const h = Math.max(content, avail, 240);
-      iframe.style.height = `${h}px`;
-    } catch {
-      // Cross-origin guard (shouldn't happen with allow-same-origin) — leave the
-      // CSS min-height in place rather than throwing.
-    }
-  };
-  measure();
-  for (const delay of [120, 400, 1000]) window.setTimeout(measure, delay);
-  try {
-    const win = iframe.contentWindow;
-    win?.addEventListener?.("resize", measure);
-    iframe.contentDocument?.querySelectorAll("img").forEach((img) => {
-      if (!(img as HTMLImageElement).complete) img.addEventListener("load", measure, { once: true });
-    });
-  } catch {
-    /* ignore */
-  }
-}
-
 function renderMessageBody(msg: any) {
-  const iframe = document.getElementById("msg-iframe") as HTMLIFrameElement | null;
-  const textEl = document.getElementById("msg-text");
-  if (!iframe || !textEl) return;
-
-  const html = typeof msg.html === "string" ? msg.html.trim() : "";
-  if (html) {
-    textEl.classList.add("hidden");
-    iframe.classList.remove("hidden");
-    iframe.style.height = "240px";
-
-    const isDark = document.documentElement.classList.contains("dark");
-    const fg = isDark ? "#e5e5e5" : "#0f172a";
-    const link = isDark ? "#c084fc" : DEFAULT_CUSTOM_LAYOUT_COLOR;
-    const bg = isDark ? "#1a1a1a" : "#ffffff";
-    const muted = isDark ? "#3f3f46" : "#e5e7eb";
-
-    // Re-measure once the srcdoc document has parsed/painted.
-    iframe.onload = () => autoSizeMessageIframe(iframe);
-    iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">`
-      + `<meta name="viewport" content="width=device-width, initial-scale=1">`
-      + `<base target="_blank">`
-      + `<style>`
-      + `html,body{margin:0;padding:0;}`
-      + `body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.6;color:${fg};background:${bg};padding:1.25rem;word-break:break-word;overflow-wrap:anywhere;}`
-      + `img{max-width:100%!important;height:auto!important;}`
-      + `a{color:${link};}`
-      + `table{max-width:100%!important;border-collapse:collapse;}`
-      + `td,th{word-break:break-word;}`
-      + `blockquote{margin:0 0 0 .75rem;padding-left:.75rem;border-left:3px solid ${muted};color:${isDark ? "#a1a1aa" : "#6b7280"};}`
-      + `pre{white-space:pre-wrap;word-break:break-word;}`
-      + `*{max-width:100%;}`
-      + `</style></head><body>${html}</body></html>`;
-    // Safety net if `load` never fires (cached/empty srcdoc in some engines).
-    autoSizeMessageIframe(iframe);
-    return;
-  }
-
-  iframe.classList.add("hidden");
-  iframe.onload = null;
-  textEl.classList.remove("hidden");
-  textEl.textContent = msg.text || msg.body || `(${fallback("inbox.noContent", "Sin contenido")})`;
+  reader.render(
+    { ...msg, text: msg.text || msg.body || fallback("inbox.noContent", "Sin contenido") },
+    openGeneration,
+  );
 }
 
-(window as any).openMessage = async function(uid: number, refreshList = true) {
+(window as any).openMessage = async function (uid: number, refreshList = true) {
   if (S.mailboxCredentialBroken) {
     renderMailboxCredentialBlockedState();
     return;
   }
 
+  const layout = document.querySelector<HTMLElement>("[data-inbox-layout]");
+  if (layout) layout.dataset.inboxPane = "reader";
   S.currentUid = uid;
-  const gen = ++openGeneration;
+  const gen = ++openGeneration,
+    folder = S.currentFolder,
+    page = S.currentPage;
+  reader.begin(gen, () => void (window as any).openMessage(uid));
+  readController?.abort();
+  const controller = new AbortController();
+  readController = controller;
+  (window as any)._currentUid = null;
+  document.getElementById("msg-attachments")?.classList.add("hidden");
+  document.getElementById("mail-pgp-unlock")?.classList.add("hidden");
 
   // Synchronously update list highlight — no network round-trip needed
   if (refreshList) {
@@ -263,45 +245,99 @@ function renderMessageBody(msg: any) {
   document.getElementById("msg-from")!.textContent = "";
   document.getElementById("msg-to")!.textContent = "";
   document.getElementById("msg-date")!.textContent = "";
-  document.getElementById("msg-iframe")!.classList.add("hidden");
   document.getElementById("msg-text")!.classList.add("hidden");
 
-  const res = await api.get<any>(`/api/mail/${accountId}/messages/${uid}`, {
-    params: { folder: S.currentFolder },
-  });
+  let timedOut = false;
+  const deadline = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 60000);
+  let res: any;
+  try {
+    res = await api.get<any>(`/api/mail/${accountId}/messages/${uid}`, {
+      params: { folder },
+      signal: controller.signal,
+    });
+  } catch {
+    res = {
+      ok: false,
+      error: fallback("inbox.error.loadMessageRetry", "No se pudo cargar el mensaje. Intenta de nuevo."),
+    };
+  } finally {
+    clearTimeout(deadline);
+    if (readController === controller) readController = undefined;
+  }
 
   // Another click arrived while we were fetching — discard this result
-  if (gen !== openGeneration) return;
+  if (
+    gen !== openGeneration ||
+    folder !== S.currentFolder ||
+    page !== S.currentPage ||
+    S.currentUid !== uid ||
+    document.hidden
+  )
+    return;
 
   if (!res.ok || !res.data) {
     if (isMailboxCredentialError(res)) {
       rememberCredentialFailure(res);
       S.mailboxCredentialBroken = true;
+      reader.reset();
       renderMailboxCredentialBlockedState();
       return;
     }
     // Show error so viewer doesn't stay frozen on loading state
-    document.getElementById("msg-subject")!.textContent = fallback("inbox.error.loadMessage", "Error al cargar el mensaje");
-    const textEl = document.getElementById("msg-text")!;
-    textEl.classList.remove("hidden");
-    textEl.textContent = res.error ?? fallback("inbox.error.loadMessageRetry", "No se pudo cargar el mensaje. Intenta de nuevo.");
+    document.getElementById("msg-subject")!.textContent = fallback(
+      "inbox.error.loadMessage",
+      "Error al cargar el mensaje",
+    );
+    reader.error(
+      gen,
+      timedOut
+        ? fallback("inbox.readerTimeout", "La carga ha tardado demasiado. Vuelve a intentarlo.")
+        : res.error ||
+            fallback("inbox.error.loadMessageRetry", "No se pudo cargar el mensaje. Intenta de nuevo."),
+    );
     return;
   }
 
   const msg = res.data as any;
+  const cached = lastLoadedMessages.find((m) => Number(m.uid) === uid);
+  if (cached) {
+    cached.seen = true;
+    cached.flags = [...new Set([...(cached.flags || []), "\\Seen"])];
+    rerenderMessageList();
+  }
+
   document.getElementById("mail-pgp-unlock")?.classList.toggle("hidden", !msg.encrypted);
   const pgpPassphrase = document.getElementById("mail-pgp-passphrase") as HTMLInputElement | null;
   if (pgpPassphrase) pgpPassphrase.value = "";
   const pgpError = document.getElementById("mail-pgp-error");
-  if (pgpError) { pgpError.textContent = ""; pgpError.classList.add("hidden"); }
-  document.getElementById("btn-edit-draft")?.classList.toggle("hidden", !S.folders.some((folder) => folder.path === S.currentFolder && (folder.specialUse === "\\Drafts" || /^drafts$/i.test(folder.path))));
+  if (pgpError) {
+    pgpError.textContent = "";
+    pgpError.classList.add("hidden");
+  }
+  document
+    .getElementById("btn-edit-draft")
+    ?.classList.toggle(
+      "hidden",
+      !S.folders.some(
+        (folder) =>
+          folder.path === S.currentFolder &&
+          (folder.specialUse === "\\Drafts" || /^drafts$/i.test(folder.path)),
+      ),
+    );
 
   // Header
-  document.getElementById("msg-subject")!.textContent = msg.subject || `(${fallback("inbox.noSubject", "Sin asunto")})`;
+  document.getElementById("msg-subject")!.textContent =
+    msg.subject || `(${fallback("inbox.noSubject", "Sin asunto")})`;
   document.getElementById("msg-from")!.textContent = formatAddress(msg.from);
   document.getElementById("msg-to")!.textContent = formatAddress(msg.to);
   document.getElementById("msg-date")!.textContent = msg.date
-    ? new Date(msg.date).toLocaleString(document.documentElement.lang || undefined, { dateStyle: "medium", timeStyle: "short" })
+    ? new Date(msg.date).toLocaleString(document.documentElement.lang || undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
     : "";
 
   const ccRow = document.getElementById("msg-cc-row")!;
@@ -312,36 +348,49 @@ function renderMessageBody(msg: any) {
     ccRow.classList.add("hidden");
   }
 
-  // Body — HTML in a same-origin sandboxed iframe (no scripts; server-sanitized),
-  // auto-sized to its content; plain-text fallback otherwise.
-  renderMessageBody(msg.encrypted ? { text: fallback("inbox.pgpUnlockPrompt", "Introduce la frase para abrir este mensaje.") } : msg);
+  // The generation-owned iframe reveals only the current message.
+  renderMessageBody(
+    msg.encrypted
+      ? { text: fallback("inbox.pgpUnlockPrompt", "Introduce la frase para abrir este mensaje.") }
+      : msg,
+  );
 
   // Attachments
   const attachDiv = document.getElementById("msg-attachments")!;
   const attachList = document.getElementById("attachments-list")!;
   if (msg.attachments?.length) {
     attachDiv.classList.remove("hidden");
-    attachList.innerHTML = msg.attachments.map((a: any, index: number) => {
-      const attName = escapeHtml(String(a.filename ?? a.name ?? fallback("inbox.attachment", "adjunto")));
-      const attSize = escapeHtml(String(a.size ? formatBytes(a.size) : ""));
-      return `
+    attachList.innerHTML = msg.attachments
+      .map((a: any, index: number) => {
+        const attName = escapeHtml(String(a.filename ?? a.name ?? fallback("inbox.attachment", "adjunto")));
+        const attSize = escapeHtml(String(a.size ? formatBytes(a.size) : ""));
+        return `
       <button type="button" data-mail-attachment-url="/api/mail/${encodeURIComponent(accountId)}/messages/${uid}/attachments/${index}?folder=${encodeURIComponent(S.currentFolder)}" data-mail-attachment-name="${attName}" class="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 hover:bg-accent">
         <i class="ti ti-paperclip text-muted-foreground text-xs"></i>
         <span class="text-xs">${attName}</span>
         <span class="text-[10px] text-muted-foreground">${attSize}</span>
       </button>`;
-    }).join("");
+      })
+      .join("");
   } else {
     attachDiv.classList.add("hidden");
-}
+  }
+
+  // Store uid for actions
+  (window as any)._currentUid = uid;
+};
 
 document.addEventListener("click", async (event) => {
   const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-mail-attachment-url]");
   if (!button) return;
   button.disabled = true;
   try {
-    const response = await fetch(resolvePanelApiPath(button.dataset.mailAttachmentUrl ?? ""), { credentials: "include", headers: scopeHeaders() });
-    if (!response.ok) throw new Error(fallback("inbox.downloadAttachmentError", "No se pudo descargar el adjunto"));
+    const response = await fetch(resolvePanelApiPath(button.dataset.mailAttachmentUrl ?? ""), {
+      credentials: "include",
+      headers: scopeHeaders(),
+    });
+    if (!response.ok)
+      throw new Error(fallback("inbox.downloadAttachmentError", "No se pudo descargar el adjunto"));
     const url = URL.createObjectURL(await response.blob());
     const link = document.createElement("a");
     link.href = url;
@@ -349,13 +398,15 @@ document.addEventListener("click", async (event) => {
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (error) {
-    window.alert(error instanceof Error ? error.message : fallback("inbox.downloadAttachmentError", "No se pudo descargar el adjunto"));
-  } finally { button.disabled = false; }
+    window.alert(
+      error instanceof Error
+        ? error.message
+        : fallback("inbox.downloadAttachmentError", "No se pudo descargar el adjunto"),
+    );
+  } finally {
+    button.disabled = false;
+  }
 });
-
-  // Store uid for actions
-  (window as any)._currentUid = uid;
-};
 
 document.addEventListener("click", async (event) => {
   if (!(event.target instanceof Element) || !event.target.closest("#mail-pgp-decrypt")) return;
@@ -365,11 +416,21 @@ document.addEventListener("click", async (event) => {
   const button = document.getElementById("mail-pgp-decrypt") as HTMLButtonElement | null;
   if (!uid || !input?.value || !button) return;
   button.disabled = true;
-  const res = await api.post<any>(`/api/mail/${accountId}/messages/${uid}/decrypt`, { folder: S.currentFolder, passphrase: input.value });
+  const gen = openGeneration,
+    folder = S.currentFolder;
+  const res = await api.post<any>(`/api/mail/${accountId}/messages/${uid}/decrypt`, {
+    folder: S.currentFolder,
+    passphrase: input.value,
+  });
   input.value = "";
   button.disabled = false;
+  if (gen !== openGeneration || folder !== S.currentFolder || document.hidden) return;
   if (!res.ok || !res.data) {
-    if (error) { error.textContent = res.error ?? fallback("inbox.decryptMessageError", "No se pudo descifrar el mensaje"); error.classList.remove("hidden"); }
+    if (error) {
+      error.textContent =
+        res.error ?? fallback("inbox.decryptMessageError", "No se pudo descifrar el mensaje");
+      error.classList.remove("hidden");
+    }
     return;
   }
   if (error) error.classList.add("hidden");
@@ -391,5 +452,18 @@ document.addEventListener("click", async (event) => {
     link.textContent = `${item.filename || "adjunto"} (${formatBytes(item.size || bytes.length)})`;
     list.append(link);
     link.addEventListener("click", () => setTimeout(() => URL.revokeObjectURL(url), 30000), { once: true });
+  }
+});
+
+document.addEventListener("lxp:module:dispose", invalidateMessageLoads);
+
+document.addEventListener("lxp:module:visibility", () => {
+  if (document.hidden) {
+    resumeUid = reader.isLoading ? S.currentUid : null;
+    invalidateMessageLoads();
+  } else if (resumeUid !== null && resumeUid === S.currentUid) {
+    const uid = resumeUid;
+    resumeUid = null;
+    void (window as any).openMessage(uid);
   }
 });

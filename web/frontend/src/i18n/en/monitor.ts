@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "Last 5 minutes · live",
+    "collecting": "Collecting samples",
+    "received": "Received",
+    "sent": "Sent",
+    "available": "Available",
+    "emptyProcesses": "No processes recorded"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "Terminate"
   },
   "history": {
+    "gapLegend": "Red: no data",
+    "gapLabel": "No data",
+    "gapDuration": "Duration: {duration}",
+
     "workspaceLabel": "Monitor",
     "coverageLabel": "History coverage",
     "availableSince": "Data available since",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "Could not install {name}."
   },
   "topFolders": {
+    "retry": "Retry",
+    "loading": "Measuring folders…",
     "measureError": "Could not measure per-folder usage.",
     "empty": "No folders with recorded usage."
   },

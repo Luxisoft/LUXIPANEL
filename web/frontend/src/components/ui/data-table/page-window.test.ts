@@ -64,3 +64,12 @@ it("accepts an external window without losing its local page navigation", async 
   await act(async () => next(host).click());expect(load).toHaveBeenCalledTimes(1);
   expect(host.querySelectorAll("tbody tr")).toHaveLength(10);window.removeEventListener(DATATABLE_EVENTS.LOAD_MORE,load);
 });
+it("keeps the module summary in the pagination while navigating pages", async () => {
+  const {host}=await mount({paginationCenter:createElement("div",{id:"module-usage"},"12 MB / 20 GB")});
+  const usage=host.querySelector("#module-usage")!;
+  expect(usage.closest("[data-table-pagination]")).not.toBeNull();
+  await act(async()=>next(host).click());
+  expect(host.querySelector("tbody")!.textContent).toContain("row-10");
+  expect(host.querySelector("#module-usage")).toBe(usage);
+  expect(usage.textContent).toBe("12 MB / 20 GB");
+});

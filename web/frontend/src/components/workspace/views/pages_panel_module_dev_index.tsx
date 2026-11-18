@@ -21,7 +21,7 @@ import {
  */
 import PanelLayout from "../module-frame";
 import ModalNavbar from "./components_ui_ModalNavbar";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import {
   buildModuleDevTableColumns,
@@ -31,16 +31,16 @@ import {
 } from "@/config/tables/module-dev-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_module_dev_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["moduleDev", "components"]);
-  const md = t.moduleDev;
-  const mdAny: any = md;
-  const dataTableI18n = (t.components as any).dataTable;
-  const mdJson = JSON.stringify(md);
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["moduleDev","components"]);
+  const md=t.moduleDev;
+  const mdAny: any=md;
+  const dataTableI18n=(t.components as any).dataTable;
+  const mdJson=JSON.stringify(md);
 
   return (
     <Fragment>
@@ -87,7 +87,7 @@ export default function pages_panel_module_dev_index(props: any) {
                       {md.settingsUi.rowsPerPage}
                     </p>
                     <div className="inline-flex overflow-hidden rounded-lg border border-border">
-                      {[10, 25, 50, 100].map((n: any) => (
+                      {[10,25,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -146,7 +146,7 @@ export default function pages_panel_module_dev_index(props: any) {
                               className="h-4 w-4 rounded border-border"
                             />
                             <i
-                              className={`ti ${a.icon ?? "ti-dots"} text-base text-muted-foreground`}
+                              className={`ti ${a.icon??"ti-dots"} text-base text-muted-foreground`}
                             ></i>
                             <span>{a.label}</span>
                           </label>
@@ -160,13 +160,8 @@ export default function pages_panel_module_dev_index(props: any) {
           </ViewSettingsModal>
         </div>
         <div id="module-dev-root">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-xl font-semibold">{md.header.heading}</h2>
-              <p className="text-sm text-muted-foreground">
-                {md.header.subheading}
-              </p>
-            </div>
+          <div className="contents">
+
             <div className="flex shrink-0 items-center gap-2">
               <button
                 id="md-refresh"
@@ -210,9 +205,7 @@ export default function pages_panel_module_dev_index(props: any) {
 
           {/** Mis módulos */}
           <section id="md-modules-section" className="mb-5 min-w-0">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">{md.table.title}</h3>
-            </div>
+
             <DataTable
               scopedPreferences={true}
               i18n={dataTableI18n}
@@ -266,32 +259,20 @@ export default function pages_panel_module_dev_index(props: any) {
       </PanelLayout>
 
       {/** Detalle del módulo: estado + timeline de eventos de revisión */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-md-detail"
         className="w-full max-w-2xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <h3
-              id="md-detail-title"
-              className="truncate font-mono text-base font-semibold"
-            ></h3>
-            <span id="md-detail-status" className="shrink-0"></span>
-          </div>
-          <button
-            id="md-detail-x"
-            className="text-muted-foreground hover:text-foreground"
+        <ModalNavbar title={<></>} titleId="md-detail-title" closeId="md-detail-x" onClose={() => (document.getElementById("dlg-md-detail") as HTMLDialogElement | null)?.close()} ></ModalNavbar>
+        <div data-aux-body>
+          <div
+            id="md-detail-body"
+            className="max-h-[60vh] overflow-y-auto px-6 py-4"
           >
-            <i className="ti ti-x text-lg"></i>
-          </button>
+            <p className="text-sm text-muted-foreground">{md.events.loading}</p>
+          </div>
         </div>
-        <div
-          id="md-detail-body"
-          className="max-h-[60vh] overflow-y-auto px-6 py-4"
-        >
-          <p className="text-sm text-muted-foreground">{md.events.loading}</p>
-        </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="md-detail-close"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -302,7 +283,7 @@ export default function pages_panel_module_dev_index(props: any) {
       </dialog>
 
       {/** Enviar / Reenviar (pide la URL del PR) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-md-pr"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -311,31 +292,33 @@ export default function pages_panel_module_dev_index(props: any) {
           titleId="md-pr-title"
           closeId="md-pr-x"
         />
-        <div className="px-6 py-4">
-          <p
-            className="mb-3 font-mono text-xs text-muted-foreground"
-            id="md-pr-code"
-          ></p>
-          <label
-            htmlFor="md-pr-url"
-            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-          >
-            {md.modals.prUrlLabel}
-          </label>
-          <input
-            id="md-pr-url"
-            type="url"
-            spellCheck="false"
-            autoComplete="off"
-            placeholder={md.modals.prUrlPlaceholder}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p
-            id="md-pr-error"
-            className="mt-2 hidden text-xs text-destructive"
-          ></p>
+        <div data-aux-body>
+          <div className="px-6 py-4">
+            <p
+              className="mb-3 font-mono text-xs text-muted-foreground"
+              id="md-pr-code"
+            ></p>
+            <label
+              htmlFor="md-pr-url"
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            >
+              {md.modals.prUrlLabel}
+            </label>
+            <input
+              id="md-pr-url"
+              type="url"
+              spellCheck="false"
+              autoComplete="off"
+              placeholder={md.modals.prUrlPlaceholder}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p
+              id="md-pr-error"
+              className="mt-2 hidden text-xs text-destructive"
+            ></p>
+          </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="md-pr-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -352,7 +335,7 @@ export default function pages_panel_module_dev_index(props: any) {
       </dialog>
 
       {/** Confirmación (despublicar / reactivar) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-md-confirm"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -361,10 +344,12 @@ export default function pages_panel_module_dev_index(props: any) {
           titleId="md-confirm-title"
           closeId="md-confirm-x"
         />
-        <div className="px-6 py-4">
-          <p id="md-confirm-body" className="text-sm text-muted-foreground"></p>
+        <div data-aux-body>
+          <div className="px-6 py-4">
+            <p id="md-confirm-body" className="text-sm text-muted-foreground"></p>
+          </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="md-confirm-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -381,16 +366,18 @@ export default function pages_panel_module_dev_index(props: any) {
       </dialog>
 
       {/** Resultado (tests / validación / instalación preview) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-md-result"
         className="w-full max-w-2xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <ModalNavbar title="" titleId="md-result-title" closeId="md-result-x" />
-        <div
-          id="md-result-body"
-          className="max-h-[60vh] overflow-y-auto px-6 py-4"
-        ></div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-body>
+          <div
+            id="md-result-body"
+            className="max-h-[60vh] overflow-y-auto px-6 py-4"
+          ></div>
+        </div>
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="md-result-close"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"

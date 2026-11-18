@@ -2,6 +2,7 @@
 // Copyright (C) 2026 LUXISOFT
 import * as React from "react";
 import { createPortal } from "react-dom";
+import { TopbarItem } from "@/components/workspace/topbar-items";
 import { initialWindow, windowAtPage, pageWindowLabels } from "@/lib/page-window";
 import { DATATABLE_EVENTS } from "@/lib/datatable-events";
 import {
@@ -72,12 +73,17 @@ export function DataTable({
   valueBadges = EMPTY_VALUE_BADGES,
   pageSizeOptions: propPageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   renderRowActions,
+  onRowAction,
   renderCell,
   selectable = true,
   i18n,
   externalPagination = false,
   serverQuery: propServerQuery = false,
   settingsButtonContainer,
+  toolbarContainer,
+  toolbarTargets,
+  layout = "default",
+  paginationCenter,
   pageWindowSource,
 }: DataTableProps) {
   const tableRoot = React.useRef<HTMLDivElement>(null);
@@ -147,8 +153,7 @@ export function DataTable({
     dialog.addEventListener("close", onClose);
     return () => dialog.removeEventListener("close", onClose);
   }, []);
-  const [openActions, setOpenActions] = React.useState<{ rowId: string; trigger: HTMLElement; rect: DOMRect; container: HTMLElement } | null>(null);
-  const openActionsRowId = openActions?.rowId ?? null;
+  const [openActions, setOpenActions] = React.useState<{ rowId: string; trigger: HTMLElement; point: {clientX:number;clientY:number}; keyboard: boolean } | null>(null);
   // Loading = no data delivered yet. The page's vanilla script fetches the
   // dataset (an /api → backend → SSH round trip) and pushes it via the
   // `lxp:data-table:set-data` event. Until then we show a skeleton instead of
@@ -331,18 +336,24 @@ export function DataTable({
 
   const tanstackColumns = useTanstackColumns({
     columns,
-    rowActions: effectiveRowActions,
     tableId,
-    openActionsRowId,
     valueBadgesMap,
-    renderRowActions,
     renderCell,
     selectable,
     resolvedQuickActions,
     tt,
-    setOpenActions,
   });
 
+  const actionsForRow = (row: RowData) => effectiveRowActions.filter(action => !action.visibleWhen || row[action.visibleWhen.field] === action.visibleWhen.equals);
+  const openRowMenu = (event: React.MouseEvent<HTMLTableRowElement> | React.KeyboardEvent<HTMLTableRowElement>, rowId: string, row: RowData) => {
+    if ((event.target as Element).closest("input:not([type=checkbox]), textarea, [contenteditable=true]")) return;
+    if (!actionsForRow(row).length && !renderRowActions) return;
+    event.preventDefault(); event.stopPropagation();
+    const trigger=event.currentTarget, rect=trigger.getBoundingClientRect();
+    const point="clientX" in event && (event.clientX || event.clientY) ? {clientX:event.clientX,clientY:event.clientY} : {clientX:rect.left+12,clientY:rect.top+rect.height/2};
+    setOpenActions({rowId,trigger,point,keyboard:!("clientX" in event)});
+  };
+  React.useEffect(() => { setOpenActions(null); }, [rows, sorting, deferredFilterState, pagination.pageIndex, pagination.pageSize, effectiveRowActions]);
   const table = useReactTable({
     manualSorting: serverQuery,
     manualPagination: legacyExternal,
@@ -504,11 +515,11 @@ export function DataTable({
     <i className="ti ti-tool text-base" />
   </button>;
 
-  return (
-    <div className="space-y-4" ref={tableRoot} data-table-id={tableId} data-loaded-pages={legacyExternal ? undefined : totalPages} data-total-rows={filteredCount} aria-busy={source?.loading || undefined}>
-      <div className="flex flex-row flex-wrap items-center gap-2">
+  const toolbar = (
+      <div data-data-table-toolbar={tableId} hidden={!!toolbarTargets} className="flex w-full min-w-0 flex-row flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {filters.map((filter) => (
+          {filters.map((filter) => {
+            const field = (
             <div
               key={filter.id}
               className={filter.type === "text" ? "min-w-0 flex-1" : "shrink-0"}
@@ -516,6 +527,7 @@ export function DataTable({
               {filter.type === "select" ? (
                 <select
                   className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                  aria-label={filter.label}
                   value={filterState[filter.id] ?? ""}
                   onChange={(event) => updateFilter(filter.id, event.target.value)}
                 >
@@ -532,18 +544,23 @@ export function DataTable({
                   <input
                     className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground"
                     placeholder={filter.label}
+                    aria-label={filter.label}
                     value={filterState[filter.id] ?? ""}
                     onChange={(event) => updateFilter(filter.id, event.target.value)}
                   />
                 </div>
               )}
             </div>
-          ))}
+            );
+            const destination = toolbarTargets?.[filter.type === "text" ? "search" : "filters"];
+            return destination ? <TopbarItem key={filter.id} target={destination}>{field}</TopbarItem> : React.cloneElement(field, { key: filter.id });
+          })}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {selectedRows.length > 0
-            ? resolvedQuickActions.map((action) => (
+            ? resolvedQuickActions.map((action) => {
+                const button = (
                 <button
                   key={action.id}
                   type="button"
@@ -564,15 +581,22 @@ export function DataTable({
                 >
                   <i className={`ti ${action.icon ?? "ti-bolt"} text-base`} />
                 </button>
-              ))
+                );
+                return toolbarTargets?.actions ? <TopbarItem key={action.id} target={toolbarTargets.actions}>{button}</TopbarItem> : React.cloneElement(button, { key: action.id });
+              })
             : null}
 
-          {settingsButtonContainer ? createPortal(settingsButton, settingsButtonContainer) : settingsButton}
+          {toolbarTargets?.tools && !settingsButtonContainer ? <TopbarItem target={toolbarTargets.tools}>{settingsButton}</TopbarItem> : settingsButtonContainer ? createPortal(settingsButton, settingsButtonContainer) : settingsButton}
         </div>
       </div>
+  );
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="overflow-x-auto">
+  return (
+    <div data-table-layout={layout} className="space-y-4" ref={tableRoot} data-table-id={tableId} data-loaded-pages={legacyExternal ? undefined : totalPages} data-total-rows={filteredCount} aria-busy={source?.loading || undefined}>
+      {toolbarTargets ? toolbar : toolbarContainer ? createPortal(toolbar, toolbarContainer) : toolbar}
+
+      <div data-table-viewport className="overflow-hidden rounded-xl border border-border bg-card">
+        <div data-table-scroll className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -604,7 +628,11 @@ export function DataTable({
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="group border-b border-border last:border-0 hover:bg-muted/20">
+                  <tr key={row.id} tabIndex={actionsForRow(row.original).length || renderRowActions ? 0 : undefined}
+                    onContextMenu={event => openRowMenu(event,row.id,row.original)}
+                    onKeyDown={event => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) openRowMenu(event,row.id,row.original); }}
+                    data-context-active={openActions?.rowId === row.id || undefined}
+                    className="group border-b border-border last:border-0 hover:bg-muted/20 focus-visible:outline-primary">
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className={`px-4 py-3 ${cell.column.id === "_actions" ? "sticky right-0 z-10 bg-card text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.18)] group-hover:bg-[color-mix(in_srgb,var(--muted)_20%,var(--card))]" : ""}`}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -643,7 +671,7 @@ export function DataTable({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div data-table-pagination className={paginationCenter ? "lxp-table-pagination-with-summary" : "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"}>
         <p className="text-xs text-muted-foreground">
           {legacyExternal
             ? (extPage?.info ?? "")
@@ -652,7 +680,9 @@ export function DataTable({
               : dtFormat(tt.summary, { shown: Math.min(filteredCount, pagination.pageSize), pageSize: pagination.pageSize, total: filteredCount })}
         </p>
 
-        <div className="flex items-center gap-2">
+        {paginationCenter}
+
+        <div className="flex items-center gap-2" data-table-page-buttons>
           {legacyExternal ? (
             <>
               <button
@@ -725,9 +755,10 @@ export function DataTable({
 
       {openActions ? (
         <RowActionsMenu
+          point={openActions.point}
+          customContent={renderRowActions?.(table.getRowModel().rows.find(row => row.id === openActions.rowId)?.original ?? {})}
           trigger={openActions.trigger}
-          initialRect={openActions.rect}
-          container={openActions.container}
+          focusFirst={openActions.keyboard}
           onClose={() => setOpenActions(null)}
           actions={effectiveRowActions.filter((action) => {
             if (!action.visibleWhen) return true;
@@ -736,7 +767,9 @@ export function DataTable({
           })}
           onSelect={(actionId) => {
             const rowModel = table.getRowModel().rows.find((r) => r.id === openActions.rowId);
-            emit(
+            if (!rowModel || !actionsForRow(rowModel.original).some(action => action.id === actionId)) { setOpenActions(null); return; }
+            if (onRowAction && rowModel) onRowAction(actionId, rowModel.original);
+            else emit(
               new CustomEvent(DATATABLE_EVENTS.ROW_ACTION, {
                 detail: { tableId, actionId, row: rowModel?.original ?? null },
               }),

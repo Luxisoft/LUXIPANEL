@@ -1,4 +1,6 @@
+import { TopbarItem } from "./topbar-items";
 // SPDX-License-Identifier: AGPL-3.0-only
+import * as React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
@@ -303,7 +305,7 @@ export default function CodebaseGraphView() {
   };
   const controls = (
     <div className="lxp-codebase-header-controls">
-      <label className="lxp-codebase-header-field">
+      <label data-graph-topbar-region="filters" className="lxp-codebase-header-field">
         <span>{t.project}</span>
         <select
           className="lxp-codebase-header-select"
@@ -317,7 +319,7 @@ export default function CodebaseGraphView() {
           ))}
         </select>
       </label>
-      <label className="lxp-codebase-header-field">
+      <label data-graph-topbar-region="filters" className="lxp-codebase-header-field">
         <span>{t.indexation}</span>
         <select
           className="lxp-codebase-header-select"
@@ -335,7 +337,7 @@ export default function CodebaseGraphView() {
           ))}
         </select>
       </label>
-      <label className="lxp-codebase-header-field lxp-codebase-header-search">
+      <label data-graph-topbar-region="search" className="lxp-codebase-header-field lxp-codebase-header-search">
         <span className="sr-only">{t.querySymbolPattern}</span>
         <input
           type="search"
@@ -347,6 +349,7 @@ export default function CodebaseGraphView() {
         />
       </label>
       <button
+        data-graph-topbar-region="actions"
         className="lxp-codebase-header-button"
         type="button"
         disabled={!project || busy}
@@ -357,6 +360,7 @@ export default function CodebaseGraphView() {
         <i className={`ti ti-refresh ${busy ? "animate-spin" : ""}`} aria-hidden="true" />
       </button>
       <button
+        data-graph-topbar-region="actions"
         className="lxp-codebase-header-button"
         type="button"
         aria-pressed={tools}
@@ -366,10 +370,18 @@ export default function CodebaseGraphView() {
       </button>
     </div>
   );
+  const regions = headerTarget?.closest(".lxp-workspace-quick-drawer");
+  const separatedControls = headerTarget && regions?.querySelector("[data-module-header-search-slot]")
+    ? React.Children.map(controls.props.children, (child) => {
+        if (!React.isValidElement<Record<string, string>>(child)) return child;
+        const region = child.props["data-graph-topbar-region"];
+        const target = regions.querySelector<HTMLElement>(`[data-module-header-${region === "actions" ? "native-actions" : region}-slot]`);
+        return target ? <TopbarItem target={target}>{child}</TopbarItem> : child;
+      }) : null;
   return (
     <div className="flex h-full min-h-[500px] flex-col bg-card">
       {headerTarget
-        ? createPortal(controls, headerTarget)
+        ? separatedControls ?? createPortal(controls, headerTarget)
         : <div className="border-b border-border p-3">{controls}</div>}
       {error && (
         <p role="alert" className="p-3 text-sm text-destructive">

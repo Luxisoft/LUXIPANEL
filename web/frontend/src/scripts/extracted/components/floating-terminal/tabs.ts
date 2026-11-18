@@ -2,7 +2,6 @@
 import { S, sessions, escapeHtml } from "./state";
 import { I18N, tI18n } from "./i18n";
 import { openPrompt } from "@/lib/confirm";
-import { FILES_CURRENT_PATH_KEY } from "../../pages/panel/files/state";
 import { createTerminal, getModeInitialCommand, syncLoadingOverlay } from "./terminal";
 import { refreshStartupCli } from "./startup";
 import { setStatus, emitTerminalCwd } from "./terminal-io";
@@ -134,8 +133,7 @@ function switchTab(tabId: number) {
       if (!await refreshStartupCli() || sessions.size > 0) return;
       S.tabCount++;
       const newId = S.tabCount;
-      const filesPath = (window as any).__filesCurrentPath || sessionStorage.getItem(FILES_CURRENT_PATH_KEY) || "/";
-      createTerminal(newId, { cdOnConnect: filesPath, initialCommand: getModeInitialCommand() });
+      createTerminal(newId, { initialCommand: getModeInitialCommand() });
       document.getElementById("tabs-container")?.appendChild(renderTab(newId));
       switchTab(newId);
     }

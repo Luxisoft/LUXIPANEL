@@ -17,7 +17,7 @@ import {
  * masked preview reaches the browser.
  */
 import PanelLayout from "../module-frame";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import ModalNavbar from "./components_ui_ModalNavbar";
 import {
@@ -32,16 +32,16 @@ import {
 } from "@/config/tables/cloudflare-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_cloudflare_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["cloudflare", "settings", "components"]);
-  const cfTables: any = t.cloudflare;
-  const dataTableI18n = (t.components as any).dataTable;
-  const cfPageSizes = [10, 25, 50, 100];
-  const cfSettingsTables = [
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["cloudflare","settings","components"]);
+  const cfTables: any=t.cloudflare;
+  const dataTableI18n=(t.components as any).dataTable;
+  const cfPageSizes=[10,25,50,100];
+  const cfSettingsTables=[
     {
       id: "cf-dns-table",
       nav: "DNS",
@@ -55,12 +55,12 @@ export default function pages_panel_cloudflare_index(props: any) {
       actions: buildCfAccessRowActions(cfTables),
     },
   ];
-  const cfView = Astro.url.searchParams.get("workspaceView");
-  const isolatedCfView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    !Astro.url.searchParams.has("settingsOverlay") &&
-    ["dns", "cache", "security", "access", "config"].includes(cfView ?? "");
-  const showCfView = (view: string) => !isolatedCfView || cfView === view;
+  const cfView=Astro.url.searchParams.get("workspaceView");
+  const isolatedCfView=
+    Astro.url.searchParams.get("embed")==="1"&&
+    !Astro.url.searchParams.has("settingsOverlay")&&
+    ["dns","cache","security","access","config"].includes(cfView??"");
+  const showCfView=(view: string) => !isolatedCfView||cfView===view;
 
   return (
     <Fragment>
@@ -75,13 +75,13 @@ export default function pages_panel_cloudflare_index(props: any) {
           >
             <div className="flex h-full min-h-0 w-full @container">
               <nav className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-muted/20 p-2 @xl:w-52">
-                {cfSettingsTables.map((tbl: any, i: number) => (
+                {cfSettingsTables.map((tbl: any,i: number) => (
                   <Fragment>
                     <button
                       type="button"
                       data-cf-settings-nav={tbl.id}
                       title={tbl.nav}
-                      className={`flex items-center justify-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-200 ease-out @xl:justify-start ${i === 0 ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+                      className={`flex items-center justify-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-200 ease-out @xl:justify-start ${i===0? "bg-primary/10 text-primary":"text-muted-foreground hover:bg-accent hover:text-foreground"}`}
                     >
                       <i
                         className={`ti ${tbl.icon} shrink-0 text-lg`}
@@ -95,11 +95,11 @@ export default function pages_panel_cloudflare_index(props: any) {
                 ))}
               </nav>
               <div className="min-w-0 flex-1 overflow-y-auto px-5 py-5">
-                {cfSettingsTables.map((tbl: any, i: number) => (
+                {cfSettingsTables.map((tbl: any,i: number) => (
                   <Fragment>
                     <section
                       data-cf-view={tbl.id}
-                      className={i === 0 ? "space-y-6" : "hidden space-y-6"}
+                      className={i===0? "space-y-6":"hidden space-y-6"}
                     >
                       <div className="space-y-2.5">
                         <h3 className="text-sm font-semibold">
@@ -123,7 +123,7 @@ export default function pages_panel_cloudflare_index(props: any) {
                           ))}
                         </div>
                       </div>
-                      {tbl.actions.length > 0 && (
+                      {tbl.actions.length>0&&(
                         <Fragment>
                           <div className="space-y-2.5">
                             <h3 className="text-sm font-semibold">
@@ -144,7 +144,7 @@ export default function pages_panel_cloudflare_index(props: any) {
                                       className="h-4 w-4 rounded border-border"
                                     />
                                     <i
-                                      className={`ti ${a.icon ?? "ti-dots"} text-base text-muted-foreground`}
+                                      className={`ti ${a.icon??"ti-dots"} text-base text-muted-foreground`}
                                     ></i>
                                     <span>{a.label}</span>
                                   </label>
@@ -187,15 +187,6 @@ export default function pages_panel_cloudflare_index(props: any) {
           </ViewSettingsModal>
         </div>
 
-        <div className="mb-5 flex flex-col gap-1">
-          <h2 className="text-xl font-semibold">
-            {t.cloudflare.header.heading}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {t.cloudflare.header.subheading}
-          </p>
-        </div>
-
         {/** No-token notice (visible only while no API token is configured) */}
         <div
           id="cf-no-token"
@@ -226,7 +217,7 @@ export default function pages_panel_cloudflare_index(props: any) {
             <option value="">{t.cloudflare.zones.select}</option>
           </select>
           <span
-            id="cf-zone-status"
+            id="cf-zone-status" data-module-topbar-region="controls"
             className="hidden items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium"
           >
             <span className="text-muted-foreground">
@@ -235,7 +226,7 @@ export default function pages_panel_cloudflare_index(props: any) {
             <span id="cf-zone-status-val"></span>
           </span>
           <span
-            id="cf-zone-plan"
+            id="cf-zone-plan" data-module-topbar-region="controls"
             className="hidden items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium"
           >
             <span className="text-muted-foreground">
@@ -245,7 +236,7 @@ export default function pages_panel_cloudflare_index(props: any) {
           </span>
         </div>
         <p
-          id="cf-zone-health"
+          id="cf-zone-health" data-module-topbar-region="controls"
           className="mb-4 text-xs text-muted-foreground"
           role="status"
         ></p>
@@ -257,7 +248,7 @@ export default function pages_panel_cloudflare_index(props: any) {
               className={
                 isolatedCfView
                   ? "sr-only"
-                  : "flex flex-wrap gap-1 rounded-lg bg-muted p-0.5 text-xs"
+                  :"flex flex-wrap gap-1 rounded-lg bg-muted p-0.5 text-xs"
               }
             >
               <button
@@ -294,13 +285,11 @@ export default function pages_panel_cloudflare_index(props: any) {
           </div>
 
           {/** DNS tab */}
-          {showCfView("dns") && (
+          {showCfView("dns")&&(
             <Fragment>
-              <div id="cf-pane-dns" className="p-4">
+              <div id="cf-pane-dns" role="tabpanel" className="p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">
-                    {t.cloudflare.dns.title}
-                  </h3>
+
                   <button
                     id="cf-dns-add"
                     className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
@@ -326,12 +315,9 @@ export default function pages_panel_cloudflare_index(props: any) {
           )}
 
           {/** Cache tab */}
-          {showCfView("cache") && (
+          {showCfView("cache")&&(
             <Fragment>
-              <div id="cf-pane-cache" className="hidden flex-col gap-5 p-4">
-                <h3 className="text-sm font-semibold">
-                  {t.cloudflare.cache.title}
-                </h3>
+              <div id="cf-pane-cache" role="tabpanel" className="hidden flex-col gap-5 p-4">
 
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-4">
                   <p className="text-xs text-muted-foreground">
@@ -387,12 +373,9 @@ export default function pages_panel_cloudflare_index(props: any) {
           )}
 
           {/** SSL / Security tab */}
-          {showCfView("security") && (
+          {showCfView("security")&&(
             <Fragment>
-              <div id="cf-pane-security" className="hidden flex-col gap-5 p-4">
-                <h3 className="text-sm font-semibold">
-                  {t.cloudflare.security.title}
-                </h3>
+              <div id="cf-pane-security" role="tabpanel" className="hidden flex-col gap-5 p-4">
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5 rounded-lg border border-border p-4">
@@ -462,13 +445,11 @@ export default function pages_panel_cloudflare_index(props: any) {
           )}
 
           {/** Access rules tab */}
-          {showCfView("access") && (
+          {showCfView("access")&&(
             <Fragment>
-              <div id="cf-pane-access" className="hidden p-4">
+              <div id="cf-pane-access" role="tabpanel" className="hidden p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">
-                    {t.cloudflare.access.title}
-                  </h3>
+
                   <button
                     id="cf-access-add"
                     className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
@@ -494,14 +475,12 @@ export default function pages_panel_cloudflare_index(props: any) {
           )}
 
           {/** Config tab (openclaw-style API token card) */}
-          {showCfView("config") && (
+          {showCfView("config")&&(
             <Fragment>
-              <div id="cf-pane-config" className="hidden p-4">
+              <div id="cf-pane-config" role="tabpanel" className="hidden p-4">
                 <div className="max-w-2xl space-y-5 rounded-xl border border-border bg-card p-6">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      {t.cloudflare.config.title}
-                    </h3>
+
                     <p
                       id="cf-token-state"
                       className="mt-0.5 text-xs text-muted-foreground"
@@ -510,10 +489,8 @@ export default function pages_panel_cloudflare_index(props: any) {
                     </p>
                   </div>
 
-                  
-
                   <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-                    
+
                     <button
                       id="cf-token-test"
                       className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold hover:bg-accent disabled:opacity-50"
@@ -521,7 +498,7 @@ export default function pages_panel_cloudflare_index(props: any) {
                       <i className="ti ti-plug-connected text-base"></i>{" "}
                       {t.cloudflare.config.test}
                     </button>
-                    
+
                   </div>
                   <a
                     href="/panel/settings#cred-cloudflare"
@@ -538,7 +515,7 @@ export default function pages_panel_cloudflare_index(props: any) {
       </PanelLayout>
 
       {/** DNS record editor (create / edit) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-cf-dns"
         className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -547,122 +524,124 @@ export default function pages_panel_cloudflare_index(props: any) {
           titleId="cf-dns-title"
           closeId="cf-dns-x"
         />
-        <div className="space-y-4 px-6 py-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-4">
+            <div className="grid gap-4 @sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="cf-dns-type"
+                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                >
+                  {t.cloudflare.dns.type}
+                </label>
+                <select
+                  id="cf-dns-type"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="A">{t.cloudflare.dns.typeA}</option>
+                  <option value="AAAA">{t.cloudflare.dns.typeAAAA}</option>
+                  <option value="CNAME">{t.cloudflare.dns.typeCNAME}</option>
+                  <option value="TXT">{t.cloudflare.dns.typeTXT}</option>
+                  <option value="MX">{t.cloudflare.dns.typeMX}</option>
+                  <option value="NS">{t.cloudflare.dns.typeNS}</option>
+                </select>
+              </div>
+              <div>
+                <label
+                  htmlFor="cf-dns-ttl"
+                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                >
+                  {t.cloudflare.dns.ttl}
+                </label>
+                <select
+                  id="cf-dns-ttl"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="1">{t.cloudflare.dns.ttlAuto}</option>
+                  <option value="60">{t.cloudflare.dns.ttl60}</option>
+                  <option value="300">{t.cloudflare.dns.ttl300}</option>
+                  <option value="1800">{t.cloudflare.dns.ttl1800}</option>
+                  <option value="3600">{t.cloudflare.dns.ttl3600}</option>
+                  <option value="86400">{t.cloudflare.dns.ttl86400}</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label
-                htmlFor="cf-dns-type"
+                htmlFor="cf-dns-name"
                 className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
               >
-                {t.cloudflare.dns.type}
+                {t.cloudflare.dns.name}
               </label>
-              <select
-                id="cf-dns-type"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="A">{t.cloudflare.dns.typeA}</option>
-                <option value="AAAA">{t.cloudflare.dns.typeAAAA}</option>
-                <option value="CNAME">{t.cloudflare.dns.typeCNAME}</option>
-                <option value="TXT">{t.cloudflare.dns.typeTXT}</option>
-                <option value="MX">{t.cloudflare.dns.typeMX}</option>
-                <option value="NS">{t.cloudflare.dns.typeNS}</option>
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="cf-dns-ttl"
-                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-              >
-                {t.cloudflare.dns.ttl}
-              </label>
-              <select
-                id="cf-dns-ttl"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="1">{t.cloudflare.dns.ttlAuto}</option>
-                <option value="60">{t.cloudflare.dns.ttl60}</option>
-                <option value="300">{t.cloudflare.dns.ttl300}</option>
-                <option value="1800">{t.cloudflare.dns.ttl1800}</option>
-                <option value="3600">{t.cloudflare.dns.ttl3600}</option>
-                <option value="86400">{t.cloudflare.dns.ttl86400}</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="cf-dns-name"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.cloudflare.dns.name}
-            </label>
-            <input
-              id="cf-dns-name"
-              type="text"
-              spellCheck="false"
-              autoComplete="off"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="cf-dns-content"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.cloudflare.dns.content}
-            </label>
-            <div className="flex gap-2">
               <input
-                id="cf-dns-content"
+                id="cf-dns-name"
                 type="text"
                 spellCheck="false"
                 autoComplete="off"
-                className="flex-1 rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <button
-                id="cf-dns-use-ip"
-                type="button"
-                className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
-              >
-                {t.cloudflare.dns.useServerIp}
-              </button>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {t.cloudflare.common.serverIp}:{" "}
-              <span id="cf-server-ip-val" className="font-mono">
-                —
-              </span>
-            </p>
-          </div>
 
-          <div id="cf-dns-priority-wrap" className="hidden">
-            <label
-              htmlFor="cf-dns-priority"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.cloudflare.dns.priority}
+            <div>
+              <label
+                htmlFor="cf-dns-content"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.cloudflare.dns.content}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="cf-dns-content"
+                  type="text"
+                  spellCheck="false"
+                  autoComplete="off"
+                  className="flex-1 rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <button
+                  id="cf-dns-use-ip"
+                  type="button"
+                  className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
+                >
+                  {t.cloudflare.dns.useServerIp}
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t.cloudflare.common.serverIp}:{" "}
+                <span id="cf-server-ip-val" className="font-mono">
+                  —
+                </span>
+              </p>
+            </div>
+
+            <div id="cf-dns-priority-wrap" className="hidden">
+              <label
+                htmlFor="cf-dns-priority"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.cloudflare.dns.priority}
+              </label>
+              <input
+                id="cf-dns-priority"
+                type="number"
+                min="0"
+                max="65535"
+                defaultValue="10"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                id="cf-dns-proxied"
+                type="checkbox"
+                className="h-4 w-4 rounded border-input text-primary"
+              />
+              <span>{t.cloudflare.dns.proxied}</span>
             </label>
-            <input
-              id="cf-dns-priority"
-              type="number"
-              min="0"
-              max="65535"
-              defaultValue="10"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
           </div>
-
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              id="cf-dns-proxied"
-              type="checkbox"
-              className="h-4 w-4 rounded border-input text-primary"
-            />
-            <span>{t.cloudflare.dns.proxied}</span>
-          </label>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="cf-dns-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -680,60 +659,62 @@ export default function pages_panel_cloudflare_index(props: any) {
       </dialog>
 
       {/** Access rule editor (create) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-cf-access"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <ModalNavbar title={t.cloudflare.access.add} closeId="cf-access-x" />
-        <div className="space-y-4 px-6 py-4">
-          <div>
-            <label
-              htmlFor="cf-access-mode"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.cloudflare.access.mode}
-            </label>
-            <select
-              id="cf-access-mode"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="block">{t.cloudflare.access.block}</option>
-              <option value="whitelist">{t.cloudflare.access.allow}</option>
-              <option value="challenge">{t.cloudflare.access.challenge}</option>
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="cf-access-ip"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.cloudflare.access.ip}
-            </label>
-            <input
-              id="cf-access-ip"
-              type="text"
-              spellCheck="false"
-              autoComplete="off"
-              placeholder="203.0.113.10 · 203.0.113.0/24"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="cf-access-notes"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.cloudflare.access.notes}
-            </label>
-            <input
-              id="cf-access-notes"
-              type="text"
-              autoComplete="off"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-4">
+            <div>
+              <label
+                htmlFor="cf-access-mode"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.cloudflare.access.mode}
+              </label>
+              <select
+                id="cf-access-mode"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="block">{t.cloudflare.access.block}</option>
+                <option value="whitelist">{t.cloudflare.access.allow}</option>
+                <option value="challenge">{t.cloudflare.access.challenge}</option>
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="cf-access-ip"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.cloudflare.access.ip}
+              </label>
+              <input
+                id="cf-access-ip"
+                type="text"
+                spellCheck="false"
+                autoComplete="off"
+                placeholder="203.0.113.10 · 203.0.113.0/24"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="cf-access-notes"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.cloudflare.access.notes}
+              </label>
+              <input
+                id="cf-access-notes"
+                type="text"
+                autoComplete="off"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="cf-access-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"

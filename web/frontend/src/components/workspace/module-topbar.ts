@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { hasOwnModuleLayout } from "./module-presentation";
 /** Mirror module navigation into the workspace header. The real controls stay
  * inside their controller scope, so existing listeners, permissions and tab
  * state continue to belong to the module. */
+import { mountModuleTableLayout } from "./module-table-layout";
 import { mountFilesTopbar } from "./files-topbar";
 
 const TAB_SELECTOR = "button.tab-btn, button.mail-main-tab, button.repo-tab-btn, button.cf-tab, button.db-tab, button[role='tab'], button[data-tab], button[data-mail-main-tab]";
@@ -11,10 +13,13 @@ const ACTION_SELECTOR = [
   "button#btn-hosting-plans", "button#btn-backup-now", "button#btn-ban-ip",
   "button#btn-cf-allow", "button#btn-start-audit", "button#btn-ai-ufw",
   "button#btn-ai-fail2ban", "button#btn-refresh-procs",
+  "button#btn-rescan-gw", "button#btn-rescan-discovered", "button#db-export-btn",
+  "button#db-add-record", "button#sql-run", "button#expo-projects-refresh",
+  "button#expo-history-refresh", "button#expo-create-open",
 ].join(", ");
 
 function isModuleControl(button: HTMLButtonElement): boolean {
-  return !button.closest("dialog, [data-view-settings-modal], [data-module-toolbar], [data-module-header-tabs-slot], [data-module-header-actions-slot]");
+  return !button.closest("dialog, [data-view-settings-modal], [data-module-toolbar], [data-module-local-controls], [data-module-header-tabs-slot], [data-module-header-actions-slot]");
 }
 
 function visibleInModule(node: HTMLElement, root: HTMLElement): boolean {
@@ -22,7 +27,7 @@ function visibleInModule(node: HTMLElement, root: HTMLElement): boolean {
     if (element.hidden || element.getAttribute("aria-hidden") === "true" || element.classList.contains("hidden") || element.classList.contains("sr-only")) return false;
     if (element instanceof HTMLDialogElement && !element.open) return false;
     if (element.style.display === "none") return false;
-    if (!element.hasAttribute("data-module-topbar-source") && !element.hasAttribute("data-module-topbar-source-row") && getComputedStyle(element).display === "none") return false;
+    if (!element.hasAttribute("data-module-intro") && !element.hasAttribute("data-module-topbar-source") && !element.hasAttribute("data-module-topbar-source-row") && getComputedStyle(element).display === "none") return false;
   }
   return true;
 }
@@ -72,7 +77,9 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
   const actionsSlot = drawer.querySelector<HTMLElement>("[data-module-header-actions-slot]");
   const controlsSlot = drawer.querySelector<HTMLElement>("[data-module-header-controls-slot]");
   if (!tabsSlot || !actionsSlot) return () => {};
+  if (root.dataset.internalModule === "mail/[id]/inbox") return () => {};
   if (root.dataset.internalModule === "files") return mountFilesTopbar(root, tabsSlot, actionsSlot);
+  const disposeTableLayout = hasOwnModuleLayout(root.dataset.internalModule) ? () => {} : root.querySelector("[data-module-content-root]") ? () => {} : mountModuleTableLayout(root, drawer);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
   let ownsSummary = false;
@@ -100,6 +107,7 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
         terminalHome = document.createComment("terminal-toolbar-home");
         terminalRow.before(terminalHome);
         terminalRow.setAttribute("data-terminal-header-toolbar", "");
+        terminalSidebarTabs = null;
         tabsSlot.replaceChildren(terminalRow);
       }
     }
@@ -130,7 +138,7 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
     const moduleId = root.dataset.internalModule;
     const row = group?.parentElement;
     const sourceRow = moduleId === "firewall" ? group?.closest<HTMLElement>("[data-firewall-tabs-row]")
-      : (moduleId === "users" || moduleId === "mail") ? row : null;
+      : (moduleId === "users" || moduleId === "mail" || (row?.children.length === 1 && row.firstElementChild === group)) ? row : null;
     for (const oldRow of root.querySelectorAll<HTMLElement>("[data-module-topbar-source-row]")) {
       if (oldRow !== sourceRow) oldRow.removeAttribute("data-module-topbar-source-row");
     }
@@ -153,7 +161,9 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
       tabsSlot.replaceChildren(...tabButtons);
     }
     if (focusedTabIndex >= 0) tabButtons[focusedTabIndex]?.focus();
-    tabsSlot.setAttribute("role", !terminalRow && tabButtons.length ? "tablist" : "presentation");
+    const uniform = !!drawer.querySelector("[data-uniform-topbar]");
+    tabsSlot.setAttribute("role", !uniform && !terminalRow && tabButtons.length ? "tablist" : "presentation");
+    if (uniform) tabsSlot.removeAttribute("data-rubber-tabs");
     tabsSlot.onkeydown = (event) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       const index = tabButtons.indexOf(document.activeElement as HTMLButtonElement);
@@ -174,6 +184,7 @@ export function mountModuleTopbar(root: HTMLElement, drawer: HTMLElement): () =>
   desktopTerminal?.addEventListener("change", sync);
   sync();
   return () => {
+    disposeTableLayout();
     disposed = true;
     clearTimeout(timer);
     observer.disconnect();

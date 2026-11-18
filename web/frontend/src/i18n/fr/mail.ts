@@ -6,7 +6,7 @@ import mailPart2 from "./mail/part2";
 
 const mail = { ...mailPart1, ...mailPart2, serverConnection: {
   "title": "Serveur SMTP / IMAP",
-  "intro": "Utilisez les boîtes mail d’un autre serveur enregistré. Ce choix s’applique au Courrier dans cet onglet ; les autres modules gardent leur serveur actif.",
+  "intro": "Utilisez les boîtes d’un autre serveur enregistré. Le choix est mémorisé pour votre utilisateur sur ce panneau ; les autres modules conservent leur serveur actif.",
   "serverLabel": "Serveur de messagerie",
   "hint": "Le serveur doit disposer de Postfix/Dovecot compatibles et de ports de messagerie accessibles. Les boîtes et identifiants sont ceux du serveur choisi.",
   "apply": "Appliquer le serveur",

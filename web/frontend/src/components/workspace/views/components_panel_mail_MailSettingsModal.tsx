@@ -9,7 +9,7 @@ import {
 } from "../view-context";
 
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 export default function components_panel_mail_MailSettingsModal(props: any) {
   const context = useViewContext();
   const slots = splitSlots(props.children);

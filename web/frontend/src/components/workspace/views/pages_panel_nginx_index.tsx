@@ -12,7 +12,7 @@ import {
 // Copyright (C) 2026 LUXISOFT
 /**
  * NGINX Manager — /panel/nginx
- * Tabs: Resumen | Sitios y HTTPS | Tráfico | Rendimiento | Logs | Servicio
+ * Tabs: Resumen | Sitios | Tráfico | Logs
  *
  * Reemplaza al antiguo módulo DNS. El slug de permisos sigue siendo "dns"
  * (activeModule="dns") por compatibilidad de licencia/permisos.
@@ -21,7 +21,7 @@ import PanelLayout from "../module-frame";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import ModuleDepsBanner from "./components_ModuleDepsBanner";
 import ModalNavbar from "./components_ui_ModalNavbar";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import {
   buildNginxSitesColumns,
   buildNginxSitesFilters,
@@ -32,28 +32,29 @@ import {
 } from "@/config/tables/nginx-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_nginx_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["nginx", "deps", "components"]);
-  const dataTableI18n = t.components.dataTable;
-  const nginxTable = t.nginx?.table;
-  const isAdmin = Astro.locals.user?.kind === "admin";
-  const isHosting =
-    Astro.locals.user?.kind === "hosting" ||
-    Astro.locals.user?.tenantId !== undefined;
-  const nginxView = Astro.url.searchParams.get("workspaceView");
-  const isolatedNginxView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    !Astro.url.searchParams.has("settingsOverlay") &&
-    ["overview", "sites", "proxy", "perf", "logs", "status"].includes(
-      nginxView ?? "",
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["nginx","deps","components"]);
+  const dataTableI18n=t.components.dataTable;
+  const nginxTable=t.nginx?.table;
+  const isAdmin=Astro.locals.user?.kind==="admin";
+  const isHosting=
+    Astro.locals.user?.kind==="hosting"||
+    Astro.locals.user?.tenantId!==undefined;
+  const requestedView=Astro.url.searchParams.get("workspaceView");
+  const nginxView=["perf", "performance", "status", "tab-perf", "tab-status"].includes(requestedView || "") ? "overview" : requestedView;
+  const isolatedNginxView=
+    Astro.url.searchParams.get("embed")==="1"&&
+    !Astro.url.searchParams.has("settingsOverlay")&&
+    ["overview","sites","proxy","perf","logs","status"].includes(
+      nginxView??"",
     );
-  const showNginxView = (view: string) =>
-    !isolatedNginxView || nginxView === view;
-  const inputCls =
+  const showNginxView=(view: string) =>
+    !isolatedNginxView||nginxView===view;
+  const inputCls=
     "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
   return (
@@ -61,13 +62,6 @@ export default function pages_panel_nginx_index(props: any) {
       <PanelLayout title={t.nginx.pageTitle} activeModule="dns" titleInActions>
         {/** Configuración del módulo (drawer derecho + menú lateral, estilo Correo/Cron/Files). */}
         <div slot="title-actions" className="flex min-w-0 items-center gap-2">
-          <h1
-            id="panel-topbar-title"
-            data-panel-title
-            className="shrink-0 text-base font-semibold text-foreground"
-          >
-            {t.nginx.pageTitle}
-          </h1>
           <ViewSettingsModal
             id="nginx-settings-modal"
             title={t.nginx.settings.title}
@@ -101,7 +95,7 @@ export default function pages_panel_nginx_index(props: any) {
                     {t.nginx.settings.sites}
                   </span>
                 </button>
-                {isAdmin && (
+                {isAdmin&&(
                   <Fragment>
                     <button
                       type="button"
@@ -245,7 +239,7 @@ export default function pages_panel_nginx_index(props: any) {
                     </label>
                   </div>
                 </div>
-                {isAdmin && (
+                {isAdmin&&(
                   <Fragment>
                     <div
                       id="nginx-settings-upstreams"
@@ -347,17 +341,18 @@ export default function pages_panel_nginx_index(props: any) {
          El page-script lo conduce con initModuleDeps(\\{ module: "nginx" \\}). */}
         <ModuleDepsBanner module="nginx" t={t.deps} />
 
+        <div><button id="nginx-ai-overview" type="button" data-module-topbar-region="tools" className="lxp-workspace-header-action"><i className="ti ti-sparkles" aria-hidden="true" />{t.nginx.overview.diagnose}</button></div>
         {/** Tabs */}
         <div
           id="nginx-tabs"
           role="tablist"
           aria-label={t.nginx.pageTitle}
-          data-admin={isAdmin ? "true" : "false"}
-          data-hosting={isHosting ? "true" : "false"}
+          data-admin={isAdmin? "true":"false"}
+          data-hosting={isHosting? "true":"false"}
           className={
             isolatedNginxView
               ? "sr-only"
-              : "mb-6 flex flex-wrap gap-1 rounded-xl border border-border bg-muted/40 p-1 w-fit"
+              :"mb-6 flex flex-wrap gap-1 rounded-xl border border-border bg-muted/40 p-1 w-fit"
           }
         >
           {[
@@ -368,40 +363,26 @@ export default function pages_panel_nginx_index(props: any) {
             },
             {
               id: "tab-sites",
-              label: t.nginx.tabs.sitesHttps,
+              label: t.nginx.tabs.sites,
               icon: "ti-server",
             },
             ...(isAdmin
               ? [
-                  {
-                    id: "tab-proxy",
-                    label: t.nginx.tabs.traffic,
-                    icon: "ti-arrows-exchange",
-                  },
-                  {
-                    id: "tab-perf",
-                    label: t.nginx.tabs.performance,
-                    icon: "ti-rocket",
-                  },
-                ]
-              : []),
-            { id: "tab-logs", label: t.nginx.tabs.logs, icon: "ti-file-text" },
-            ...(isAdmin
-              ? [
-                  {
-                    id: "tab-status",
-                    label: t.nginx.tabs.service,
-                    icon: "ti-heartbeat",
-                  },
-                ]
-              : []),
+                {
+                  id: "tab-proxy",
+                  label: t.nginx.tabs.traffic,
+                  icon: "ti-arrows-exchange",
+                },
+              ]
+              :[]),
+            { id: "tab-logs",label: t.nginx.tabs.logs,icon: "ti-file-text" },
           ].map((tab: any) => (
             <Fragment>
               <button
                 id={tab.id}
                 data-tab={tab.id}
                 role="tab"
-                aria-controls={tab.id.replace("tab-", "panel-")}
+                aria-controls={tab.id.replace("tab-","panel-")}
                 aria-selected="false"
                 className="tab-btn flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
@@ -412,139 +393,78 @@ export default function pages_panel_nginx_index(props: any) {
           ))}
         </div>
 
-        {showNginxView("overview") && (
+        {showNginxView("overview")&&(
           <Fragment>
             <section
               id="panel-overview"
               role="tabpanel"
               aria-labelledby="tab-overview"
-              className="tab-panel hidden space-y-5"
+              className="tab-panel hidden nginx-overview"
             >
-              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                      {t.nginx.overview.eyebrow}
-                    </p>
-                    <h2 className="mt-1 text-xl font-semibold">
-                      {t.nginx.overview.heading}
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                      {t.nginx.overview.description}
-                    </p>
-                  </div>
-                  <button
-                    id="nginx-ai-overview"
-                    type="button"
-                    className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20"
-                  >
-                    <i className="ti ti-sparkles mr-1.5" aria-hidden="true"></i>
-                    {t.nginx.overview.diagnose}
-                  </button>
-                </div>
-                <div
-                  id="overview-health"
-                  role="status"
-                  aria-live="polite"
-                  className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-                >
-                  <p className="text-sm text-muted-foreground">
-                    {t.nginx.overview.loading}
-                  </p>
-                </div>
-                <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
-                  <button
-                    id="overview-new-site"
-                    type="button"
-                    className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-                  >
-                    {t.nginx.sites.btnNewSite}
-                  </button>
-                  <button
-                    id="overview-open-sites"
-                    type="button"
-                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
-                  >
-                    {t.nginx.overview.openSites}
-                  </button>
-                  {isAdmin && (
-                    <Fragment>
-                      <button
-                        id="overview-test"
-                        type="button"
-                        className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
-                      >
-                        nginx -t
-                      </button>
-                    </Fragment>
-                  )}
-                </div>
-                <p
-                  id="overview-action-result"
-                  role="status"
-                  className="mt-3 text-xs text-muted-foreground"
-                ></p>
-              </div>
-            </section>
-          </Fragment>
-        )}
+              <div id="overview-health" role="status" aria-live="polite" className="nginx-overview-health">{t.nginx.overview.loading}</div>
 
-        {/** ═══ TAB: SITIOS ═══ */}
-        {showNginxView("sites") && (
-          <Fragment>
-            <div
-              id="panel-sites"
-              role="tabpanel"
-              aria-labelledby="tab-sites"
-              className="tab-panel hidden"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base font-semibold">
-                    {t.nginx.sites.heading}
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t.nginx.sites.descriptionPre}{" "}
-                    <code>/etc/nginx/sites-available</code>
-                    {t.nginx.sites.descriptionMid} <code>nginx -t</code>{" "}
-                    {t.nginx.sites.descriptionPost}
-                  </p>
-                </div>
-                <div className="flex gap-2">
+              <div className={isAdmin ? "nginx-summary-columns nginx-summary-with-admin" : "nginx-summary-columns"}>
+                <div className="nginx-summary-column">
+                  {isAdmin && <section data-nginx-service><div className="rounded-xl border border-border bg-card p-5">
+                <h3 className="text-sm font-semibold mb-3">
+                  {t.nginx.status.serviceControlHeading}
+                </h3>
+                <div className="flex flex-wrap gap-2">
                   <button
-                    id="btn-new-site"
-                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors"
+                    data-svc="start"
+                    className="svc-btn rounded-lg border border-emerald-600/40 px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-500/10"
                   >
-                    <i className="ti ti-plus text-sm"></i>
-                    {t.nginx.sites.btnNewSite}
+                    <i className="ti ti-player-play mr-1"></i>
+                    {t.nginx.status.btnStart}
+                  </button>
+                  <button
+                    data-svc="stop"
+                    className="svc-btn rounded-lg border border-destructive/40 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"
+                  >
+                    <i className="ti ti-player-stop mr-1"></i>
+                    {t.nginx.status.btnStop}
+                  </button>
+                  <button
+                    data-svc="restart"
+                    className="svc-btn rounded-lg border border-amber-600/40 px-3 py-2 text-xs font-medium text-amber-600 hover:bg-amber-500/10"
+                  >
+                    <i className="ti ti-refresh mr-1"></i>
+                    {t.nginx.status.btnRestart}
+                  </button>
+                  <button
+                    data-svc="reload"
+                    className="svc-btn rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
+                  >
+                    <i className="ti ti-reload mr-1"></i>
+                    {t.nginx.status.btnReload}
+                  </button>
+                  <button
+                    data-svc="test"
+                    className="svc-btn rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
+                  >
+                    <i className="ti ti-checkup-list mr-1"></i>nginx -t
                   </button>
                 </div>
-              </div>
-              {/** Puente Cloudflare post-creación: lo puebla index-script1.ts y lo limpia init() */}
-              <div id="nginx-cf-banner"></div>
-              <DataTable
-                i18n={dataTableI18n}
-                tableId="nginx-sites-table"
-                title={t.nginx.sites.tableTitle}
-                columns={buildNginxSitesColumns(nginxTable)}
-                data={[]}
-                filters={buildNginxSitesFilters(nginxTable)}
-                rowActions={buildNginxSitesRowActions(nginxTable)}
-                valueBadges={buildNginxSitesValueBadges(nginxTable)}
-              />
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-border bg-card px-5 py-4">
-                  <h3 className="text-sm font-semibold">
-                    {t.nginx.overview.siteDiagnosis}
-                  </h3>
+                <pre
+                  id="svc-output"
+                  className="mt-3 hidden m-0 max-h-48 overflow-auto rounded-lg bg-muted/50 p-3 text-xs font-mono"
+                ></pre>
+              </div></section>}
+                  <div className="nginx-summary-card">
+                  <div className="nginx-card-heading"><h3 className="text-sm font-semibold">
+                    {t.nginx.tabs.sites}
+                  </h3><div className="flex flex-wrap gap-2">
+                <button id="overview-new-site" type="button" className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">{t.nginx.sites.btnNewSite}</button>
+                <button id="overview-open-sites" type="button" className="rounded-lg border border-border px-3 py-2 text-sm">{t.nginx.overview.openSites}</button>
+              </div></div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t.nginx.overview.siteDiagnosisHelp}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="nginx-site-diagnosis-actions">
                     <select
                       id="nginx-ai-site-select"
                       aria-label={t.nginx.logs.labelSite}
-                      className={inputCls + " min-w-40 flex-1"}
+                      className={inputCls+" min-w-40 flex-1"}
                     ></select>
                     <button
                       id="nginx-ai-site"
@@ -555,7 +475,7 @@ export default function pages_panel_nginx_index(props: any) {
                     </button>
                   </div>
                 </div>
-                <div className="rounded-xl border border-border bg-card px-5 py-4">
+                  <div className="nginx-summary-card">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-semibold">
@@ -565,13 +485,7 @@ export default function pages_panel_nginx_index(props: any) {
                         {t.nginx.ssl.description}
                       </p>
                     </div>
-                    <button
-                      id="btn-enable-https"
-                      type="button"
-                      className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/20"
-                    >
-                      {t.nginx.ssl.btnEnableHttps}
-                    </button>
+
                   </div>
                   <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3">
                     <h4 className="text-sm font-semibold">
@@ -585,7 +499,7 @@ export default function pages_panel_nginx_index(props: any) {
                     >
                       {t.nginx.ssl.renewalChecking}
                     </p>
-                    {isAdmin && (
+                    {isAdmin&&(
                       <Fragment>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
@@ -610,14 +524,216 @@ export default function pages_panel_nginx_index(props: any) {
                       className="hidden mt-3 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs"
                     ></pre>
                   </div>
+                <div className="nginx-card-footer"><button
+                      id="btn-enable-https"
+                      type="button"
+                      className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/20"
+                    >
+                      {t.nginx.ssl.btnEnableHttps}
+                    </button></div></div>
+
+                </div>
+                {isAdmin && <div className="nginx-summary-column"><section data-nginx-performance>
+              <div className="nginx-performance-heading">
+                <h2 className="text-base font-semibold mb-1">
+                  {t.nginx.performance.heading}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t.nginx.performance.descriptionPre}{" "}
+                  <code>conf.d/lxp-performance.conf</code>{" "}
+                  {t.nginx.performance.descriptionMid} <code>nginx.conf</code>
+                  {t.nginx.performance.descriptionPost} <code>nginx -t</code>
+                  {t.nginx.performance.descriptionFinal}
+                </p>
+              </div>
+              <form id="form-perf" className="nginx-performance-form">
+                <div
+                  id="perf-error"
+                  className="hidden lg:col-span-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap"
+                ></div>
+
+                <div className="nginx-performance-fields">
+                  <h3 className="text-sm font-semibold">
+                    {t.nginx.performance.compressionHeading}
+                  </h3>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>{t.nginx.performance.labelGzip}</span>
+                    <input
+                      id="perf-gzip"
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input text-primary"
+                    />
+                  </label>
+                  <div className="space-y-1.5">
+                    <label className="text-sm" htmlFor="perf-gzip-level">
+                      {t.nginx.performance.labelGzipLevel}
+                    </label>
+                    <input
+                      id="perf-gzip-level"
+                      type="number"
+                      min="1"
+                      max="9"
+                      defaultValue="5"
+                      className={inputCls+" w-28"}
+                    />
+                  </div>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>{t.nginx.performance.labelSendfile}</span>
+                    <input
+                      id="perf-sendfile"
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input text-primary"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>{t.nginx.performance.labelOpenFileCache}</span>
+                    <input
+                      id="perf-ofc"
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input text-primary"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    <span>{t.nginx.performance.labelProxyCache}</span>
+                    <input
+                      id="perf-pcache"
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input text-primary"
+                    />
+                  </label>
+                  <div className="space-y-1.5">
+                    <label className="text-sm" htmlFor="perf-cache-days">
+                      {t.nginx.performance.labelCacheDays}
+                    </label>
+                    <input
+                      id="perf-cache-days"
+                      type="number"
+                      min="0"
+                      max="365"
+                      defaultValue="30"
+                      className={inputCls+" w-28"}
+                    />
+                  </div>
+                </div>
+
+                <div className="nginx-performance-fields">
+                  <h3 className="text-sm font-semibold">
+                    {t.nginx.performance.connectionsHeading}
+                  </h3>
+                  <div className="space-y-1.5">
+                    <label className="text-sm" htmlFor="perf-keepalive">
+                      {t.nginx.performance.labelKeepalive}
+                    </label>
+                    <input
+                      id="perf-keepalive"
+                      type="number"
+                      min="0"
+                      max="600"
+                      defaultValue="65"
+                      className={inputCls+" w-28"}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm" htmlFor="perf-workers">
+                      {t.nginx.performance.labelWorkers}
+                    </label>
+                    <input
+                      id="perf-workers"
+                      type="text"
+                      defaultValue="auto"
+                      placeholder={t.nginx.performance.placeholderWorkers}
+                      className={inputCls+" w-40 font-mono"}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm" htmlFor="perf-conns">
+                      {t.nginx.performance.labelWorkerConns}
+                    </label>
+                    <input
+                      id="perf-conns"
+                      type="number"
+                      min="64"
+                      max="65536"
+                      defaultValue="1024"
+                      className={inputCls+" w-40"}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t.nginx.performance.workerConnsNote}
+                  </p>
+
+                </div>
+              <div className="nginx-card-footer"><button
+                    type="submit"
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    {t.nginx.performance.btnApply}
+                  </button></div></form>
+            </section></div>}
+                  {isAdmin && <section data-nginx-global-config><div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="flex items-center justify-between border-b border-border px-5 py-3">
+                  <h3 className="text-sm font-semibold">
+                    {t.nginx.status.globalConfHeading}
+                  </h3>
+                  <button
+                    id="btn-edit-conf"
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    <i className="ti ti-edit mr-1"></i>
+                    {t.nginx.status.btnEditConf}
+                  </button>
+                </div>
+                <pre
+                  id="conf-preview"
+                  className="m-0 max-h-72 overflow-auto p-4 text-xs font-mono text-muted-foreground"
+                >
+                  {t.nginx.status.confLoading}
+                </pre>
+              </div></section>}
+              </div>
+            </section>
+          </Fragment>
+        )}
+
+        {/** ═══ TAB: SITIOS ═══ */}
+        {showNginxView("sites")&&(
+          <Fragment>
+            <div
+              id="panel-sites"
+              role="tabpanel"
+              aria-labelledby="tab-sites"
+              className="tab-panel hidden"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex gap-2">
+                  <button
+                    id="btn-new-site"
+                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors"
+                  >
+                    <i className="ti ti-plus text-sm"></i>
+                    {t.nginx.sites.btnNewSite}
+                  </button>
                 </div>
               </div>
+              {/** Puente Cloudflare post-creación: lo puebla index-script1.ts y lo limpia init() */}
+              <div id="nginx-cf-banner"></div>
+              <DataTable
+                i18n={dataTableI18n}
+                tableId="nginx-sites-table"
+                title={t.nginx.sites.tableTitle}
+                columns={buildNginxSitesColumns(nginxTable)}
+                data={[]}
+                filters={buildNginxSitesFilters(nginxTable)}
+                rowActions={buildNginxSitesRowActions(nginxTable)}
+                valueBadges={buildNginxSitesValueBadges(nginxTable)}
+              />
+
             </div>
           </Fragment>
         )}
 
         {/** ═══ TAB: REVERSE PROXY ═══ */}
-        {showNginxView("proxy") && (
+        {showNginxView("proxy")&&(
           <Fragment>
             <div
               id="panel-proxy"
@@ -650,7 +766,7 @@ export default function pages_panel_nginx_index(props: any) {
                         type="text"
                         required
                         placeholder={t.nginx.placeholders.appDomain}
-                        className={inputCls + " font-mono"}
+                        className={inputCls+" font-mono"}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -754,17 +870,17 @@ export default function pages_panel_nginx_index(props: any) {
         )}
 
         {/** ═══ TAB: LOGS ═══ */}
-        {showNginxView("logs") && (
+        {showNginxView("logs")&&(
           <Fragment>
-            <div id="panel-logs" className="tab-panel hidden">
+            <div id="panel-logs" role="tabpanel" aria-labelledby="tab-logs" className="tab-panel hidden">
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="flex flex-wrap items-end gap-3 border-b border-border px-5 py-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" htmlFor="log-site">
                       {t.nginx.logs.labelSite}
                     </label>
-                    <select id="log-site" className={inputCls + " w-56"}>
-                      {isAdmin && (
+                    <select id="log-site" className={inputCls+" w-56"}>
+                      {isAdmin&&(
                         <Fragment>
                           <option value="">{t.nginx.logs.optionGlobal}</option>
                         </Fragment>
@@ -775,7 +891,7 @@ export default function pages_panel_nginx_index(props: any) {
                     <label className="text-xs font-medium" htmlFor="log-type">
                       {t.nginx.logs.labelType}
                     </label>
-                    <select id="log-type" className={inputCls + " w-36"}>
+                    <select id="log-type" className={inputCls+" w-36"}>
                       <option value="error">error</option>
                       <option value="access">access</option>
                     </select>
@@ -790,7 +906,7 @@ export default function pages_panel_nginx_index(props: any) {
                       defaultValue="200"
                       min="1"
                       max="2000"
-                      className={inputCls + " w-28"}
+                      className={inputCls+" w-28"}
                     />
                   </div>
                   <button
@@ -822,7 +938,7 @@ export default function pages_panel_nginx_index(props: any) {
                 </div>
                 <pre
                   id="log-output"
-                  className="m-0 max-h-[60vh] overflow-auto p-4 text-xs font-mono leading-relaxed"
+                  className="m-0 min-h-0 flex-1 overflow-auto p-4 text-xs font-mono leading-relaxed"
                 >
                   {t.nginx.logs.outputPlaceholder}
                 </pre>
@@ -831,236 +947,10 @@ export default function pages_panel_nginx_index(props: any) {
           </Fragment>
         )}
 
-        {/** ═══ TAB: ESTADO ═══ */}
-        {showNginxView("status") && (
-          <Fragment>
-            <div id="panel-status" className="tab-panel hidden">
-              <div
-                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-5"
-                id="status-cards"
-              >
-                <div className="h-20 animate-pulse rounded-xl bg-muted"></div>
-                <div className="h-20 animate-pulse rounded-xl bg-muted"></div>
-                <div className="h-20 animate-pulse rounded-xl bg-muted"></div>
-                <div className="h-20 animate-pulse rounded-xl bg-muted"></div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card p-5 mb-5">
-                <h3 className="text-sm font-semibold mb-3">
-                  {t.nginx.status.serviceControlHeading}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    data-svc="start"
-                    className="svc-btn rounded-lg border border-emerald-600/40 px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-500/10"
-                  >
-                    <i className="ti ti-player-play mr-1"></i>
-                    {t.nginx.status.btnStart}
-                  </button>
-                  <button
-                    data-svc="stop"
-                    className="svc-btn rounded-lg border border-destructive/40 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"
-                  >
-                    <i className="ti ti-player-stop mr-1"></i>
-                    {t.nginx.status.btnStop}
-                  </button>
-                  <button
-                    data-svc="restart"
-                    className="svc-btn rounded-lg border border-amber-600/40 px-3 py-2 text-xs font-medium text-amber-600 hover:bg-amber-500/10"
-                  >
-                    <i className="ti ti-refresh mr-1"></i>
-                    {t.nginx.status.btnRestart}
-                  </button>
-                  <button
-                    data-svc="reload"
-                    className="svc-btn rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
-                  >
-                    <i className="ti ti-reload mr-1"></i>
-                    {t.nginx.status.btnReload}
-                  </button>
-                  <button
-                    data-svc="test"
-                    className="svc-btn rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
-                  >
-                    <i className="ti ti-checkup-list mr-1"></i>nginx -t
-                  </button>
-                </div>
-                <pre
-                  id="svc-output"
-                  className="mt-3 hidden m-0 max-h-48 overflow-auto rounded-lg bg-muted/50 p-3 text-xs font-mono"
-                ></pre>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className="flex items-center justify-between border-b border-border px-5 py-3">
-                  <h3 className="text-sm font-semibold">
-                    {t.nginx.status.globalConfHeading}
-                  </h3>
-                  <button
-                    id="btn-edit-conf"
-                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    <i className="ti ti-edit mr-1"></i>
-                    {t.nginx.status.btnEditConf}
-                  </button>
-                </div>
-                <pre
-                  id="conf-preview"
-                  className="m-0 max-h-72 overflow-auto p-4 text-xs font-mono text-muted-foreground"
-                >
-                  {t.nginx.status.confLoading}
-                </pre>
-              </div>
-            </div>
-          </Fragment>
-        )}
-
-        {/** ═══ TAB: RENDIMIENTO ═══ */}
-        {showNginxView("perf") && (
-          <Fragment>
-            <div id="panel-perf" className="tab-panel hidden">
-              <div className="mb-4 rounded-xl border border-border bg-muted/30 px-5 py-4">
-                <h2 className="text-base font-semibold mb-1">
-                  {t.nginx.performance.heading}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {t.nginx.performance.descriptionPre}{" "}
-                  <code>conf.d/lxp-performance.conf</code>{" "}
-                  {t.nginx.performance.descriptionMid} <code>nginx.conf</code>
-                  {t.nginx.performance.descriptionPost} <code>nginx -t</code>
-                  {t.nginx.performance.descriptionFinal}
-                </p>
-              </div>
-              <form id="form-perf" className="grid gap-4 lg:grid-cols-2">
-                <div
-                  id="perf-error"
-                  className="hidden lg:col-span-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap"
-                ></div>
-
-                <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                  <h3 className="text-sm font-semibold">
-                    {t.nginx.performance.compressionHeading}
-                  </h3>
-                  <label className="flex items-center justify-between gap-3 text-sm">
-                    <span>{t.nginx.performance.labelGzip}</span>
-                    <input
-                      id="perf-gzip"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-input text-primary"
-                    />
-                  </label>
-                  <div className="space-y-1.5">
-                    <label className="text-sm" htmlFor="perf-gzip-level">
-                      {t.nginx.performance.labelGzipLevel}
-                    </label>
-                    <input
-                      id="perf-gzip-level"
-                      type="number"
-                      min="1"
-                      max="9"
-                      defaultValue="5"
-                      className={inputCls + " w-28"}
-                    />
-                  </div>
-                  <label className="flex items-center justify-between gap-3 text-sm">
-                    <span>{t.nginx.performance.labelSendfile}</span>
-                    <input
-                      id="perf-sendfile"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-input text-primary"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between gap-3 text-sm">
-                    <span>{t.nginx.performance.labelOpenFileCache}</span>
-                    <input
-                      id="perf-ofc"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-input text-primary"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between gap-3 text-sm">
-                    <span>{t.nginx.performance.labelProxyCache}</span>
-                    <input
-                      id="perf-pcache"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-input text-primary"
-                    />
-                  </label>
-                  <div className="space-y-1.5">
-                    <label className="text-sm" htmlFor="perf-cache-days">
-                      {t.nginx.performance.labelCacheDays}
-                    </label>
-                    <input
-                      id="perf-cache-days"
-                      type="number"
-                      min="0"
-                      max="365"
-                      defaultValue="30"
-                      className={inputCls + " w-28"}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                  <h3 className="text-sm font-semibold">
-                    {t.nginx.performance.connectionsHeading}
-                  </h3>
-                  <div className="space-y-1.5">
-                    <label className="text-sm" htmlFor="perf-keepalive">
-                      {t.nginx.performance.labelKeepalive}
-                    </label>
-                    <input
-                      id="perf-keepalive"
-                      type="number"
-                      min="0"
-                      max="600"
-                      defaultValue="65"
-                      className={inputCls + " w-28"}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm" htmlFor="perf-workers">
-                      {t.nginx.performance.labelWorkers}
-                    </label>
-                    <input
-                      id="perf-workers"
-                      type="text"
-                      defaultValue="auto"
-                      placeholder={t.nginx.performance.placeholderWorkers}
-                      className={inputCls + " w-40 font-mono"}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm" htmlFor="perf-conns">
-                      {t.nginx.performance.labelWorkerConns}
-                    </label>
-                    <input
-                      id="perf-conns"
-                      type="number"
-                      min="64"
-                      max="65536"
-                      defaultValue="1024"
-                      className={inputCls + " w-40"}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t.nginx.performance.workerConnsNote}
-                  </p>
-                  <button
-                    type="submit"
-                    className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    {t.nginx.performance.btnApply}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </Fragment>
-        )}
       </PanelLayout>
 
       {/** ── Dialog: Sitio (guiado) ───────────────────────────────────── */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-site"
         className="w-full max-w-xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -1069,145 +959,159 @@ export default function pages_panel_nginx_index(props: any) {
           titleId="site-dialog-title"
           closeId="site-close"
         />
-        <form id="form-site" className="flex flex-col gap-4 px-6 py-5">
-          <div
-            id="site-error"
-            className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-          ></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="site-kind">
-                {t.nginx.siteDialog.labelType}
-              </label>
-              <select
-                id="site-kind"
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
-              >
-                <option value="static">
-                  {t.nginx.siteDialog.optionStatic}
-                </option>
-                <option
-                  value="php"
-                  disabled={
-                    isHosting &&
-                    Astro.locals.user?.hostingPolicy?.runtime &&
-                    !Astro.locals.user?.hostingPolicy?.capabilities?.php
-                  }
+        <form data-aux-form id="form-site" className="flex flex-col gap-4 px-6 py-5">
+          <div data-aux-body>
+
+            <div
+              id="site-error"
+              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+            ></div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="site-kind">
+                  {t.nginx.siteDialog.labelType}
+                </label>
+                <select
+                  id="site-kind"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
                 >
-                  {t.nginx.siteDialog.optionPhp}
-                </option>
-                {isAdmin && (
-                  <Fragment>
-                    <option value="proxy">
-                      {t.nginx.siteDialog.optionProxy}
-                    </option>
-                  </Fragment>
-                )}
-              </select>
+                  <option value="static">
+                    {t.nginx.siteDialog.optionStatic}
+                  </option>
+                  <option
+                    value="php"
+                    disabled={
+                      isHosting&&
+                      Astro.locals.user?.hostingPolicy?.runtime&&
+                      !Astro.locals.user?.hostingPolicy?.capabilities?.php
+                    }
+                  >
+                    {t.nginx.siteDialog.optionPhp}
+                  </option>
+                  {isAdmin&&(
+                    <Fragment>
+                      <option value="proxy">
+                        {t.nginx.siteDialog.optionProxy}
+                      </option>
+                    </Fragment>
+                  )}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="site-domain">
+                  {t.nginx.siteDialog.labelDomain}
+                </label>
+                <input
+                  id="site-domain"
+                  type="text"
+                  required
+                  placeholder={t.nginx.placeholders.domain}
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
             </div>
+
             <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="site-domain">
-                {t.nginx.siteDialog.labelDomain}
+              <label className="text-sm font-medium" htmlFor="site-aliases">
+                {t.nginx.siteDialog.labelAliases}{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({t.nginx.siteDialog.aliasesSuffix})
+                </span>
               </label>
               <input
-                id="site-domain"
+                id="site-aliases"
                 type="text"
-                required
-                placeholder={t.nginx.placeholders.domain}
+                placeholder={t.nginx.placeholders.aliases}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="site-aliases">
-              {t.nginx.siteDialog.labelAliases}{" "}
-              <span className="text-muted-foreground font-normal">
-                ({t.nginx.siteDialog.aliasesSuffix})
-              </span>
-            </label>
-            <input
-              id="site-aliases"
-              type="text"
-              placeholder={t.nginx.placeholders.aliases}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div id="site-root-field" className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="site-root">
-              {t.nginx.siteDialog.labelDocRoot}
-            </label>
-            <input
-              id="site-root"
-              type="text"
-              required={isHosting}
-              placeholder={t.nginx.placeholders.docRoot}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div id="site-php-field" className="space-y-1.5 hidden">
-            <label className="text-sm font-medium" htmlFor="site-php">
-              {t.nginx.siteDialog.labelPhpSocket}
-            </label>
-            <input
-              id="site-php"
-              type="text"
-              defaultValue="unix:/run/php/php-fpm.sock"
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div id="site-proxy-field" className="space-y-1.5 hidden">
-            <label className="text-sm font-medium" htmlFor="site-proxypass">
-              {t.nginx.siteDialog.labelProxyPass}
-            </label>
-            <input
-              id="site-proxypass"
-              type="text"
-              placeholder={t.nginx.siteDialog.placeholderProxyPass}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <label className="flex items-center gap-2 text-sm pt-1">
+
+            <div id="site-root-field" className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="site-root">
+                {t.nginx.siteDialog.labelDocRoot}
+              </label>
               <input
-                id="site-ws"
+                id="site-root"
+                type="text"
+                required={isHosting}
+                placeholder={t.nginx.placeholders.docRoot}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div id="site-php-field" className="space-y-1.5 hidden">
+              <label className="text-sm font-medium" htmlFor="site-php">
+                {t.nginx.siteDialog.labelPhpSocket}
+              </label>
+              <input
+                id="site-php"
+                type="text"
+                defaultValue="unix:/run/php/php-fpm.sock"
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div id="site-proxy-field" className="space-y-1.5 hidden">
+              <label className="text-sm font-medium" htmlFor="site-proxypass">
+                {t.nginx.siteDialog.labelProxyPass}
+              </label>
+              <input
+                id="site-proxypass"
+                type="text"
+                placeholder={t.nginx.siteDialog.placeholderProxyPass}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <label className="flex items-center gap-2 text-sm pt-1">
+                <input
+                  id="site-ws"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-input text-primary"
+                />
+                {t.nginx.siteDialog.labelPassWsHeaders}
+              </label>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                id="site-https"
                 type="checkbox"
                 className="h-4 w-4 rounded border-input text-primary"
               />
-              {t.nginx.siteDialog.labelPassWsHeaders}
+              {t.nginx.siteDialog.labelForceHttps}
             </label>
+
+            <div className={isHosting? "hidden":"space-y-1.5"}>
+              <label className="text-sm font-medium" htmlFor="site-extra">
+                {t.nginx.siteDialog.labelExtraDirectives}{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({t.nginx.siteDialog.extraDirectivesSuffix})
+                </span>
+              </label>
+              <textarea
+                id="site-extra"
+                rows={3}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder={t.nginx.siteDialog.placeholderExtraDirectives}
+              ></textarea>
+            </div>
+
+            <button
+              type="button"
+              id="site-preview-btn"
+              className="self-start rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
+            >
+              {t.nginx.proxy.btnPreview}
+            </button>
+
+            <pre
+              id="site-preview"
+              className="hidden max-h-44 overflow-auto rounded-lg border border-border bg-muted/20 p-3 text-xs font-mono"
+            ></pre>
+
+
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              id="site-https"
-              type="checkbox"
-              className="h-4 w-4 rounded border-input text-primary"
-            />
-            {t.nginx.siteDialog.labelForceHttps}
-          </label>
-          <div className={isHosting ? "hidden" : "space-y-1.5"}>
-            <label className="text-sm font-medium" htmlFor="site-extra">
-              {t.nginx.siteDialog.labelExtraDirectives}{" "}
-              <span className="text-muted-foreground font-normal">
-                ({t.nginx.siteDialog.extraDirectivesSuffix})
-              </span>
-            </label>
-            <textarea
-              id="site-extra"
-              rows={3}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder={t.nginx.siteDialog.placeholderExtraDirectives}
-            ></textarea>
-          </div>
-          <button
-            type="button"
-            id="site-preview-btn"
-            className="self-start rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
-          >
-            {t.nginx.proxy.btnPreview}
-          </button>
-          <pre
-            id="site-preview"
-            className="hidden max-h-44 overflow-auto rounded-lg border border-border bg-muted/20 p-3 text-xs font-mono"
-          ></pre>
-          <div className="flex gap-3 pt-1">
+          <div data-aux-footer className="flex gap-3 pt-1">
             <button
               type="button"
               id="site-cancel"
@@ -1221,7 +1125,7 @@ export default function pages_panel_nginx_index(props: any) {
               className={
                 isHosting
                   ? "hidden"
-                  : "rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+                  :"rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
               }
               title={t.nginx.siteDialog.btnAdvancedTitle}
             >
@@ -1239,7 +1143,7 @@ export default function pages_panel_nginx_index(props: any) {
       </dialog>
 
       {/** ── Dialog: renovación del certificado de un sitio ─────────── */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-site-renewal"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -1247,120 +1151,127 @@ export default function pages_panel_nginx_index(props: any) {
           title={t.nginx.ssl.siteRenewalTitle}
           closeId="site-renewal-close"
         />
-        <div className="space-y-4 px-6 py-5">
-          <div>
-            <p
-              id="site-renewal-name"
-              className="font-mono text-sm font-semibold"
-            ></p>
-            <p
-              id="site-renewal-detail"
-              role="status"
-              aria-live="polite"
-              className="mt-2 text-sm text-muted-foreground"
-            ></p>
-            <p
-              id="site-renewal-scope-help"
-              className="mt-2 text-xs text-muted-foreground"
-            >
-              {t.nginx.ssl.siteRenewalScopeHelp}
-            </p>
-          </div>
-          <div
-            id="site-renewal-lineages"
-            className="hidden rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs break-all"
-          ></div>
-          <pre
-            id="site-renewal-output"
-            className="hidden max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs"
-          ></pre>
-          <div className="flex flex-wrap gap-2">
-            <button
-              id="site-renewal-enable-https"
-              type="button"
-              className="hidden rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              {t.nginx.ssl.btnEnableHttps}
-            </button>
-            {isAdmin && (
-              <Fragment>
-                <button
-                  id="site-renewal-configure"
-                  type="button"
-                  className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  {t.nginx.ssl.renewalConfigure}
-                </button>
-              </Fragment>
-            )}
-            {isAdmin && (
-              <Fragment>
-                <button
-                  id="site-renewal-test"
-                  type="button"
-                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
-                >
-                  {t.nginx.ssl.siteRenewalTestAll}
-                </button>
-              </Fragment>
-            )}
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-5">
+            <div>
+              <p
+                id="site-renewal-name"
+                className="font-mono text-sm font-semibold"
+              ></p>
+              <p
+                id="site-renewal-detail"
+                role="status"
+                aria-live="polite"
+                className="mt-2 text-sm text-muted-foreground"
+              ></p>
+              <p
+                id="site-renewal-scope-help"
+                className="mt-2 text-xs text-muted-foreground"
+              >
+                {t.nginx.ssl.siteRenewalScopeHelp}
+              </p>
+            </div>
+            <div
+              id="site-renewal-lineages"
+              className="hidden rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs break-all"
+            ></div>
+            <pre
+              id="site-renewal-output"
+              className="hidden max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs"
+            ></pre>
+            <div className="flex flex-wrap gap-2">
+              <button
+                id="site-renewal-enable-https"
+                type="button"
+                className="hidden rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                {t.nginx.ssl.btnEnableHttps}
+              </button>
+              {isAdmin&&(
+                <Fragment>
+                  <button
+                    id="site-renewal-configure"
+                    type="button"
+                    className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    {t.nginx.ssl.renewalConfigure}
+                  </button>
+                </Fragment>
+              )}
+              {isAdmin&&(
+                <Fragment>
+                  <button
+                    id="site-renewal-test"
+                    type="button"
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+                  >
+                    {t.nginx.ssl.siteRenewalTestAll}
+                  </button>
+                </Fragment>
+              )}
+            </div>
           </div>
         </div>
+
       </dialog>
 
       {/** ── Dialog: Editor avanzado (Monaco, reutiliza el de Files) ──── */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-adv"
         className="h-[96dvh] w-[98vw] max-w-none rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
-        <div className="flex h-full flex-col">
-          <ModalNavbar
-            title={t.nginx.advDialog.titleEdit}
-            titleId="adv-title"
-            closeId="adv-close"
-          />
-          <div className="flex min-h-0 flex-1 flex-col px-6 py-4">
-            <div id="adv-name-row" className="mb-3 shrink-0 space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="adv-name">
-                {t.nginx.advDialog.labelFileName}
-              </label>
-              <input
-                id="adv-name"
-                type="text"
-                placeholder={t.nginx.placeholders.domain}
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none"
-              />
-            </div>
-            <div
-              id="adv-error"
-              className="hidden mb-3 shrink-0 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap"
-            ></div>
-            <div
-              id="nginx-adv-host"
-              className="min-h-0 flex-1 rounded-lg border border-border overflow-hidden"
-            ></div>
-            <div className="flex shrink-0 gap-3 pt-4">
-              <button
-                type="button"
-                id="adv-cancel"
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
-              >
-                {t.nginx.advDialog.btnCancel}
-              </button>
-              <button
-                type="button"
-                id="adv-save"
-                className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                {t.nginx.advDialog.btnSave}
-              </button>
+
+        <div data-aux-body>
+          <div className="flex h-full flex-col">
+            <ModalNavbar
+              title={t.nginx.advDialog.titleEdit}
+              titleId="adv-title"
+              closeId="adv-close"
+            />
+            <div className="flex min-h-0 flex-1 flex-col px-6 py-4">
+              <div id="adv-name-row" className="mb-3 shrink-0 space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="adv-name">
+                  {t.nginx.advDialog.labelFileName}
+                </label>
+                <input
+                  id="adv-name"
+                  type="text"
+                  placeholder={t.nginx.placeholders.domain}
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div
+                id="adv-error"
+                className="hidden mb-3 shrink-0 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap"
+              ></div>
+              <div
+                id="nginx-adv-host"
+                className="min-h-0 flex-1 rounded-lg border border-border overflow-hidden"
+              ></div>
+              <div className="flex shrink-0 gap-3 pt-4">
+                <button
+                  type="button"
+                  id="adv-cancel"
+                  className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  {t.nginx.advDialog.btnCancel}
+                </button>
+                <button
+                  type="button"
+                  id="adv-save"
+                  className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  {t.nginx.advDialog.btnSave}
+                </button>
+              </div>
             </div>
           </div>
         </div>
+
       </dialog>
 
       {/** ── Dialog: Habilitar HTTPS ──────────────────────────────────── */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-ssl"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -1368,34 +1279,41 @@ export default function pages_panel_nginx_index(props: any) {
           title={t.nginx.httpsDialog.titleEnable}
           closeId="ssl-close"
         />
-        <form id="form-ssl" className="flex flex-col gap-4 px-6 py-5">
-          <div
-            id="ssl-error"
-            className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-          ></div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="ssl-site">
-              {t.nginx.httpsDialog.labelSite}
-            </label>
-            <select
-              id="ssl-site"
-              required
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none"
-            ></select>
+        <form data-aux-form id="form-ssl" className="flex flex-col gap-4 px-6 py-5">
+          <div data-aux-body>
+
+            <div
+              id="ssl-error"
+              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+            ></div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="ssl-site">
+                {t.nginx.httpsDialog.labelSite}
+              </label>
+              <select
+                id="ssl-site"
+                required
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono focus:border-primary focus:outline-none"
+              ></select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="ssl-email">
+                {t.nginx.httpsDialog.labelEmail}
+              </label>
+              <input
+                id="ssl-email"
+                type="email"
+                required
+                placeholder={t.nginx.placeholders.email}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="ssl-email">
-              {t.nginx.httpsDialog.labelEmail}
-            </label>
-            <input
-              id="ssl-email"
-              type="email"
-              required
-              placeholder={t.nginx.placeholders.email}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div className="flex gap-3">
+          <div data-aux-footer className="flex gap-3">
             <button
               type="button"
               id="ssl-cancel"

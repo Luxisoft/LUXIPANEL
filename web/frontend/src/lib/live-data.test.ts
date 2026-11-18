@@ -48,6 +48,20 @@ it("coalesces overlapping resume notifications and stream invalidations",async()
   expect(reload).toHaveBeenCalledTimes(1);
 });
 
+it("keeps drawer lists live without rendering the timestamp and refresh row",async()=>{
+  const root=document.getElementById("list")!, reload=vi.fn(async()=>{});
+  const drawer=document.createElement("div"); drawer.className="lxp-workspace-quick-drawer";
+  const module=document.createElement("section"); module.dataset.internalModule="backups";
+  document.body.append(drawer);drawer.append(module);module.append(root);
+  watchModuleData(["users/system"],reload,root);
+  await vi.advanceTimersByTimeAsync(0);
+  window.dispatchEvent(new CustomEvent("lxp:data:change",{detail:{resources:["users/system"]}}));
+  await vi.advanceTimersByTimeAsync(251);
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(document.querySelector("[data-live-data-status]")).toBeNull();
+  expect(root.querySelector("input")?.value).toBe("unsaved draft");
+});
+
 const freshness=(resource:string,state:string,at=Date.now()/1000)=>window.dispatchEvent(new CustomEvent("lxp:data:freshness",{detail:{resource,ok:state!=="offline",freshness:{version:"v1",state,collectedAt:at,checkedAt:at}}}));
 it("keeps a failed collection visible when another collection succeeds",async()=>{
  document.documentElement.lang="es";

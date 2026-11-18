@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "बंद करें (टर्मिनल सक्रिय रहेंगे)"
   },
   "sidebar": {
-    "tabSnippets": "कोड स्निपेट",
+    "tabSnippets": "सहेजे गए कमांड",
     "tabHistory": "इतिहास",
     "tabConfig": "कॉन्फ़िगरेशन",
     "closePanel": "साइड पैनल बंद करें",
     "closePanelTitle": "पैनल बंद करें"
   },
   "snippets": {
-    "heading": "कोड स्निपेट",
-    "newSnippet": "नया snippet",
-    "searchPlaceholder": "Snippet खोजें...",
-    "searchAria": "Snippets खोजें",
+    "heading": "सहेजे गए कमांड",
+    "newSnippet": "नया कमांड",
+    "searchPlaceholder": "कमांड खोजें...",
+    "searchAria": "सहेजे गए कमांड खोजें",
     "filterByCategoryAria": "श्रेणी के अनुसार फ़िल्टर करें",
     "allCategories": "सभी श्रेणियाँ"
   },

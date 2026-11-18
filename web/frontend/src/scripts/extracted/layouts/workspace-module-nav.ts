@@ -16,15 +16,15 @@ const VIEWS: Record<string, View[]> = {
   firewall: [v("audit", "Auditoría", "Audit", "[data-panel-content] #fw-tab-audit"), v("rules", "Reglas UFW", "UFW rules", "[data-panel-content] #fw-tab-rules"), v("fail2ban", "Fail2ban", "Fail2ban", "[data-panel-content] #fw-tab-fail2ban")],
   bitninja: [v("status", "Estado", "Status", "[data-panel-content] #bitninja-root", "scroll"), v("components", "Componentes", "Components", "[data-panel-content] #bn-components", "scroll"), v("logs", "Registro", "Log", "heading:0", "scroll")],
   mail: [v("emails", "Correos", "Mail", "[data-panel-content] [data-mail-main-tab='emails']"), v("spam-filters", "Antispam", "Spam filters", "[data-panel-content] [data-mail-main-tab='spam-filters']"), v("track-delivery", "Entrega", "Delivery", "[data-panel-content] [data-mail-main-tab='track-delivery']"), v("global-filters", "Filtros", "Filters", "[data-panel-content] [data-mail-main-tab='global-filters']")],
-  dns: [v("overview", "Estado", "Overview", "[data-panel-content] #tab-overview"), v("sites", "Sitios y HTTPS", "Sites and HTTPS", "[data-panel-content] #tab-sites"), v("proxy", "Tráfico", "Traffic", "[data-panel-content] #tab-proxy", undefined, true), v("perf", "Rendimiento", "Performance", "[data-panel-content] #tab-perf", undefined, true), v("logs", "Registros", "Logs", "[data-panel-content] #tab-logs"), v("status", "Servicio", "Service", "[data-panel-content] #tab-status", undefined, true)],
-  nginx: [v("overview", "Estado", "Overview", "[data-panel-content] #tab-overview"), v("sites", "Sitios y HTTPS", "Sites and HTTPS", "[data-panel-content] #tab-sites"), v("proxy", "Tráfico", "Traffic", "[data-panel-content] #tab-proxy", undefined, true), v("perf", "Rendimiento", "Performance", "[data-panel-content] #tab-perf", undefined, true), v("logs", "Registros", "Logs", "[data-panel-content] #tab-logs"), v("status", "Servicio", "Service", "[data-panel-content] #tab-status", undefined, true)],
-  backups: [v("overview", "Estado", "Overview", "[data-panel-content] #backup-summary-panel", "scroll"), v("schedules", "Programaciones", "Schedules", "[data-panel-content] #backup-schedules-panel", "scroll"), v("history", "Historial", "History", "[data-panel-content] #backup-history-panel", "scroll")],
+  dns: [v("overview", "Resumen", "Overview", "[data-panel-content] #tab-overview"), v("sites", "Sitios", "Sites", "[data-panel-content] #tab-sites"), v("proxy", "Tráfico", "Traffic", "[data-panel-content] #tab-proxy", undefined, true), v("logs", "Registros", "Logs", "[data-panel-content] #tab-logs")],
+  nginx: [v("overview", "Resumen", "Overview", "[data-panel-content] #tab-overview"), v("sites", "Sitios", "Sites", "[data-panel-content] #tab-sites"), v("proxy", "Tráfico", "Traffic", "[data-panel-content] #tab-proxy", undefined, true), v("logs", "Registros", "Logs", "[data-panel-content] #tab-logs")],
+  backups: [v("overview", "Estado", "Overview", "[data-panel-content] #module-section-overview"), v("schedules", "Programaciones", "Schedules", "[data-panel-content] #module-section-schedules"), v("history", "Historial", "History", "[data-panel-content] #module-section-history")],
   cron: [v("jobs", "Tareas", "Jobs", "[data-panel-content] #cron-tab-jobs"), v("agents", "Agentes IA", "AI agents", "[data-panel-content] #cron-tab-agents")],
   databases: [v("databases", "Bases de datos", "Databases", "[data-panel-content] #db-databases", "scroll"), v("tables", "Tablas", "Tables", "[data-panel-content] #db-tables", "scroll"), v("console", "Consola SQL", "SQL console", "[data-panel-content] .db-tab[data-tab='console']")],
   obsidian: [v("vaults", "Bóvedas y notas", "Vaults and notes", "[data-panel-content] #obs-toolbar", "scroll"), v("editor", "Editor", "Editor", "[data-panel-content] #obs-editor-pane", "scroll")],
   cloudflare: [v("dns", "DNS", "DNS", "[data-panel-content] .cf-tab[data-tab='dns']"), v("cache", "Caché", "Cache", "[data-panel-content] .cf-tab[data-tab='cache']"), v("security", "Seguridad", "Security", "[data-panel-content] .cf-tab[data-tab='security']"), v("access", "Acceso", "Access", "[data-panel-content] .cf-tab[data-tab='access']"), v("config", "Configuración", "Settings", "[data-panel-content] .cf-tab[data-tab='config']")],
   "server-alerts": [v("prefs", "Preferencias", "Preferences", "[data-panel-content] .tab-btn[data-tab='prefs']"), v("send", "Enviar", "Send", "[data-panel-content] .tab-btn[data-tab='send']"), v("scheduled", "Programadas", "Scheduled", "[data-panel-content] .tab-btn[data-tab='scheduled']"), v("rules", "Reglas", "Rules", "[data-panel-content] .tab-btn[data-tab='rules']"), v("history", "Historial", "History", "[data-panel-content] .tab-btn[data-tab='history']")],
-  expo: [v("account", "Cuenta", "Account", "[data-panel-content] #expo-root", "scroll"), v("projects", "Proyectos", "Projects", "[data-panel-content] #expo-projects", "scroll"), v("builds", "Builds", "Builds", "[data-panel-content] #expo-history-refresh", "scroll"), v("store", "Tiendas", "Stores", "[data-panel-content] #expo-apple-save", "scroll"), v("environment", "Variables", "Environment", "[data-panel-content] #expo-env-table", "scroll")],
+  expo: [v("account", "Cuenta", "Account", "[data-panel-content] #module-section-account"), v("projects", "Proyectos", "Projects", "[data-panel-content] #module-section-projects"), v("builds", "Builds", "Builds", "[data-panel-content] #module-section-builds"), v("store", "Tiendas", "Stores", "[data-panel-content] #module-section-store"), v("environment", "Variables", "Environment", "[data-panel-content] #module-section-environment")],
   "module-dev": [v("my-modules", "Mis módulos", "My modules", "", undefined, false, "/module-dev"), v("project-map", "Mapa proyecto", "Project map", "", undefined, false, "/project-map"), v("logs", "LOG", "LOG", "", undefined, true, "/module-dev/logs")],
   terminal: [v("terminal", "Terminal", "Terminal", "[data-panel-content]", "scroll")],
   "repository-store": [v("all", "Explorar", "Explore", "[data-panel-content] .repo-tab-btn[data-tab='all']"), v("saved", "Guardados", "Saved", "[data-panel-content] .repo-tab-btn[data-tab='saved']"), v("cloned", "Clonados", "Cloned", "[data-panel-content] .repo-tab-btn[data-tab='cloned']"), v("update", "Actualizar", "Updates", "[data-panel-content] .repo-tab-btn[data-tab='update']")],
@@ -38,14 +38,6 @@ const VIEWS: Record<string, View[]> = {
   chat: [v("chat", "Chat", "Chat", "[data-panel-content]", "scroll")],
 };
 const DEFAULT_VIEWS = [v("overview", "Vista general", "Overview", "[data-panel-content]", "scroll")];
-// A submenu is only useful when it opens an independently rendered view or a
-// lazy editor. These modules currently reuse one document or scroll landmarks.
-// Keep their main action direct until their pages expose focused views.
-const DIRECT_ONLY_MODULES = new Set([
-  "bitninja", "databases", "obsidian", "expo",
-  "hosting", "repository-store",
-  "monitor", "files",
-]);
 const VIEW_ICONS: Record<string, string[]> = {
   users: ["ti-users", "ti-users-group"],
   monitor: ["ti-chart-line", "ti-cpu"],
@@ -53,8 +45,8 @@ const VIEW_ICONS: Record<string, string[]> = {
   firewall: ["ti-shield-check", "ti-list-check", "ti-ban"],
   bitninja: ["ti-activity", "ti-components", "ti-file-text"],
   mail: ["ti-mail", "ti-shield-check", "ti-route", "ti-filter"],
-  dns: ["ti-activity", "ti-world-www", "ti-arrows-exchange", "ti-rocket", "ti-file-text", "ti-server"],
-  nginx: ["ti-activity", "ti-world-www", "ti-arrows-exchange", "ti-rocket", "ti-file-text", "ti-server"],
+  dns: ["ti-activity", "ti-world-www", "ti-arrows-exchange", "ti-file-text"],
+  nginx: ["ti-activity", "ti-world-www", "ti-arrows-exchange", "ti-file-text"],
   backups: ["ti-chart-bar", "ti-calendar-time", "ti-history"],
   cron: ["ti-clock", "ti-robot"],
   databases: ["ti-database", "ti-table", "ti-terminal-2"],
@@ -90,13 +82,16 @@ let lastSourceLink: HTMLAnchorElement | null = null;
 let indicatorObserver: MutationObserver | null = null;
 
 function getViews(moduleId: string): View[] {
-  if (DIRECT_ONLY_MODULES.has(moduleId)) return DEFAULT_VIEWS;
+
   const shell = document.querySelector<HTMLElement>("[data-workspace-shell]");
   const isAdmin = shell?.dataset.workspaceAdmin === "true";
   const local = shell?.dataset.workspaceLocal === "true";
   return (VIEWS[moduleId] ?? DEFAULT_VIEWS).filter((view) =>
     (!view.adminOnly || (isAdmin && (moduleId !== "codebase-graph" || local)))
     && !(moduleId === "firewall" && view.id === "audit" && shell?.dataset.workspaceSecurityAudit !== "true"));
+}
+function hasSubmenu(moduleId: string): boolean {
+  return getViews(moduleId).filter(view => !!view.href).length > 1;
 }
 function menuRoots(): Array<{ nav: HTMLElement; sidebar: HTMLElement }> {
   return ["sidebar", "sidebar-mobile"].flatMap((id) => {
@@ -106,18 +101,19 @@ function menuRoots(): Array<{ nav: HTMLElement; sidebar: HTMLElement }> {
   });
 }
 function syncRootIndicators(): void {
+  markSelected();
   for (const { sidebar } of menuRoots()) {
     sidebar.querySelectorAll<HTMLAnchorElement>("a[data-module]:not([data-lxp-module-view])").forEach((link) => {
-      const hasSubmenu = getViews(link.dataset.module || "").length > 1;
-      link.toggleAttribute("data-lxp-has-submenu", hasSubmenu);
+      const submenu = hasSubmenu(link.dataset.module || "");
+      link.toggleAttribute("data-lxp-has-submenu", submenu);
       const arrow = link.querySelector<HTMLElement>(":scope > .lxp-module-nav-chevron");
-      if (hasSubmenu && !arrow) {
+      if (submenu && !arrow) {
         const icon = document.createElement("i");
         icon.className = "ti ti-chevron-right lxp-module-nav-chevron";
         icon.setAttribute("aria-hidden", "true");
         link.append(icon);
-      } else if (!hasSubmenu) arrow?.remove();
-      if (hasSubmenu) link.setAttribute("aria-expanded", String(activeModule === link.dataset.module));
+      } else if (!submenu) arrow?.remove();
+      if (submenu) link.setAttribute("aria-expanded", String(activeModule === link.dataset.module));
       else link.removeAttribute("aria-expanded");
     });
   }
@@ -180,11 +176,13 @@ function renderSubnav(nav: HTMLElement, source: HTMLAnchorElement, moduleId: str
   markSelected(nav);
 }
 function markSelected(nav?: HTMLElement): void {
-  const roots = nav ? [{ nav }] : menuRoots();
-  for (const root of roots) root.nav.querySelectorAll<HTMLAnchorElement>("[data-lxp-module-view]").forEach((link) => {
-    const selected = link.dataset.module === activeModule && link.dataset.lxpModuleView === activeView;
-    link.classList.toggle(selectedClass, selected);
-    if (selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
+  if (!document.querySelector("[data-workspace-shell]")) return;
+  // This rail launches drawers; an open drawer never selects a rail entry.
+  const roots = nav ? [{ nav }] : menuRoots().map(({ sidebar }) => ({ nav: sidebar }));
+  for (const root of roots) root.nav.querySelectorAll<HTMLAnchorElement>("a.sidebar-mod-link, a[data-module], a[data-lxp-module-view]").forEach((link) => {
+    link.classList.remove(selectedClass, "bg-primary/10", "text-primary");
+    link.classList.add("text-muted-foreground", "hover:bg-accent", "hover:text-foreground");
+    link.removeAttribute("aria-current");
   });
 }
 function findRootLink(moduleId: string): HTMLAnchorElement | null {
@@ -194,7 +192,8 @@ function findRootLink(moduleId: string): HTMLAnchorElement | null {
 function show(link: HTMLAnchorElement): boolean {
   if (!document.querySelector("[data-workspace-shell]")) return false;
   const moduleId = link.dataset.module;
-  if (!moduleId || link.dataset.lxpModuleView || getViews(moduleId).length < 2) return false;
+  if (!moduleId || link.dataset.lxpModuleView) return false;
+  if (!hasSubmenu(moduleId)) { if (activeModule) reset(); return false; }
   if (!activeModule) previousScroll = document.querySelector<HTMLElement>("#sidebar nav")?.scrollTop ?? 0;
   lastSourceLink = link;
   activeModule = moduleId;
@@ -295,3 +294,5 @@ document.addEventListener("astro:page-load", observeMenu);
 document.addEventListener("astro:after-swap", observeMenu);
 observeMenu();
 syncDirectRoute();
+
+export {};

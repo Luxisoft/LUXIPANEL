@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "Nécessite des clés valides pour tous les destinataires et l’expéditeur."
   },
   "inbox": {
+    "readerLoading": "Chargement du message…",
+    "retryMessage": "Réessayer",
+    "readerTimeout": "Le chargement a pris trop de temps. Réessayez.",
+
+    "toolsLabel": "Outils",
+    "filtersLabel": "Filtres",
     "pageTitle": "Boîte de réception",
     "loadingAccount": "Chargement du compte...",
     "allAccounts": "Tous les comptes",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "Déplacer",
     "msgIframeTitle": "Contenu du message",
     "attachmentsLabel": "Pièces jointes",
+    "moveUi": {
+      "search": "Rechercher un dossier…",
+      "destination": "Dossier de destination",
+      "cancel": "Annuler",
+      "confirm": "Déplacer ici",
+      "moving": "Déplacement…",
+      "empty": "Aucun dossier disponible",
+      "error": "Impossible de déplacer le message. Réessayez.",
+      "origin": "Origine"
+},
     "moveDlgTitle": "Déplacer le message",
     "foldersDlgTitle": "Gérer les dossiers",
     "foldersExistingHeader": "Dossiers existants",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "Compte nº {id}",
-    "cleanupPrompt": "Nettoie la boîte INBOX de {account} (accountId : {id}). Parcours tous les messages page par page. Lis les messages douteux et vérifie SPF, DKIM, DMARC, Return-Path et les pièces jointes. Repère le spam, le phishing et les logiciels malveillants. Ne touche pas aux messages légitimes, aux contacts connus, aux réponses ni aux factures. Déplace les messages suspects vers Revisar-IA, sans rien supprimer. Résume le nombre de messages déplacés et les raisons."
+    "cleanupPrompt": "Nettoie la boîte INBOX de {account} (accountId : {id}). Parcours tous les messages page par page. Lis les messages douteux et vérifie SPF, DKIM, DMARC, Return-Path et les pièces jointes. Repère le spam, le phishing et les logiciels malveillants. Ne touche pas aux messages légitimes, aux contacts connus, aux réponses ni aux factures. Déplace les messages suspects vers Cuarentena, sans rien supprimer. Résume le nombre de messages déplacés et les raisons."
   }
 } as const;
 

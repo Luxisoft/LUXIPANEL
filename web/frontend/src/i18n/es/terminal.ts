@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "Cerrar (terminales se mantienen activos)"
   },
   "sidebar": {
-    "tabSnippets": "Fragmentos",
+    "tabSnippets": "Comandos guardados",
     "tabHistory": "Historial",
     "tabConfig": "Configuración",
     "closePanel": "Cerrar panel lateral",
     "closePanelTitle": "Cerrar panel"
   },
   "snippets": {
-    "heading": "Fragmentos",
-    "newSnippet": "Nuevo snippet",
-    "searchPlaceholder": "Buscar snippet...",
-    "searchAria": "Buscar snippets",
+    "heading": "Comandos guardados",
+    "newSnippet": "Nuevo comando",
+    "searchPlaceholder": "Buscar comandos...",
+    "searchAria": "Buscar comandos guardados",
     "filterByCategoryAria": "Filtrar por categoría",
     "allCategories": "Todas las categorías"
   },
@@ -190,15 +190,15 @@ const terminal = {
       "installerMissing": "No se encontró npm ni curl en el servidor; instala opencode manualmente."
     },
     "snippetList": {
-      "empty": "Sin snippets. Crea uno con +",
+      "empty": "Sin comandos guardados. Crea uno con +",
       "noResults": "Sin resultados",
       "selectCategoryToFilter": "Selecciona una categoría para filtrar por tags.",
       "categoryNoTags": "Esta categoría no tiene tags.",
       "selectCategoryToSeeTags": "Selecciona una categoría para ver sus tags.",
       "editTitle": "Editar",
-      "editAria": "Editar snippet",
+      "editAria": "Editar comando guardado",
       "deleteTitle": "Eliminar",
-      "deleteAria": "Eliminar snippet",
+      "deleteAria": "Eliminar comando guardado",
       "prevPage": "Anterior",
       "nextPage": "Siguiente",
       "prevPageAria": "Página anterior",
@@ -215,15 +215,15 @@ const terminal = {
       "promptTitle": "Renombrar terminal"
     },
     "dialog": {
-      "newSnippetTitle": "Nuevo snippet",
-      "editSnippetTitle": "Editar snippet",
-      "saveSnippetAction": "Guardar snippet"
+      "newSnippetTitle": "Nuevo comando guardado",
+      "editSnippetTitle": "Editar comando guardado",
+      "saveSnippetAction": "Guardar comando guardado"
     },
     "errors": {
       "loadConversations": "No se pudo cargar el historial de conversaciones",
-      "loadSnippets": "No se pudieron cargar los snippets",
+      "loadSnippets": "No se pudieron cargar los comandos guardados",
       "saveGeneric": "No se pudo guardar",
-      "saveSnippet": "No se pudo guardar el snippet",
+      "saveSnippet": "No se pudo guardar el comando guardado",
       "saveCategory": "No se pudo guardar la categoría",
       "saveTag": "No se pudo guardar el tag",
       "copyCommand": "No se pudo copiar el comando",
@@ -231,11 +231,11 @@ const terminal = {
       "deleteConversations": "No se pudieron eliminar las conversaciones seleccionadas"
     },
     "confirm": {
-      "deleteSnippetMsg": "¿Eliminar este snippet?",
-      "deleteSnippetTitle": "Eliminar snippet",
-      "deleteCategoryMsg": "¿Eliminar esta categoría? Se borrarán sus tags y snippets.",
+      "deleteSnippetMsg": "¿Eliminar este comando guardado?",
+      "deleteSnippetTitle": "Eliminar comando guardado",
+      "deleteCategoryMsg": "¿Eliminar esta categoría? Se borrarán sus tags y comandos guardados.",
       "deleteCategoryTitle": "Eliminar categoría",
-      "deleteCategoriesMsg": "¿Eliminar {label}? Se borrarán sus tags y snippets.",
+      "deleteCategoriesMsg": "¿Eliminar {label}? Se borrarán sus tags y comandos guardados.",
       "deleteCategoriesTitle": "Eliminar categorías",
       "deleteTagMsg": "¿Eliminar este tag?",
       "deleteTagTitle": "Eliminar tag",

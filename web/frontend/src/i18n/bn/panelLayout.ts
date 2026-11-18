@@ -350,7 +350,7 @@ const panelLayout = {
     },
     "dns": {
       "overview": "সারসংক্ষেপ",
-      "sites": "সাইট ও HTTPS",
+      "sites": "সাইট",
       "proxy": "ট্রাফিক",
       "perf": "পারফরম্যান্স",
       "logs": "লগ",
@@ -358,7 +358,7 @@ const panelLayout = {
     },
     "nginx": {
       "overview": "সারসংক্ষেপ",
-      "sites": "সাইট ও HTTPS",
+      "sites": "সাইট",
       "proxy": "ট্রাফিক",
       "perf": "পারফরম্যান্স",
       "logs": "লগ",

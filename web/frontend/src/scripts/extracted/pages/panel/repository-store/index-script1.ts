@@ -6,7 +6,7 @@ import { createPageI18n } from "/scripts/extracted/lib/page-i18n.js";
 const { loadI18n, t, fmt } = createPageI18n("repository-store-i18n");
 const ui = (key, fallback) => t(`runtime.${key}`, fallback);
 const pageLocale = () => document.documentElement.lang || undefined;
-const STACKS = window.__REPO_STORE_STACKS__ ?? [];
+let STACKS = [];
 const LEGACY_KEY = "lxp-github-store-installed-v1";
 const VALID_NAME = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const QUERY_FRAGMENTS = {
@@ -73,6 +73,7 @@ let searchTimer = null;
 let currentClone = "";
 let requestNumber = 0;
 let loading = false;
+let stateError = "";
 const $ = (id) => document.getElementById(id);
 const esc = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 const urlFor = (name) => `/panel/repository-store/${name.split("/").map(encodeURIComponent).join("/")}`;
@@ -83,7 +84,7 @@ function banner(message, bad = false) {
   el.classList.remove("hidden");
   el.classList.toggle("text-destructive", bad);
 }
-function clearBanner() { $("repo-banner")?.classList.add("hidden"); }
+function clearBanner() { if (stateError) banner(stateError, true); else $("repo-banner")?.classList.add("hidden"); }
 function queryFor(text) {
   if (VALID_NAME.test(text)) return `repo:${text}`;
   if (/^@[A-Za-z0-9_-]+$/.test(text)) return `user:${text.slice(1)}`;
@@ -149,7 +150,9 @@ async function loadConfig() {
 }
 async function loadState() {
   const response = await api.get("/api/repository-store/state");
-  if (!response.ok || !response.data) { setBusy(false); banner(response.error || ui("stateLoadError", "No se pudo cargar el estado del catálogo."), true); render(); return; }
+  if (!response.ok || !response.data) { stateError = response.error || ui("stateLoadError", "No se pudo cargar el estado del catálogo."); if (state.tab !== "all") setBusy(false); banner(stateError, true); render(); return; }
+  stateError = "";
+  const previousQueryOptions = JSON.stringify([state.preferences.sort, state.preferences.pageSize, state.preferences.showArchived]);
   state.saved = response.data.saved || [];
   state.clones = response.data.clones || [];
   state.preferences = { ...state.preferences, ...response.data.preferences };
@@ -170,10 +173,11 @@ async function loadState() {
     }
   }
   $("repo-sort").value = state.preferences.sort === "name_asc" ? "relevance" : state.preferences.sort;
-  state.tab = state.preferences.defaultTab;
-  setBusy(false);
+  const requestedTab = new URLSearchParams(location.search).get("workspaceView");
+  if (!["all", "saved", "cloned", "update"].includes(requestedTab ?? "") && state.tab === "all") state.tab = state.preferences.defaultTab;
+  if (state.tab !== "all") { searchController?.abort(); ++requestNumber; setBusy(false); }
   renderTabs(); render();
-  if (state.tab === "all") void requestSearch();
+  if (state.tab === "all" && previousQueryOptions !== JSON.stringify([state.preferences.sort, state.preferences.pageSize, state.preferences.showArchived])) void requestSearch();
 }
 async function detectGit() {
   const result = await api.get("/api/files/git/detect");
@@ -191,18 +195,25 @@ function renderTabs() {
     button.classList.toggle("border-transparent", !active);
     button.classList.toggle("text-muted-foreground", !active);
   });
-  $("repo-catalog-filters")?.classList.toggle("hidden", state.tab !== "all");
+  syncCategoryVisibility();
+  $("repo-stack-row")?.classList.toggle("hidden", state.tab !== "all");
+}
+function syncCategoryVisibility() {
+  const stack = STACKS.find((item) => item.id === state.stack) || STACKS[0];
+  $("repo-catalog-filters")?.classList.toggle("hidden", state.tab !== "all" || (stack?.categories?.length || 0) <= 1);
 }
 function renderCategories() {
   const stack = STACKS.find((item) => item.id === state.stack) || STACKS[0];
-  const categories = stack?.categories || [];
+  const categories = (stack?.categories || []).map(item => item.id === "all" ? { ...item, label: t("filters.allCategories", "Todas las categorías") } : item);
+  syncCategoryVisibility();
   if (!categories.some((item) => item.id === state.category)) state.category = "all";
-  $("repo-category-pills").innerHTML = categories.map((item) => `<button type="button" data-category="${esc(item.id)}" class="category-filter-btn rounded-full border px-4 py-2 text-xs font-semibold ${state.category === item.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}"><i class="ti ${esc(item.icon)}"></i> ${esc(item.label)}</button>`).join("");
+  $("repo-category-pills").innerHTML = categories.map((item) => `<button type="button" data-category="${esc(item.id)}" aria-pressed="${state.category === item.id}" class="category-filter-btn lxp-repo-filter inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold ${state.category === item.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"}"><i class="ti ${esc(item.icon)}"></i> ${esc(item.label)}</button>`).join("");
   $("repo-category-select").innerHTML = categories.map((item) => `<option value="${esc(item.id)}">${esc(item.label)}</option>`).join("");
   $("repo-category-select").value = state.category;
   $("repo-stack-select").value = state.stack;
   document.querySelectorAll(".stack-filter-btn").forEach((button) => {
     const active = button.dataset.stack === state.stack;
+    button.setAttribute("aria-pressed", String(active));
     button.classList.toggle("bg-primary", active); button.classList.toggle("text-primary-foreground", active);
     button.classList.toggle("bg-card", !active); button.classList.toggle("text-muted-foreground", !active);
   });
@@ -332,6 +343,8 @@ function init() {
   controller = new AbortController(); controller.root = $("repo-store-root");
   const signal = controller.signal;
   loadI18n();
+  try { STACKS = JSON.parse($("repository-store-stacks")?.textContent || "[]"); } catch { STACKS = []; }
+  state.stack = "all"; state.category = "all"; stateError = "";
   const drawerView = new URLSearchParams(location.search).get("workspaceView");
   state.saved = []; state.clones = []; state.repos = []; state.total = 0; state.page = 1; state.tab = ["all", "saved", "cloned", "update"].includes(drawerView ?? "") ? drawerView : "all"; state.canGit = false;
   setBusy(true);
@@ -352,6 +365,7 @@ function init() {
   $("repo-category-select").addEventListener("change", (event) => { state.category = event.target.value; state.page = 1; renderCategories(); void requestSearch(); }, { signal });
   $("repo-grid").addEventListener("click", (event) => { const button = event.target.closest("[data-action]"); if (!button) return; const { action, repo, id } = button.dataset; if (action === "save" || action === "unsave") void changeSaved(repo, action === "save"); else if (action === "clone") openClone(repo); else if (id) void cloneAction(action, id); }, { signal });
   renderCategories(); renderTabs();
+  if (state.tab === "all") void requestSearch();
   void loadState(); void loadConfig(); void detectGit();
   const cloneQuery = new URLSearchParams(location.search).get("clone");
   if (cloneQuery && VALID_NAME.test(cloneQuery)) { void detectGit().then(() => { if (state.canGit) openClone(cloneQuery); }); }

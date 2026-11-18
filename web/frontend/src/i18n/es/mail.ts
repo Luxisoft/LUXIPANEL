@@ -6,7 +6,7 @@ import mailPart2 from "./mail/part2";
 
 const mail = { ...mailPart1, ...mailPart2, serverConnection: {
   "title": "Servidor SMTP / IMAP",
-  "intro": "Usa los buzones de otro servidor guardado. Esta selección se aplica a Correo en esta pestaña; los demás módulos conservan su servidor activo.",
+  "intro": "Usa los buzones de otro servidor guardado. La selección se recuerda para tu usuario en este panel; los demás módulos conservan su servidor activo.",
   "serverLabel": "Servidor de correo",
   "hint": "El servidor debe tener Postfix/Dovecot compatibles y sus puertos de correo accesibles. Se usan los buzones y credenciales del servidor elegido.",
   "apply": "Aplicar servidor",

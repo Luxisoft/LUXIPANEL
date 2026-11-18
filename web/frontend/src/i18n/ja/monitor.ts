@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "直近5分間・ライブ",
+    "collecting": "サンプルを収集中",
+    "received": "受信",
+    "sent": "送信",
+    "available": "利用可能",
+    "emptyProcesses": "記録されたプロセスはありません"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "終了"
   },
   "history": {
+    "gapLegend": "赤：データなし",
+    "gapLabel": "データなし",
+    "gapDuration": "期間：{duration}",
+
     "workspaceLabel": "モニター",
     "coverageLabel": "履歴の記録範囲",
     "availableSince": "記録があるのは",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "{name} をインストールできませんでした。"
   },
   "topFolders": {
+    "retry": "再試行",
+    "loading": "フォルダーを計測中…",
     "measureError": "フォルダーごとの使用量を測定できませんでした。",
     "empty": "消費量が記録されたフォルダーはありません。"
   },

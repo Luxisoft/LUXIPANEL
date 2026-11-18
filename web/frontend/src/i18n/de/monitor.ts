@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "Letzte 5 Minuten · live",
+    "collecting": "Messwerte werden gesammelt",
+    "received": "Empfang",
+    "sent": "Versand",
+    "available": "Verfügbar",
+    "emptyProcesses": "Keine Prozesse erfasst"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "Beenden"
   },
   "history": {
+    "gapLegend": "Rot: keine Daten",
+    "gapLabel": "Keine Daten",
+    "gapDuration": "Dauer: {duration}",
+
     "workspaceLabel": "Monitor",
     "coverageLabel": "Verlaufsabdeckung",
     "availableSince": "Daten verfügbar seit",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "{name} konnte nicht installiert werden."
   },
   "topFolders": {
+    "retry": "Erneut versuchen",
+    "loading": "Ordner werden gemessen…",
     "measureError": "Die Belegung pro Ordner konnte nicht ermittelt werden.",
     "empty": "Keine Ordner mit erfasstem Verbrauch."
   },

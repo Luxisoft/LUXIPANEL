@@ -20,7 +20,8 @@
  * (Chart.js refuses to attach twice to the same canvas).
  */
 import Chart from "chart.js/auto";
-import { bucketPoints, peakPoints, type HistoryChart, type HistoryPoint, type HistoryMetric } from "./history-data";
+import { appendLiveSample, type LiveSample } from "./overview-live-data";
+import { bucketPoints, peakPoints, historyTimeTicks, historyGaps, type HistoryGap, type HistoryChart, type HistoryPoint, type HistoryMetric } from "./history-data";
 import { api, resolveTargetScope } from "/scripts/extracted/lib/api-client.js?v=20260506a";
 import { createPageI18n } from "/scripts/extracted/lib/page-i18n.js";
 import { MONITOR_PREFS_EVENT, readMonitorPrefs, saveMonitorPrefs } from "./monitor-prefs";
@@ -101,6 +102,58 @@ function destroy(key: string): void {
 function destroyAll(): void {
   Object.keys(charts).forEach(destroy);
 }
+
+// The overview shares the existing live stream, never another polling timer.
+let overviewSamples: LiveSample[] = [];
+function renderOverview(): void {
+  if (document.hidden || !document.getElementById("chart-overview-cpu")?.getClientRects().length) return;
+  const last = overviewSamples.at(-1);
+  if (!last) return;
+  for (const [key, metrics] of [["cpu", ["cpu"]], ["ram", ["ram"]], ["network", ["rx", "tx"]]] as const) {
+    const canvas = document.getElementById(`chart-overview-${key}`) as HTMLCanvasElement | null;
+    if (!canvas) continue;
+    const chartKey = `overview-${key}`;
+    const datasets = metrics.map(metric => ({
+      label: t(METRICS[metric].label, METRICS[metric].fallback),
+      data: overviewSamples.map(sample => ({x:sample.ts, y:sample[metric]})),
+      borderColor: COLORS[metric], backgroundColor: COLORS[metric] + "12",
+      borderWidth:2, pointRadius: (context: {dataIndex:number}) => context.dataIndex === overviewSamples.length - 1 ? 2.5 : 0, pointHitRadius:8, clip:false as const, fill: metrics.length === 1,
+      spanGaps:false, tension:0.15,
+    }));
+    if (!charts[chartKey]) charts[chartKey] = new Chart(canvas, {
+      type:"line", data:{datasets}, options:{
+        responsive:true, maintainAspectRatio:false, animation:false, parsing:false, layout:{padding:4},
+        interaction:{mode:"nearest", intersect:false},
+        plugins:{legend:{display:false},tooltip:{callbacks:{
+          title: items => items.length ? new Date(items[0].parsed.x!).toLocaleTimeString() : "",
+          label: item => `${item.dataset.label}: ${key === "network" ? fmtRate(item.parsed.y ?? 0) : (item.parsed.y ?? 0).toFixed(1) + "%"}`,
+        }}},
+        scales:{x:{type:"linear",display:false}, y:{min:0, ...(key === "network" ? {} : {max:100}), ticks:{display:false},border:{display:false},grid:{color:gridColor()}}},
+      },
+    });
+    const chart = charts[chartKey]!;
+    chart.data.datasets = datasets;
+    chart.options.scales!.x!.min = last.ts - 300_000;
+    chart.options.scales!.x!.max = last.ts;
+    chart.update("none");
+    const wait = document.querySelector(`[data-overview-wait="${key}"]`) as HTMLElement | null;
+    if (wait) wait.hidden = overviewSamples.filter(sample => metrics.some(metric => sample[metric] !== null)).length >= 2;
+  }
+}
+window.addEventListener("lxp:monitor:snapshot", (event: Event) => {
+  const snapshot = (event as CustomEvent).detail?.snapshot;
+  if (!snapshot || !isMonitorPage()) return;
+  overviewSamples = appendLiveSample(overviewSamples, snapshot);
+  renderOverview();
+});
+document.addEventListener("click", () => requestAnimationFrame(renderOverview));
+document.addEventListener("lxp:module:visibility", () => requestAnimationFrame(renderOverview));
+function disposeOverview(): void {
+  overviewSamples = [];
+  Object.keys(charts).filter(key => key.startsWith("overview-")).forEach(destroy);
+}
+document.addEventListener("lxp:module:dispose", disposeOverview);
+document.addEventListener("astro:before-swap", disposeOverview);
 
 // --- history data ----------------------------------------------------------
 async function fetchWindow(fromTs: number, toTs: number): Promise<HistoryChart<Snap>> {
@@ -245,8 +298,50 @@ function announceWindow(current: HistoryChart<Snap>, previous: HistoryChart<Snap
   }));
 }
 
+type MarkedGap = HistoryGap & { period: "current" | "previous"; origin: number };
+function gapDescription(gap: MarkedGap): string {
+  const seconds = Math.max(1,Math.round((gap.toTs-gap.fromTs)/1000));
+  const duration = seconds >= 60 ? `${Math.floor(seconds/60)} min ${seconds%60} s` : `${seconds} s`;
+  return `${gap.period === "previous" ? t("history.previous", "anterior") + " · " : ""}${t("history.gapLabel", "Sin datos")}
+${formatDate(gap.fromTs)} — ${formatDate(gap.toTs)}
+${fmt(t("history.gapDuration", "Duración: {duration}"),{duration})}`;
+}
+function showGapAnnotations(gaps: MarkedGap[], fromTs: number, toTs: number): void {
+  const tooltip = document.getElementById("history-gap-tooltip");
+  if (tooltip) tooltip.hidden = true;
+  const legend = document.getElementById("history-gap-legend");
+  if (legend) { legend.hidden = !gaps.length; legend.title = gaps.map(gapDescription).join("\n\n"); }
+  const track = document.getElementById("history-gap-track");
+  if (!track) return;
+  track.replaceChildren();
+  // Boundary/empty periods have no two real anchors, so use the time baseline.
+  for (const gap of gaps.filter(gap=>!gap.before || !gap.after)) {
+    const line = document.createElement("span");
+    const offset=gap.fromTs-gap.origin;
+    line.style.left=`${Math.max(0,offset/(toTs-fromTs)*100)}%`;
+    line.style.width=`${Math.min(100,(gap.toTs-gap.fromTs)/(toTs-fromTs)*100)}%`;
+    line.style.opacity=gap.period === "previous" ? "0.55" : "1";
+    line.tabIndex=0;line.title=gapDescription(gap);line.setAttribute("aria-label",line.title);
+    track.append(line);
+  }
+  track.hidden=!track.children.length;
+}
+
 // --- history line chart ----------------------------------------------------
 let historyRequest = 0;
+let historyInFlight = false;
+function historyVisible(): boolean {
+  const panel = document.getElementById("monitor-panel-history");
+  const section = panel?.closest("[data-module-section]");
+  return !document.hidden && !!panel && !panel.classList.contains("hidden") && !section?.classList.contains("hidden");
+}
+function loadVisibleHistory(): void {
+  if (!historyVisible() || historyInFlight) return;
+  historyLoaded = true;
+  historyInFlight = true;
+  void renderHistory(true).finally(() => { historyInFlight = false; });
+  void refreshBreakdowns();
+}
 async function renderHistory(showLoading = false): Promise<void> {
   const canvas = document.getElementById("chart-history") as HTMLCanvasElement | null;
   if (!canvas) return;
@@ -268,6 +363,7 @@ async function renderHistory(showLoading = false): Promise<void> {
   } catch {
     if (request !== historyRequest || !isMonitorPage()) return;
     destroy("history");
+    showGapAnnotations([],fromTs,toTs);
     lastCurrentSnaps = [];
     document.getElementById("history-summary")?.replaceChildren();
     document.getElementById("history-coverage")?.replaceChildren();
@@ -276,6 +372,11 @@ async function renderHistory(showLoading = false): Promise<void> {
     return;
   }
   if (request !== historyRequest || !isMonitorPage()) return;
+  const gaps: MarkedGap[] = [
+    ...historyGaps(current.buckets,current.fromTs,current.toTs).map(gap=>({...gap,period:"current" as const,origin:fromTs})),
+    ...(compareOn && previous ? historyGaps(previous.buckets,previous.fromTs,previous.toTs).map(gap=>({...gap,period:"previous" as const,origin:previousFromTs})) : []),
+  ];
+  showGapAnnotations(gaps,fromTs,toTs);
   lastCurrentSnaps = current.latestSnapshot ? [current.latestSnapshot] : [];
   announceWindow(current, previous);
   if (!current.totalSamples && !previous?.totalSamples) {
@@ -311,8 +412,10 @@ async function renderHistory(showLoading = false): Promise<void> {
       backgroundColor: `${definition.color}20`,
       borderWidth: 2,
       tension: 0.2,
+      cubicInterpolationMode: "monotone",
       fill: metricKeys.length === 1,
-      pointRadius: 0,
+      pointRadius: 2.5,
+      clip: false,
       pointHoverRadius: 5,
       pointHitRadius: 12,
       spanGaps: false,
@@ -326,6 +429,7 @@ async function renderHistory(showLoading = false): Promise<void> {
         borderColor: definition.color,
         backgroundColor: definition.color,
         showLine: false,
+        clip: false,
         pointRadius: 4,
         pointHoverRadius: 7,
         pointStyle: "triangle",
@@ -341,8 +445,10 @@ async function renderHistory(showLoading = false): Promise<void> {
         borderColor: `${definition.color}99`,
         borderWidth: 1.5,
         tension: 0.2,
+        cubicInterpolationMode: "monotone",
         fill: false,
-        pointRadius: 0,
+        pointRadius: 2.5,
+        clip: false,
         pointHoverRadius: 5,
         pointHitRadius: 12,
         borderDash: [6, 4],
@@ -355,21 +461,59 @@ async function renderHistory(showLoading = false): Promise<void> {
   destroy("history");
   const periodMinutes = rangeMs / 60_000;
   const tickCount = currentRange === "7d" ? 7 : 6;
-  const xTicks = Array.from({ length: tickCount + 1 }, (_, index) => ({ value: periodMinutes * index / tickCount }));
   const networkMode = historyMetric === "network";
+  const gapAt = (x: number) => gaps.filter(gap=>x>= (gap.fromTs-gap.origin)/60000 && x<= (gap.toTs-gap.origin)/60000);
   charts.history = new Chart(canvas, {
+    plugins: [{
+      id:"missing-history-annotations",
+      afterDatasetsDraw(chart) {
+        const {ctx,scales:{x,y},chartArea}=chart;
+        ctx.save();ctx.lineWidth=2;
+        for(const gap of gaps){
+          ctx.strokeStyle=gap.period === "previous" ? "#ef444480" : "#ef4444";
+          ctx.setLineDash(gap.period === "previous" ? [3,3] : [6,4]);
+          if(gap.before && gap.after){
+            for(const metric of metricKeys){
+              const index=datasetMeta.findIndex(meta=>meta.metric===metric && meta.kind === (gap.period === "previous" ? "previous" : "average"));
+              if(index<0 || !chart.isDatasetVisible(index))continue;
+              ctx.beginPath();
+              ctx.moveTo(x.getPixelForValue(((gap.before.fromTs+gap.before.toTs)/2-gap.origin)/60000),y.getPixelForValue(gap.before.average[metric]));
+              ctx.lineTo(x.getPixelForValue(((gap.after.fromTs+gap.after.toTs)/2-gap.origin)/60000),y.getPixelForValue(gap.after.average[metric]));
+              ctx.stroke();
+            }
+          } else {
+            ctx.beginPath();ctx.moveTo(x.getPixelForValue((gap.fromTs-gap.origin)/60000),chartArea.bottom-4);
+            ctx.lineTo(x.getPixelForValue((gap.toTs-gap.origin)/60000),chartArea.bottom-4);ctx.stroke();
+          }
+        }
+        ctx.restore();
+      },
+      afterEvent(chart,args){
+        const tip=document.getElementById("history-gap-tooltip");if(!tip)return;
+        const event=args.event;
+        const hits=event.type !== "mouseout" && args.inChartArea && event.x !== null ? gapAt(Number(chart.scales.x.getValueForPixel(event.x))) : [];
+        tip.hidden=!hits.length;
+        if(hits.length){
+          tip.textContent=hits.map(gapDescription).join("\n\n");
+          tip.style.left=`${Math.max(4,Math.min(event.x ?? 0,canvas.clientWidth-Math.min(300,canvas.clientWidth-8)))}px`;
+          tip.style.top="40px";
+          chart.tooltip?.setActiveElements([],{x:event.x ?? 0,y:event.y ?? 0});args.changed=true;
+        }
+      },
+    }],
     type: "line",
     data: { datasets: datasets as never },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { left: 4, right: 12, top: 8, bottom: 4 } },
       interaction: { mode: "nearest", intersect: true },
       scales: {
         x: {
           type: "linear", min: 0, max: periodMinutes,
           grid: { color: gridColor() },
-          afterBuildTicks: (axis: { ticks: { value: number }[] }) => { axis.ticks = xTicks; },
-          ticks: { color: tickColor(), autoSkip: false, maxRotation: 0,
+          afterBuildTicks: (axis: { ticks: { value: number }[] }) => { axis.ticks = historyTimeTicks(periodMinutes, canvas.clientWidth, tickCount); },
+          ticks: { color: tickColor(), autoSkip: true, maxRotation: 0, padding: 6,
             callback: (value) => tickLabel(fromTs + Number(value) * 60_000) },
         },
         y: {
@@ -411,7 +555,8 @@ async function renderHistory(showLoading = false): Promise<void> {
           },
         },
       },
-      onClick: (_event, elements) => {
+      onClick: (_event, elements, chart) => {
+        if (_event.x !== null && gapAt(Number(chart.scales.x.getValueForPixel(_event.x))).length) return;
         const element = elements[0];
         if (!element) return;
         const point = charts.history?.data.datasets[element.datasetIndex]?.data[element.index] as HistoryPoint<Snap> | undefined;
@@ -606,6 +751,8 @@ function switchWorkspaceTab(tab: "history" | "processes", focus = false): void {
   const historyPanel = document.getElementById("monitor-panel-history");
   const processesPanel = document.getElementById("monitor-panel-processes");
   if (!historyPanel || !processesPanel) return;
+  const section = (tab === "history" ? historyPanel : processesPanel).closest("[data-module-section]");
+  if (section?.classList.contains("hidden")) document.getElementById(`module-section-${tab}`)?.click();
   historyPanel.classList.toggle("hidden", tab !== "history");
   processesPanel.classList.toggle("hidden", tab !== "processes");
   for (const name of ["history", "processes"] as const) {
@@ -638,7 +785,7 @@ function bindControls(): void {
       });
       return;
     }
-    if (t.closest("#monitor-tab-history")) { switchWorkspaceTab("history"); if (!historyLoaded) { historyLoaded = true; void renderHistory(); void refreshBreakdowns(); } syncHistoryTimer(); return; }
+    if (t.closest("#monitor-tab-history")) { switchWorkspaceTab("history"); if (!historyLoaded) loadVisibleHistory(); syncHistoryTimer(); return; }
     if (t.closest("#monitor-tab-processes")) { switchWorkspaceTab("processes"); syncHistoryTimer(); return; }
 
     const rangeBtn = t.closest(".range-btn");
@@ -706,8 +853,8 @@ function syncHistoryTimer(): void {
   if (historyTimer) clearInterval(historyTimer);
   historyTimer = null;
   const seconds = readMonitorPrefs().historyRefreshSeconds;
-  if (started && seconds > 0 && !document.getElementById("monitor-panel-history")?.classList.contains("hidden")) {
-    historyTimer = setInterval(() => { if (!document.hidden) void renderHistory(); }, seconds * 1000);
+  if (started && seconds > 0 && historyVisible()) {
+    historyTimer = setInterval(() => { if (historyVisible()) loadVisibleHistory(); }, seconds * 1000);
   }
 }
 
@@ -722,7 +869,7 @@ window.addEventListener(MONITOR_PREFS_EVENT, () => {
   setMetricButtons(historyMetric);
   setCompareButton();
   syncHistoryTimer();
-  if (changed) { clearPinnedSample(); void renderHistory(true); }
+  if (changed) { clearPinnedSample(); if (historyVisible()) loadVisibleHistory(); }
 });
 
 async function init(): Promise<void> {
@@ -737,15 +884,8 @@ async function init(): Promise<void> {
   setRangeButtons(currentRange);
   setMetricButtons(historyMetric);
   setCompareButton();
-  if (new URLSearchParams(location.search).get("workspaceView") === "processes") {
-    switchWorkspaceTab("processes");
-  } else {
-    historyLoaded = true;
-    // The live breakdown is independent of the historical graph. Install
-    // cleanup immediately, including when one of these reads is slow.
-    void renderHistory();
-    void refreshBreakdowns();
-  }
+  if (new URLSearchParams(location.search).get("workspaceView") === "processes") switchWorkspaceTab("processes");
+  loadVisibleHistory();
 
   // Visibility gate: don't poll /api/monitor/history or /api/monitor/snapshot
   // while the tab is hidden (this page already runs ~17 req/min across its
@@ -753,7 +893,7 @@ async function init(): Promise<void> {
   // sample as soon as the tab is visible again on the next tick.
   syncHistoryTimer();
   breakdownTimer = setInterval(() => {
-    if (!document.hidden && !document.getElementById("monitor-panel-history")?.classList.contains("hidden")) void refreshBreakdowns();
+    if (historyVisible()) void refreshBreakdowns();
   }, 15e3);
 
   document.addEventListener("astro:before-swap", () => {
@@ -766,6 +906,15 @@ async function init(): Promise<void> {
   }, { once: true });
 }
 
+window.addEventListener("lxp:module:section-changed", (event: Event) => {
+  const detail = (event as CustomEvent).detail;
+  if (detail?.module !== "monitor") return;
+  if (detail.section === "history") loadVisibleHistory();
+  else historyLoaded = false;
+  syncHistoryTimer();
+});
+document.addEventListener("lxp:module:visibility", () => { if (historyVisible()) loadVisibleHistory(); syncHistoryTimer(); });
+document.addEventListener("lxp:module:dispose", () => { historyRequest++; destroyAll(); });
 bindControls();
 document.addEventListener("astro:page-load", () => void init());
 document.addEventListener("astro:after-swap", () => void init());

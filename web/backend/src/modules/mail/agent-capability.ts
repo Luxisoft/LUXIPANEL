@@ -10,7 +10,7 @@
  *    (`mail.move_messages`, `mail.delete_messages`, `mail.flag_messages`).
  *
  * Depuration is QUARANTINE-FIRST by design: the assistant should move
- * suspicious mail to a review folder (default "Revisar-IA") via
+ * suspicious mail to a review folder (default "Cuarentena") via
  * `mail.move_messages` (non-destructive, reversible). `mail.delete_messages`
  * is `dangerous=true` — it starts disabled / requireConfirm in the sidecar and
  * is only the path once the user has reviewed the quarantine.
@@ -20,6 +20,8 @@
  *  2. The model's own heuristics over sender / subject / attachment types.
  */
 
+import { ensureCanonicalQuarantine } from "./services/imap/imap-quarantine.js";
+import { quarantineAliases } from "./services/mail-folder-policy.js";
 import { z } from "zod";
 import type { AgentCapability } from "../../shared/agent-capability/index.js";
 import { requireExecutor } from "../../shared/agent-capability/index.js";
@@ -27,7 +29,7 @@ import { serverDomainsService } from "../nginx/services/server-domains.service.j
 import { imapService } from "./services/index.js";
 import { requireMailAccount, requireStoredCredential } from "./controllers/mailbox-account.helpers.js";
 
-const DEFAULT_QUARANTINE_FOLDER = "Revisar-IA";
+const DEFAULT_QUARANTINE_FOLDER = "Cuarentena";
 const MESSAGE_TEXT_CAP = 4000;
 
 /** Resolve an IMAP-capable account in the current request scope. */
@@ -182,7 +184,7 @@ export const mailAgentCapability: AgentCapability = {
       description:
         "Move a batch of messages (by UID list) from a folder to another folder — the " +
         "quarantine-first action for depuration. The destination folder is created if " +
-        "it does not exist. Default destination is 'Revisar-IA'. This is REVERSIBLE: " +
+        "it does not exist. Default destination is 'Cuarentena'. This is REVERSIBLE: " +
         "prefer it over deleting.",
       kind: "action",
       dangerous: false,
@@ -193,7 +195,7 @@ export const mailAgentCapability: AgentCapability = {
           accountId: { type: "number", description: "Mail account id" },
           uids: { type: "array", items: { type: "number" }, description: "UIDs to move" },
           folder: { type: "string", description: "Source folder. Default INBOX." },
-          destFolder: { type: "string", description: "Destination folder. Default 'Revisar-IA'." },
+          destFolder: { type: "string", description: "Destination folder. Default 'Cuarentena'." },
         },
         required: ["accountId", "uids"],
       },
@@ -202,9 +204,10 @@ export const mailAgentCapability: AgentCapability = {
         const accountId = accountIdSchema.parse(Number(obj.accountId));
         const uids = parseUidList(obj.uids);
         const folder = getStringParam(obj, "folder", "INBOX");
-        const destFolder = getStringParam(obj, "destFolder", DEFAULT_QUARANTINE_FOLDER);
+        let destFolder = getStringParam(obj, "destFolder", DEFAULT_QUARANTINE_FOLDER);
         const { address, passwordEncrypted } = await resolveAccount(accountId);
 
+        if(quarantineAliases.has(destFolder.trim().toLowerCase())) destFolder=await ensureCanonicalQuarantine(address,passwordEncrypted);
         try {
           await imapService.createFolder(address, passwordEncrypted, destFolder);
         } catch {
@@ -280,7 +283,7 @@ export const mailAgentCapability: AgentCapability = {
     },
   ],
   suggestedPrompts: [
-    "Depura mi bandeja de entrada: revisa la cuenta y mueve spam y phishing a la carpeta Revisar-IA.",
+    "Depura mi bandeja de entrada: revisa la cuenta y mueve spam y phishing a la carpeta Cuarentena.",
     "Revisa los correos con adjuntos sospechosos de la bandeja de entrada y pon en cuarentena los dudosos.",
     "Revisa la autenticación (SPF/DKIM/DMARC) de los últimos correos y márcame los sospechosos de suplantación.",
   ],

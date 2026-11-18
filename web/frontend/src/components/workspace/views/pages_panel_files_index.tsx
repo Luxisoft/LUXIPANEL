@@ -17,8 +17,8 @@ import {
  * (botón flotante disponible en todas las vistas del panel).
  */
 import PanelLayout from "../module-frame";
-import ViewSettingsModal from "./components_ui_ViewSettingsModal";
-import ModalNavbar from "./components_ui_ModalNavbar";
+import ViewSettingsModal from "./components_files_LegacyViewSettingsModal";
+import ModalNavbar from "./components_files_LegacyModalNavbar";
 import ModuleDepsBanner from "./components_ModuleDepsBanner";
 import { FilesWorkspace } from "@/components/panel-files/FilesWorkspace";
 import { ProjectMapDrawer } from "@/components/panel-files/ProjectMapDrawer";

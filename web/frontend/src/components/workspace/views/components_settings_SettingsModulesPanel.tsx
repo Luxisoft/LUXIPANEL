@@ -37,9 +37,7 @@ export default function components_settings_SettingsModulesPanel(props: any) {
               <span className="block text-sm font-semibold text-foreground">
                 {t.settings.modules.sectionTitle}
               </span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                {t.settings.modules.sectionDesc1}
-              </span>
+
             </span>
             <i
               className="ti ti-chevron-down shrink-0 text-base text-muted-foreground transition-transform duration-200"

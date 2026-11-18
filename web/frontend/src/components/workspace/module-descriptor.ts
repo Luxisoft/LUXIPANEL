@@ -17,6 +17,9 @@ export function describeModule(
   url.searchParams.delete("embed");
   url.searchParams.delete("settingsOverlay");
   if (url.pathname === "/panel/dns") url.pathname = "/panel/nginx";
+  if (url.pathname === "/panel/nginx") {
+    for (const name of ["workspaceView", "tab"]) if (["perf", "performance", "status", "tab-perf", "tab-status"].includes(url.searchParams.get(name) || "")) url.searchParams.set(name, "overview");
+  }
   for (const [id, entry] of Object.entries(MODULE_REGISTRY)) {
     const names: string[] = [];
     const pattern = entry.route.replace(/\[([^\]]+)\]/g, (_match, name) => {
