@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.clearAllMocks(); mocks.record = null; mocks.ownedAccount.mockResolvedValue({account:{status:'active'}});
   mocks.set.mockResolvedValue("OK"); mocks.exec.mockResolvedValue({ exitCode: 0 });
   mocks.remoteExec.mockResolvedValue({ exitCode: 0, stdout: JSON.stringify({ removed: true }) });
-  mocks.remoteRead.mockResolvedValue(bytes);
+  mocks.remoteRead.mockResolvedValue(bytes.toString('base64'));
   mocks.frontendExecutor.mockResolvedValue({ readFile:mocks.remoteRead, mkdir: vi.fn(), writeFile: mocks.remoteWrite, exec: mocks.remoteExec });
 });
 describe("frontend publication target ownership", () => {
@@ -57,7 +57,7 @@ describe("frontend publication target ownership", () => {
   it('retains no interface ZIP on the panel and reads reconfiguration from the pinned frontend', async () => {
     mocks.record={...request, targetId:'front', active:true};
     await service.reconfigure(provider,account,project,['site.example.com']);
-    expect(mocks.remoteRead).toHaveBeenCalledWith(expect.stringMatching(/^\/var\/www\/luxisoft\/published\/[a-f0-9]{64}\/[a-f0-9-]+-[a-f0-9]{64}\/artifact\.zip$/));
+    expect(mocks.remoteRead).toHaveBeenCalledWith(expect.stringMatching(/^\/var\/www\/luxisoft\/published\/[a-f0-9]{64}\/[a-f0-9-]+-[a-f0-9]{64}\/artifact\.zip$/), "base64");
     expect(mocks.localWrite.mock.calls.some(([file])=>String(file).endsWith('.zip'))).toBe(false);
   });
   it("removes from the recorded server after the preference changes", async () => {
