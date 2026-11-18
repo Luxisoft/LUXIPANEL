@@ -169,3 +169,8 @@ Los estáticos localizados pueden conservar redirección por idioma de navegador
 cookie validada y ruta mediante `localeRouting`, sin un servidor SSR en BACKEND.
 El cambio de una versión HTTP antigua a una nueva publicación requiere un
 manifiesto separado; el reintento de versiones sin clasificar se bloquea.
+La confirmación interna `confirmBackendSplit`, sin ruta HTTP y posterior a los
+recibos de salud del operador, fija qué componentes de esa versión quedaron
+como API. La reactivación de esa misma versión conserva su estático en FRONTEND
+y restaura solo sus rutas `/api` en BACKEND. La confirmación se conserva al cambiar
+dominios, nunca se acepta en datos HTTP y se descarta al cambiar de versión.
