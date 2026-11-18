@@ -653,7 +653,7 @@ export const deploymentProviderService = {
     );
     const result = await c.executor.exec(
       `/usr/bin/sudo -n /usr/lib/luxipanel/deployment-helper ${quoteArg(marker)} retire`,
-      { timeoutMs: 30000 },
+      { timeoutMs: 130000 },
     );
     if (result.exitCode !== 0)
       throw new ConflictError("deployment_retirement_failed");
