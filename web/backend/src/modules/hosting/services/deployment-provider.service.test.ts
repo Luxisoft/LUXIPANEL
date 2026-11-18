@@ -325,6 +325,31 @@ describe("durable production routes", () => {
     expect(m.frontendReconfigure).toHaveBeenCalledWith(provider,account,project,['demo.luxisoft.com'],{});
     expect(m.write).not.toHaveBeenCalled();
   });
+  it('restores API routes as well as frontend hosts for a migrated form', async () => {
+    const bytes = Buffer.from('static form'), sha256 = hash(bytes.toString());
+    const input = structuredClone(staticForm);
+    input.manifest.components[1]!.routePrefix = '/api';
+    m.frontendGet.mockResolvedValue({versionId:version, targetId:'front', apiRoutes:['/api'], sha256});
+    m.read.mockImplementation(async (file: string) => file.endsWith('state.json')
+      ? JSON.stringify({status:'finished', environment:'production', versionId:version, result:{versionId:version, components:[
+          {name:'forms',surface:'static',port:null,staticArchive:{sha256,bytes:bytes.length}},
+          {name:'forms-api',surface:'http',port:18081}]}})
+      : file.endsWith('manifest.json') ? JSON.stringify(input) : bytes);
+    await service.replaceProductionRoutes({...provider, frontendTargetId:'front'} as never, account, project, {
+      requestId, versionId:version, versionNumber:4, hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'forms'}]});
+    expect(m.frontendPublish).toHaveBeenCalled();
+    expect(m.frontendReconfigure).not.toHaveBeenCalled();
+    const write = m.write.mock.calls.find(([file]) => String(file).endsWith('routes.json.next'));
+    const route = JSON.parse(String(write![1]));
+    expect(route.components).toEqual([{name:'forms-api',surface:'http',port:18081,routePrefix:'/api'}]);
+    expect(route.hosts[0].defaultComponent).toBe('forms-api');
+  });
+  it('blocks old unclassified HTTP versions from returning to BACKEND', async () => {
+    await expect(service.replaceProductionRoutes({...provider,frontendTargetId:'front'} as never,account,project,{
+      requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]
+    })).rejects.toThrow('Separa la interfaz');
+    expect(m.write).not.toHaveBeenCalled();
+  });
   it('retires only the legacy nginx bindings owned by this project',async()=>{
     m.sites.mockResolvedValue([{externalSiteId:`gh:${project}:app:hash`},{externalSiteId:'gh:another-project:app:hash'}]);
     await service.retire(provider,account,project);

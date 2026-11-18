@@ -80,6 +80,29 @@ class PublicationTests(unittest.TestCase):
         self.assertTrue((m.ENABLED / host).is_symlink())
         self.assertFalse((m.STATE / (m.validate(self.request) + '.json')).exists())
 
+    def test_stages_without_nginx_or_exposing_a_suspended_site(self):
+        for key in ['ROOT', 'STATE', 'AVAILABLE', 'ENABLED', 'BACKUPS']:
+            directory = self.root / key
+            directory.mkdir()
+            context = patch.object(m, key, directory)
+            context.start()
+            self.addCleanup(context.stop)
+        archive = self.archive([('index.html', 'suspended')])
+        self.request['sha256'] = m.hashlib.sha256(archive.read_bytes()).hexdigest()
+        with patch.object(m, 'run') as run, patch.object(m, 'certificate', side_effect=AssertionError('no TLS activation')):
+            result = m.publication(self.request, archive, stage_only=True)
+        self.assertFalse(result['active'])
+        run.assert_not_called()
+        self.assertEqual(list(m.AVAILABLE.iterdir()), [])
+        self.assertEqual(list(m.ENABLED.iterdir()), [])
+        self.assertTrue(list(m.ROOT.rglob('index.html')))
+        self.assertFalse((m.ROOT / m.validate(self.request) / 'current').exists())
+        record = m.STATE / (m.validate(self.request) + '.json')
+        self.assertFalse(json.loads(record.read_text())['active'])
+        record.write_text(json.dumps({**json.loads(record.read_text()), 'active': True}))
+        with self.assertRaisesRegex(ValueError, 'already_active'):
+            m.publication(self.request, archive, stage_only=True)
+
     def test_installs_retries_and_removes_only_owned_vhost(self):
         for key in ['ROOT', 'STATE', 'AVAILABLE', 'ENABLED', 'BACKUPS']:
             directory = self.root / key

@@ -20,7 +20,7 @@ const account = "a24e871b-d9af-4113-ad82-19bbbc596fe1", project = "f8207daa-42ab
 const bytes = Buffer.from("verified archive");
 const request = { versionId: "4419fffd-a519-4baf-bc90-c71f4e083714", sha256: createHash("sha256").update(bytes).digest("hex"), hosts: ["site.example.com"] };
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.record = null;
+  vi.clearAllMocks(); mocks.record = null; mocks.ownedAccount.mockResolvedValue({account:{status:'active'}});
   mocks.set.mockResolvedValue("OK"); mocks.exec.mockResolvedValue({ exitCode: 0 });
   mocks.remoteExec.mockResolvedValue({ exitCode: 0, stdout: JSON.stringify({ removed: true }) });
   mocks.frontendExecutor.mockResolvedValue({ mkdir: vi.fn(), writeFile: mocks.remoteWrite, exec: mocks.remoteExec });
@@ -39,6 +39,19 @@ describe("frontend publication target ownership", () => {
     expect(mocks.frontendExecutor).toHaveBeenCalledWith(provider, "front");
     expect(mocks.remoteWrite).toHaveBeenCalledWith(expect.stringContaining("artifact.zip"), bytes, expect.anything());
     expect(mocks.localWrite).toHaveBeenCalledWith(expect.stringContaining(".next"), expect.stringContaining('"targetId":"front"'), expect.anything());
+  });
+  it("stages a suspended account without a publish command", async () => {
+    mocks.ownedAccount.mockResolvedValue({account:{status:'suspended'}});
+    await service.stage(provider, account, project, {...request, component:'forms'}, bytes);
+    expect(mocks.remoteExec.mock.calls[0][0]).toContain('frontend-publication stage');
+    expect(mocks.localWrite).toHaveBeenCalledWith(expect.stringContaining('.next'), expect.stringContaining('"active":false'), expect.anything());
+    expect(mocks.remoteWrite).toHaveBeenCalledWith(expect.stringContaining('request.json'), expect.stringContaining('"component":"forms"'), expect.anything());
+    await expect(service.publish(provider, account, project, request, bytes)).rejects.toThrow('suspendida');
+  });
+  it("cannot stage over an active publication", async () => {
+    mocks.record = {...request, targetId:'front', active:true};
+    await expect(service.stage(provider, account, project, request, bytes)).rejects.toThrow('activa');
+    expect(mocks.frontendExecutor).not.toHaveBeenCalled();
   });
   it("removes from the recorded server after the preference changes", async () => {
     mocks.record = { ...request, targetId: "previous-front" };
