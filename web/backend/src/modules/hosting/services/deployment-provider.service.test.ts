@@ -12,14 +12,17 @@ const m = vi.hoisted(() => ({
   exists: vi.fn(),
   exec: vi.fn(),
   stat: vi.fn(),
+  frontendGet: vi.fn(), frontendPublish: vi.fn(), frontendReconfigure: vi.fn(), frontendRemove: vi.fn(), sites: vi.fn(), unbind: vi.fn(),
   redis: { set: vi.fn(), eval: vi.fn() },
 }));
 vi.mock("../../../config/paths.js", () => ({
   panelConfigDir: () => "/test/config",
 }));
 vi.mock("../../../shared/redis/index.js", () => ({ getRedis: () => m.redis }));
+vi.mock("./frontend-publication.service.js", () => ({ frontendPublicationService: { get: m.frontendGet, remove: m.frontendRemove, withdraw: m.frontendRemove, publish: m.frontendPublish, reconfigure: m.frontendReconfigure } }));
+vi.mock("../repositories/provider.repository.js", () => ({ providerRepository: { listSitesForAccount: m.sites } }));
 vi.mock("./provider.service.js", () => ({
-  providerService: { ownedAccount: m.owned },
+  providerService: { ownedAccount: m.owned, unbindSite: m.unbind },
 }));
 vi.mock("../../../shared/executor/index.js", () => ({
   pathExists: m.exists,
@@ -80,6 +83,8 @@ beforeEach(() => {
   ])
     mock.mockReset();
   m.redis.set.mockResolvedValue("OK");
+  m.frontendGet.mockReset().mockResolvedValue(null);m.frontendRemove.mockReset().mockResolvedValue({removed:true});
+  m.frontendPublish.mockReset();m.frontendReconfigure.mockReset();m.sites.mockReset().mockResolvedValue([]);m.unbind.mockReset();
   m.exists.mockResolvedValue(false);
   m.owned.mockResolvedValue({
     account: {
@@ -98,6 +103,16 @@ beforeEach(() => {
   });
 });
 describe("repository provider ownership and immutable snapshots", () => {
+  it('refuses an unclassified HTTP interface on a provider with a separate frontend',async()=>{
+    await expect(service.snapshot({...provider,frontendTargetId:'front'} as never,account,project,version,snapshot())).rejects.toThrow('Separa la interfaz');
+    expect(m.write).not.toHaveBeenCalled();
+  });
+  it('accepts an explicitly independent backend API',async()=>{
+    const input=snapshot();input.manifest.components[0]!.role='backend';
+    const {digest:_digest,...rest}=input.manifest;input.manifest.digest=hash(canonical(rest));
+    await service.snapshot({...provider,frontendTargetId:'front'} as never,account,project,version,input);
+    expect(m.write).toHaveBeenCalledOnce();
+  });
   it("accepts and preserves the actual Luxisoft static form + API deployment contract", async () => {
     const input = deploymentSnapshotSchema.parse(staticForm);
     expect(input).toEqual(staticForm);
@@ -303,6 +318,18 @@ describe("durable production routes", () => {
     expect(route.components).toEqual([{ name: "app", surface: "http", port: 18080, routePrefix: null }]);
     expect(JSON.stringify(route)).not.toMatch(/password|secret|database_url/i);
     expect(m.exec).toHaveBeenCalledWith(expect.stringContaining("routes.json.next"), { timeoutMs: 5000 });
+  });
+  it('keeps a migrated version on its recorded frontend when hosts are reconfigured',async()=>{
+    m.frontendGet.mockResolvedValue({versionId:version,targetId:'front',sha256:'a'.repeat(64)});
+    await service.replaceProductionRoutes(provider,account,project,{requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]});
+    expect(m.frontendReconfigure).toHaveBeenCalledWith(provider,account,project,['demo.luxisoft.com'],{});
+    expect(m.write).not.toHaveBeenCalled();
+  });
+  it('retires only the legacy nginx bindings owned by this project',async()=>{
+    m.sites.mockResolvedValue([{externalSiteId:`gh:${project}:app:hash`},{externalSiteId:'gh:another-project:app:hash'}]);
+    await service.retire(provider,account,project);
+    expect(m.frontendRemove).toHaveBeenCalledWith(provider,account,project);
+    expect(m.unbind).toHaveBeenCalledExactlyOnceWith(provider,account,`gh:${project}:app:hash`);
   });
   it("does not replace the active route for an unfinished publication", async () => {
     m.read.mockImplementation(async (file: string) => file.endsWith("state.json")

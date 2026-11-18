@@ -76,6 +76,11 @@ async function ownedAccount(provider: HostingProvider, externalId: string) {
 export const providerService = {
   publicProvider,
   ownedAccount,
+  /** A frontend target never changes the ownership target of accounts/data. */
+  async frontendExecutor(provider: HostingProvider, targetId = provider.frontendTargetId) {
+    if (!targetId) throw new ConflictError("Selecciona el servidor frontend en HOSTING");
+    return executorFor({ ...provider, targetId });
+  },
 
   async listTemplates(providerId: string) {
     const provider = await providerRepository.get(providerId);
@@ -88,6 +93,11 @@ export const providerService = {
   async listProviders() { return (await providerRepository.list()).map(publicProvider); },
 
   async createProvider(input: Omit<HostingProvider, "id" | "keyHash" | "keyPrefix" | "createdAt" | "updatedAt">) {
+    if (input.frontendTargetId) {
+      const executor=await this.frontendExecutor(input as HostingProvider);
+      const probe=await executor.exec('test -x /usr/lib/luxipanel/frontend-publication && test -x /usr/sbin/nginx',{timeoutMs:10000});
+      if(probe.exitCode!==0)throw new ValidationError('Instala la publicación frontend de HOSTING y nginx en el servidor seleccionado');
+    }
     if (input.allowedModules.includes("admin")) throw new ValidationError("Módulo no disponible para grupos de hosting");
     if (input.groupTemplate) input = { ...input, groupTemplate: normalizeProviderGroupTemplate(input.groupTemplate, input.allowedModules) };
     if (input.targetId !== LOCAL_TARGET_ID) {
@@ -103,6 +113,11 @@ export const providerService = {
   async updateProvider(id: string, patch: Partial<HostingProvider>) {
     const existing = await providerRepository.get(id);
     if (!existing) throw new NotFoundError("Proveedor");
+    if (patch.frontendTargetId) {
+      const executor=await this.frontendExecutor({ ...existing, frontendTargetId: patch.frontendTargetId });
+      const probe=await executor.exec('test -x /usr/lib/luxipanel/frontend-publication && test -x /usr/sbin/nginx',{timeoutMs:10000});
+      if(probe.exitCode!==0)throw new ValidationError('Instala la publicación frontend de HOSTING y nginx en el servidor seleccionado');
+    }
     // A target change after provisioning would silently cross tenant boundaries.
     if (patch.targetId && patch.targetId !== existing.targetId) throw new ConflictError("El servidor asignado es inmutable; crea otro proveedor");
     const modules = patch.allowedModules ?? existing.allowedModules;
@@ -243,6 +258,13 @@ export const providerService = {
 
   async bindSite(provider: HostingProvider, externalId: string, siteId: string, domain: string) {
     assertReference(siteId);
+    if (provider.frontendTargetId && siteId.startsWith("gh:")) {
+      await ownedAccount(provider, externalId);
+      const parsed = siteFormSchema.parse({ kind: "proxy", domain, proxyPass: provider.upstreamUrl, websocket: true });
+      // Durable frontend publication (or the frontend's shared API edge) owns
+      // this host. Never recreate a redundant vhost on the account/data host.
+      return { externalSiteId: siteId, domain: parsed.domain, targetId: provider.frontendTargetId };
+    }
     const parsed = siteFormSchema.parse({ kind: "proxy", domain, proxyPass: provider.upstreamUrl, websocket: true });
     return withLock(`${provider.targetId}:domain:${parsed.domain}`, async () => {
       const { account, executor } = await ownedAccount(provider, externalId);
@@ -276,8 +298,15 @@ export const providerService = {
     const site = await providerRepository.findSite(provider.id, siteId);
     if (!site || site.externalAccountId !== externalId) throw new NotFoundError("Sitio de proveedor");
     return withLock(`${provider.targetId}:domain:${site.domain}`, async () => {
-      const { executor } = await ownedAccount(provider, externalId);
-      const current = await nginxSitesService.readRaw(executor, site.domain);
+      await ownedAccount(provider, externalId);
+      const executor = await executorFor({ ...provider, targetId: site.targetId });
+      let current: string;
+      try { current = await nginxSitesService.readRaw(executor, site.domain); }
+      catch (error) {
+        if (!(error instanceof NotFoundError)) throw error;
+        await providerRepository.deleteSite(site.id);
+        return;
+      }
       if (!current.startsWith(`${SITE_MARK}${provider.id}:${externalId}:${siteId}\n`)) throw new ConflictError("La configuración NGINX cambió; requiere revisión administrativa");
       await nginxSitesService.deleteSite(executor, site.domain);
       await providerRepository.deleteSite(site.id);

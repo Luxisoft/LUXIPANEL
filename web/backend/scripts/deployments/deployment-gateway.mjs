@@ -173,6 +173,9 @@ function proxyRequest(req, res, route, component) {
     const headers = { ...req.headers, host: normalizeHost(req.headers.host), "x-forwarded-host": normalizeHost(req.headers.host), "x-forwarded-proto": "https" };
     for (const key of ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"]) delete headers[key];
     const upstream = http.request({ host: "127.0.0.1", port: component.port, method: req.method, path: req.url, headers }, (response) => {
+      if (component.role === "backend" && /(?:text\/html|application\/xhtml\+xml)/i.test(String(response.headers['content-type'] ?? ''))) {
+        response.resume(); sendJson(res, 502, {ok:false,error:'backend_interface_forbidden'}); resolve(); return;
+      }
       const outgoing = { ...response.headers, "x-luxi-project-type": "repository", "x-luxi-version": String(route.versionNumber) };
       delete outgoing.connection; delete outgoing["transfer-encoding"];
       res.writeHead(response.statusCode ?? 502, outgoing); response.pipe(res);

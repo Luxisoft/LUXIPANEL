@@ -30,6 +30,10 @@ const upstreamUrl = z.string().regex(/^http:\/\/(?:127\.0\.0\.1|\[::1\]):(?:[1-9
 const createProvider = z.object({
   name: z.string().trim().min(2).max(120),
   targetId: z.string().min(1),
+  frontendTargetId: z.string().min(1).max(100).optional(),
+  backendGatewayUrl: z.string().regex(/^http:\/\/(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\]):[1-9]\d{0,4}$/).optional(),
+  previewAuthorizationUrl: z.string().regex(/^https?:\/\/[a-zA-Z0-9.:-]+\/api\/v1\/deployment-frontend\/authorize$/).optional(),
+  previewBackendGatewayUrl: z.string().regex(/^http:\/\/[a-zA-Z0-9.:-]+$/).optional(),
   panelUrl,
   upstreamUrl,
   operations: z.array(z.enum(PROVIDER_OPERATIONS)).default(PROVIDER_OPERATIONS.filter((op) => op !== "accounts.delete" && !op.startsWith("expo."))),
@@ -98,7 +102,7 @@ const current = (res: Response) => (res.locals as unknown as { hostingProvider: 
 const allowed = (res: Response, op: (typeof PROVIDER_OPERATIONS)[number]) => providerService.assertOperation(current(res), op);
 providerRouter.get("/api/hosting/v1/capabilities", asyncHandler(async (_req, res) => {
   const p = current(res);
-  res.json({ ok: true, data: { version: 1, storageMeteringVersion: 1, storageInventoryVersion: 1, executionMeteringVersion: 1, operations: p.operations, allowedModules: p.allowedModules, targetId: p.targetId } });
+  res.json({ ok: true, data: { version: 1, storageMeteringVersion: 1, storageInventoryVersion: 1, executionMeteringVersion: 1, operations: p.operations, allowedModules: p.allowedModules, targetId: p.targetId, frontendTargetId: p.frontendTargetId ?? null } });
 }));
 providerRouter.get("/api/hosting/v1/accounts/:externalId/storage", asyncHandler(async(req,res)=>{
   allowed(res,"usage.read");res.set("cache-control","no-store");

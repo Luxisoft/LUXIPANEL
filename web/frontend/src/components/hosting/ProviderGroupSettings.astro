@@ -18,6 +18,7 @@ const quotas = [
       <div class="grid grid-cols-1 gap-3 @xl:grid-cols-2">
         <label class="block text-xs">{h.modal.labelName}<input id="provider-name" required maxlength="120" class="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2" placeholder="Luxisoft" /></label>
         <label class="block text-xs">{hs.managedServer}<select id="provider-target" required class="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2"><option value="local">{hs.localServer}</option></select></label>
+        <label class="block text-xs">{hs.frontendServer ?? "Frontend"}<select id="provider-frontend-target" required class="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2"><option value="local">{hs.localServer}</option></select></label>
         <label class="block text-xs">{hs.panelHttpsOrigin}<input id="provider-panel-url" required type="url" class="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2" placeholder="https://panel.example.org" /></label>
         <label class="block text-xs">{hs.siteEngine}<input id="provider-upstream" required class="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2" value="http://127.0.0.1:3400" /></label>
       </div>

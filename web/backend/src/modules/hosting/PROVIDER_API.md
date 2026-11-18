@@ -2,8 +2,57 @@
 
 LUXIPANEL **publica** esta API desde HOSTING. Luxisoft y cualquier otro gestor de
 hosting son clientes de ella. Cada proveedor se configura en **Panel → HOSTING →
-Configuración → Proveedores API** y se fija a un único servidor administrado.
+Configuración → Proveedores API**. El servidor backend identifica sus cuentas,
+datos y procesos; el selector frontend/publicación puede elegir el servidor
+propio u otro servidor SSH accesible con huella aprobada.
 LP-LICENSE-SERVER no autentica, retransmite ni ejecuta estas llamadas.
+
+## Ubicación de la publicación web
+
+`frontendTargetId` selecciona el ejecutor de interfaces y nginx, sin cambiar
+`targetId` ni mover los homes de cuentas existentes. Las publicaciones guardan
+su servidor efectivo: una preferencia nueva requiere migrar lo que ya existe,
+y la eliminación siempre vuelve al destino guardado. Para Luxisoft, el backend
+es `local` y el frontend es el target FRONTEND (`192.0.2.10`).
+
+Instalar `scripts/hosting/frontend-publication.py` publicado, como root y modo
+0755, en `/usr/lib/luxipanel/frontend-publication` del servidor frontend. Necesita
+Python 3, nginx y certificados previamente aprovisionados por SSL; no instala
+software ni modifica DNS al publicar. El ejecutor administrativo usa sudo. Las
+cuentas cliente y la clave de proveedor no reciben shell, rutas ni credenciales
+de servidores.
+
+`GET /capabilities` añade `frontendTargetId`. Los componentes de versiones nuevas
+declaran `role=frontend` para estáticos/previews web móviles y `role=backend`
+para APIs/workers. Con destino frontend configurado se rechaza HTTP sin rol
+backend, y se exige separar las interfaces de las aplicaciones mixtas. El health
+y el gateway rechazan HTML servido por componentes backend explícitos.
+
+`PUT /accounts/{account}/deployments/{project}/frontend-publication/{version}`
+recibe un ZIP (`application/octet-stream`, máximo 32 MiB), `x-artifact-sha256`,
+`x-publication-hosts` (array JSON), y opcionalmente `x-publication-number` y
+`x-canonical-host`. Requiere `deployments.publish`. No admite comandos, paths,
+targets ni autorización para adoptar archivos nginx ajenos.
+
+Para preview añade `x-publication-environment=preview`,
+`x-publication-component` y, si procede, `x-publication-api-routes` (array JSON).
+Solo admite hosts de preview versionados. El administrador configura
+`previewAuthorizationUrl` hacia el endpoint de autorización del gestor,
+`backendGatewayUrl` para APIs públicas y `previewBackendGatewayUrl` para APIs
+de preview. En Luxisoft son `/api/v1/deployment-frontend/authorize` en BACKEND
+`:3200`, el gateway `:3460` y el proxy de APIs de preview `:3400`.
+
+`GET /accounts/{account}/deployments/{project}/frontend-publication` consulta
+la publicación principal (`deployments.read`). DELETE en esa ruta o retirar el
+deployment limpia las publicaciones principales/previews y sus vhosts exclusivos;
+la retirada del deployment también elimina bindings nginx heredados del mismo
+proyecto. Los errores conservan registros para reintentar. Los releases previos
+y respaldos permanecen para recuperación, sin hosts públicos activos.
+
+La activación de rutas de producción instala los archivos estáticos en el
+frontend. Si hay API, las rutas backend conservan únicamente esos componentes;
+no sirven los archivos de interfaz. Las referencias de sitio `gh:` dejan de
+crear vhosts redundantes en el servidor de cuentas/datos.
 
 ## Preparación y seguridad
 

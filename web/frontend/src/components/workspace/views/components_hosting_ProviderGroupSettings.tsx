@@ -89,6 +89,12 @@ export default function components_hosting_ProviderGroupSettings(props: any) {
                 </select>
               </label>
               <label className="block text-xs">
+                {hs.frontendServer ?? "Frontend"}
+                <select id="provider-frontend-target" required className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2">
+                  <option value="local">{hs.localServer}</option>
+                </select>
+              </label>
+              <label className="block text-xs">
                 {hs.panelHttpsOrigin}
                 <input
                   id="provider-panel-url"

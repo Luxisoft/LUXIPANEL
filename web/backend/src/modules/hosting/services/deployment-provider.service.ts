@@ -13,6 +13,8 @@ import {
   NotFoundError,
 } from "../../../shared/errors/index.js";
 import { providerService } from "./provider.service.js";
+import { frontendPublicationService } from "./frontend-publication.service.js";
+import { providerRepository } from "../repositories/provider.repository.js";
 import type { HostingProvider } from "../models/provider.model.js";
 import { getRedis } from "../../../shared/redis/index.js";
 
@@ -42,6 +44,7 @@ export const deploymentSnapshotSchema = z
                 name,
                 context: relative,
                 surface: z.enum(["http", "worker", "mobile", "static"]),
+                role: z.enum(["frontend", "backend"]).optional(),
                 port: z.number().int().min(1).max(65535),
                 healthPath: z
                   .string()
@@ -324,6 +327,20 @@ export const deploymentProviderService = {
     const { digest, ...contents } = input.manifest;
     if (hash(canonicalJson(contents)) !== digest)
       throw new ConflictError("Manifiesto modificado");
+    if (provider.frontendTargetId) {
+      const frontend = input.manifest.components.filter(p => p.surface === "static" || p.surface === "mobile" && p.role === "frontend");
+      if (frontend.length > 1) throw new ConflictError("Consolida la interfaz en un componente frontend independiente");
+      for (const part of input.manifest.components) {
+        if (part.surface === 'mobile' && part.role !== 'frontend')
+          throw new ConflictError('El preview web móvil debe exportarse al servidor frontend');
+        if (part.surface === "http" && part.role !== "backend")
+          throw new ConflictError("Separa la interfaz estática y la API backend antes de desplegar; no se permite servir interfaces en BACKEND");
+        if (part.surface === "static" && part.role === "backend")
+          throw new ConflictError("La interfaz pertenece al servidor frontend");
+        if (frontend.length && part.surface === "http" && !part.routePrefix)
+          throw new ConflictError("La API backend requiere un prefijo de ruta independiente");
+      }
+    }
     return locked(c.id, async () => {
       const root = path.join(c.root, "versions", version),
         file = path.join(root, "manifest.json"),
@@ -498,6 +515,17 @@ export const deploymentProviderService = {
       if (state.status !== "finished" || state.environment !== "production" ||
           state.versionId !== input.versionId || state.result?.versionId !== input.versionId)
         throw new ConflictError("Publicación no preparada");
+      for (const host of input.hosts) {
+        if (host.redirectTo && (!host.expiresAt || host.hostname === host.redirectTo || !input.hosts.some(target => target.hostname === host.redirectTo && !target.redirectTo)))
+          throw new ConflictError("Destino de redirección inválido");
+        if (host.expiresAt && !host.redirectTo) throw new ConflictError("Vencimiento sin redirección");
+      }
+      const redirects = Object.fromEntries(input.hosts.filter(host => host.redirectTo).map(host => [host.hostname,host.redirectTo!]));
+      const relocated = await frontendPublicationService.get(provider, account, project);
+      if (relocated?.versionId === input.versionId) {
+        await frontendPublicationService.reconfigure(provider, account, project, input.hosts.map(host => host.hostname), redirects);
+        return { revision: relocated.sha256, versionId: input.versionId, hosts: input.hosts.length, targetId: relocated.targetId };
+      }
       const snapshot = deploymentSnapshotSchema.parse(await readJson(
         c.executor,
         path.join(c.root, "versions", input.versionId, "manifest.json"),
@@ -506,12 +534,12 @@ export const deploymentProviderService = {
       const components = [] as Array<Record<string, unknown>>;
       for (const manifest of snapshot.manifest.components) {
         const result = resultByName.get(manifest.name) as any;
-        const surface = manifest.surface === "mobile" ? "http" : manifest.surface;
+        const surface = manifest.surface === "mobile" ? (manifest.role === "frontend" ? "static" : "http") : manifest.surface;
         if (!result || result.surface !== surface) throw new ConflictError("Componente publicado inválido");
         if (surface === "http") {
           if (!Number.isInteger(result.port) || result.port < 1024 || result.port > 65535)
             throw new ConflictError("Puerto publicado inválido");
-          components.push({ name: manifest.name, surface, port: result.port, routePrefix: manifest.routePrefix ?? null });
+          components.push({ name: manifest.name, surface, port: result.port, routePrefix: manifest.routePrefix ?? null, ...(manifest.role ? {role:manifest.role} : {}) });
           continue;
         }
         if (surface !== "static") continue;
@@ -549,6 +577,27 @@ export const deploymentProviderService = {
       const publicNames = new Set(components.map((part) => String(part.name)));
       for (const host of input.hosts)
         if (!publicNames.has(host.defaultComponent)) throw new ConflictError("Componente principal inválido");
+      const staticParts = components.filter(part => part.surface === "static");
+      if (provider.frontendTargetId && staticParts.length === 1) {
+        const part = staticParts[0] as { name: string; staticArchive: { archive: string; sha256: string } };
+        const bytes = await c.executor.readFile(part.staticArchive.archive);
+        if (!Buffer.isBuffer(bytes)) throw new ConflictError("Artefacto estático inválido");
+        const backend = components.filter(part => part.surface === "http");
+        await frontendPublicationService.publish(provider, account, project, {
+          versionId: input.versionId, versionNumber: input.versionNumber,
+          sha256: part.staticArchive.sha256, hosts: input.hosts.map(host => host.hostname),
+          redirects,
+          ...(backend.length ? { apiRoutes: backend.map(part => String(part.routePrefix)), proxyHosts: input.hosts.filter(host => host.defaultComponent !== part.name).map(host => host.hostname) } : {}),
+          ...(input.hosts.find(host => !host.hostname.endsWith('.luxisoft.com') && !host.hostname.startsWith('www.')) ? {canonicalHost:input.hosts.find(host => !host.hostname.endsWith('.luxisoft.com') && !host.hostname.startsWith('www.'))!.hostname} : {}),
+        }, bytes);
+        const file = path.join(c.root, "routes.json");
+        if (!backend.length) {
+          if (await pathExists(c.executor, file)) await c.executor.unlink(file);
+          return { revision: hash(bytes), versionId: input.versionId, hosts: input.hosts.length, targetId: provider.frontendTargetId };
+        }
+        components.splice(0, components.length, ...backend);
+        for (const host of input.hosts) if (host.defaultComponent === part.name) host.defaultComponent = String(backend[0]!.name);
+      }
       const record = {
         schemaVersion: 1,
         providerId: provider.id,
@@ -569,6 +618,7 @@ export const deploymentProviderService = {
     });
   },
   async removeProductionRoutes(provider: HostingProvider, account: string, project: string) {
+    await frontendPublicationService.withdraw(provider, account, project);
     const c = await context(provider, account, project);
     return locked(c.id, async () => {
       const file = path.join(c.root, "routes.json");
@@ -577,6 +627,7 @@ export const deploymentProviderService = {
     });
   },
   async retire(provider: HostingProvider, account: string, project: string) {
+    await frontendPublicationService.remove(provider, account, project);
     const c = await context(provider, account, project),
       marker = path.join(c.root, "retire.json");
     const routes = path.join(c.root, "routes.json");
@@ -597,6 +648,11 @@ export const deploymentProviderService = {
     );
     if (result.exitCode !== 0)
       throw new ConflictError("deployment_retirement_failed");
+    // Account/project rows must remain until all owned legacy site bindings
+    // have been removed, otherwise their nginx records become unreachable.
+    for (const site of await providerRepository.listSitesForAccount(provider.id, account))
+      if (site.externalSiteId.startsWith(`gh:${project}:`))
+        await providerService.unbindSite(provider, account, site.externalSiteId);
     return { retired: true };
   },
 };
