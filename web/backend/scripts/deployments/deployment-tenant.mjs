@@ -18,6 +18,8 @@ if (
   throw new Error("invalid_runtime_identity");
 const root = path.join(job.home, ".luxisoft", "deployments", project),
   quadlet = path.join(job.home, ".config", "containers", "systemd");
+let frontendPodman = [];
+const scratch = path.join(root, "scratch", job.requestId ?? "lifecycle");
 let logs = "",
   started = [],
   workers = [];
@@ -51,7 +53,7 @@ async function command(
   { cwd = root, timeout = 120000, record = true, stdin } = {},
 ) {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, {
+    const child = spawn(bin, bin === "/usr/bin/podman" ? [...frontendPodman, ...args] : args, {
       cwd,
       env: { ...process.env, CI: "1" },
       stdio: ["pipe", "pipe", "pipe"],
@@ -317,13 +319,20 @@ try {
   const environment =
       job.environment === "production" ? "production" : "preview",
     versionRoot = await secureDir(path.join(root, "versions", job.versionId)),
-    workspace = path.join(versionRoot, "source");
+    workspace = path.join(scratch, "source");
+  if (job.frontendPolicyVersion !== 2) throw new Error("frontend_policy_upgrade_required");
+  for (const part of job.snapshot.manifest.components) {
+    if ((part.surface === "http" || (part.surface === "mobile" && part.role !== "frontend")) && part.role !== "backend") throw new Error("frontend_runtime_forbidden");
+  }
   const archive = Buffer.from(job.archive, "base64");
   if (
     createHash("sha256").update(archive).digest("hex") !==
     job.snapshot.sourceDigest
   )
     throw new Error("source_digest_mismatch");
+  await secureDir(scratch);
+  const ticks=(await fs.readFile('/proc/self/stat','utf8')).slice((await fs.readFile('/proc/self/stat','utf8')).lastIndexOf(')')+2).split(' ')[19];
+  await fs.writeFile(path.join(scratch,'lease.json'),JSON.stringify({pid:process.pid,startTicks:ticks}),{mode:0o600});
   await secureDir(workspace);
   // Python's stdlib extracts only regular files beneath the owned workspace.
   const extract = `import io,os,stat,sys,zipfile\nroot=sys.argv[1]; total=0\nwith zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())) as z:\n if len(z.infolist())>20000: raise Exception('too_many_files')\n for f in z.infolist():\n  if f.is_dir(): continue\n  p=f.filename\n  if p.startswith('/') or '\\\\' in p or any(x in ('','..','.') for x in p.split('/')) or stat.S_ISLNK(f.external_attr>>16): raise Exception('unsafe_archive')\n  total+=f.file_size\n  if total>134217728 or f.file_size>16777216: raise Exception('archive_too_large')\n  destination=os.path.join(root,p); os.makedirs(os.path.dirname(destination),exist_ok=True)\n  if os.path.realpath(destination)!=destination: raise Exception('unsafe_archive_path')\n  with open(destination,'wb') as o: o.write(z.read(f))\n  os.chmod(destination,0o755 if f.external_attr>>16&0o111 else 0o644)\n`;
@@ -466,7 +475,18 @@ try {
       await secureDir(path.dirname(file));
       await fs.writeFile(file, body, { mode: 0o600 });
     }
-    let image = images[part.name];
+    const surface = part.surface === "mobile" ? (part.role === "frontend" ? "static" : "http") : part.surface;
+    const retained = job.frontendArtifacts?.[part.name];
+    if (surface === "static" && retained) {
+      components.push({name:part.name,port:null,image:null,surface,staticArchive:retained});
+      continue;
+    }
+    if (surface === "static") {
+      if (environment === "production") throw new Error("frontend_artifact_missing_rebuild_preview");
+      const storage = await secureDir(path.join(scratch, "frontend-"+part.name));
+      frontendPodman = ["--root",path.join(storage,"store"),"--runroot",path.join(storage,"run"),"--storage-driver=vfs","--network-config-dir",path.join(storage,"networks")];
+    }
+    let image = surface === "static" ? null : images[part.name];
     if (!image) {
       if (environment === "production")
         throw new Error("immutable_image_missing");
@@ -540,7 +560,7 @@ try {
       if (/^[a-f0-9]{64}$/.test(image)) image = "sha256:" + image;
       if (!/^sha256:[a-f0-9]{64}$/.test(image))
         throw new Error("image_digest_invalid");
-      images[part.name] = image;
+      if (surface !== "static") images[part.name] = image;
       await fs.writeFile(
         path.join(versionRoot, "images.json"),
         JSON.stringify(images),
@@ -555,17 +575,16 @@ try {
         HOST: "0.0.0.0",
         LUXISOFT_ENVIRONMENT: environment,
       };
-    const surface = part.surface === "mobile" ? (part.role === "frontend" ? "static" : "http") : part.surface;
     if (surface === "static") {
       // Export the immutable image's public tree. No web process or port runs
       // on BACKEND for a static component.
-      const exportDir = await secureDir(path.join(versionRoot, "static-export-" + part.name + "-" + randomBytes(5).toString("hex")));
+      const exportDir = await secureDir(path.join(scratch, "static-export-" + part.name + "-" + randomBytes(5).toString("hex")));
       const container = `luxi-export-${project}-${part.name}-${randomBytes(5).toString("hex")}`;
       const archiveFile = path.join(versionRoot, `static-${part.name}-${job.requestId}.zip`);
       const pack = `import hashlib,os,stat,sys,zipfile\nroot,out=sys.argv[1:]\nfiles=[];total=0\nfor base,dirs,names in os.walk(root,followlinks=False):\n for name in dirs+names:\n  p=os.path.join(base,name); s=os.lstat(p)\n  if stat.S_ISLNK(s.st_mode): raise Exception('static_symlink')\n  if not (stat.S_ISDIR(s.st_mode) or stat.S_ISREG(s.st_mode)): raise Exception('static_special_file')\n for name in names:\n  p=os.path.join(base,name); rel=os.path.relpath(p,root).replace(os.sep,'/')\n  if any(part in ('','.','..') for part in rel.split('/')): raise Exception('static_bad_path')\n  size=os.lstat(p).st_size;total+=size\n  if size>16777216 or total>134217728: raise Exception('static_too_large')\n  files.append((p,rel))\n  if len(files)>10000: raise Exception('static_too_many_files')\nif 'index.html' not in [rel for _,rel in files]: raise Exception('static_index_missing')\nwith zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:\n for p,rel in sorted(files,key=lambda x:x[1]): z.write(p,rel)\nif os.path.getsize(out)>33554432: raise Exception('static_archive_too_large')\nprint(hashlib.sha256(open(out,'rb').read()).hexdigest()+' '+str(os.path.getsize(out)))\n`;
       let summary;
       try {
-        await command("/usr/bin/podman", ["create", "--name", container, image], { record: false });
+        await command("/usr/bin/podman", ["create", "--network=none", "--name", container, image], { record: false });
         try {
           await command("/usr/bin/podman", ["cp", `${container}:/srv/public/.`, exportDir], { record: false, timeout: 120000 });
         } finally {
@@ -579,7 +598,8 @@ try {
         await fs.rm(exportDir, { recursive: true, force: true });
       }
       const [sha256, bytes] = summary.split(" ");
-      components.push({ name: part.name, port: null, image, surface, staticArchive: { sha256, bytes: Number(bytes) } });
+      frontendPodman = [];
+      components.push({ name: part.name, port: null, image:null, surface, staticArchive: { sha256, bytes: Number(bytes) } });
       continue;
     }
     const port = await startContainer(unit, image, {
@@ -607,6 +627,7 @@ try {
   }
   const result = {
     components,
+    frontendArtifactsVersion: 2,
     environment,
     versionId: job.versionId,
     evictedVersionIds,
@@ -627,4 +648,12 @@ try {
     }),
   );
   process.exitCode = 1;
+}
+
+finally {
+  frontendPodman = [];
+  if (!job.operation) {
+    // vfs storage has no overlay mounts; unshare handles subordinate owners.
+    await command("/usr/bin/podman",["unshare","/usr/bin/rm","-rf","--",scratch],{cwd:root,record:false,timeout:120000}).catch(()=>{});
+  }
 }

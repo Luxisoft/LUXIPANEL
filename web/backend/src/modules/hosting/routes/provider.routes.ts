@@ -102,7 +102,7 @@ const current = (res: Response) => (res.locals as unknown as { hostingProvider: 
 const allowed = (res: Response, op: (typeof PROVIDER_OPERATIONS)[number]) => providerService.assertOperation(current(res), op);
 providerRouter.get("/api/hosting/v1/capabilities", asyncHandler(async (_req, res) => {
   const p = current(res);
-  res.json({ ok: true, data: { version: 1, storageMeteringVersion: 1, storageInventoryVersion: 1, executionMeteringVersion: 1, operations: p.operations, allowedModules: p.allowedModules, targetId: p.targetId, frontendTargetId: p.frontendTargetId ?? null } });
+  res.json({ ok: true, data: { version: 1, storageMeteringVersion: 1, storageInventoryVersion: 1, executionMeteringVersion: 1, frontendArtifactsVersion: 2, frontendRuntimeAllowed: false, operations: p.operations, allowedModules: p.allowedModules, targetId: p.targetId, frontendTargetId: p.frontendTargetId ?? null } });
 }));
 providerRouter.get("/api/hosting/v1/accounts/:externalId/storage", asyncHandler(async(req,res)=>{
   allowed(res,"usage.read");res.set("cache-control","no-store");

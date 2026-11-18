@@ -389,6 +389,42 @@ def publication(request, archive=None, remove=False, stage_only=False, retain_on
         return {'removed': remove, 'targetId': request['targetId'], 'versionId': request['versionId'], 'sha256': request['sha256'], 'backup': str(backup)}
 
 
+def store_artifact(request, archive):
+    for key in ('providerId', 'accountId', 'projectId', 'versionId'):
+        if str(uuid.UUID(request[key])) != request[key]:
+            raise ValueError('invalid_reference')
+    if not re.fullmatch(r'[a-z][a-z0-9-]{0,29}', request['component']) or not SHA.fullmatch(request['sha256']):
+        raise ValueError('invalid_artifact')
+    if not archive or archive.is_symlink() or not archive.is_file() or not 0 < archive.stat().st_size <= 32 * 1024**2 or hashlib.sha256(archive.read_bytes()).hexdigest() != request['sha256']:
+        raise ValueError('invalid_archive')
+    identity = hashlib.sha256(':'.join(request[k] for k in ('providerId','accountId','projectId')).encode()).hexdigest()
+    destination = ROOT / identity / 'artifacts' / request['versionId']
+    destination.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if destination.resolve() != destination:
+        raise ValueError('unsafe_artifact_path')
+    uid = int(os.environ.get('SUDO_UID', os.getuid()))
+    if uid < 1000:
+        raise ValueError('administrative_transport_user_required')
+    os.chown(destination, uid, -1)
+    destination.chmod(0o700)
+    target = destination / (request['component'] + '-' + request['sha256'] + '.zip')
+    if target.is_symlink():
+        raise ValueError('unsafe_artifact_path')
+    if target.exists():
+        if hashlib.sha256(target.read_bytes()).hexdigest() != request['sha256']:
+            raise ValueError('artifact_conflict')
+    else:
+        stage = destination / ('.next-' + uuid.uuid4().hex)
+        try:
+            shutil.copyfile(archive, stage)
+            stage.chmod(0o600)
+            os.chown(stage, uid, -1)
+            stage.replace(target)
+        finally:
+            stage.unlink(missing_ok=True)
+    return {'retained': True, 'sha256': request['sha256'], 'bytes': archive.stat().st_size}
+
+
 def main():
     if os.geteuid() != 0 or len(sys.argv) not in (3, 4):
         raise ValueError('invalid_invocation')
@@ -397,6 +433,9 @@ def main():
     if request_file.is_symlink() or not request_file.is_file() or request_file.stat().st_size > 32768:
         raise ValueError('invalid_request')
     request = json.loads(request_file.read_text())
+    if operation == 'artifact' and len(sys.argv) == 4:
+        print(json.dumps(store_artifact(request, Path(sys.argv[3]))))
+        return
     if operation not in ('publish', 'remove', 'stage', 'retain'):
         raise ValueError('invalid_operation')
     result = publication(request, Path(sys.argv[3]) if len(sys.argv) == 4 else None, operation == 'remove', operation == 'stage', operation == 'retain')

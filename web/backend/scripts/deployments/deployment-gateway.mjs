@@ -208,7 +208,7 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
       }
       const component = chooseComponent(route, url.pathname);
       if (!component) return sendJson(res, 503, { ok: false, error: "project_route_invalid" });
-      if (component.surface === "static") return serveStatic(req, res, url, route, component, routesRoot, cacheRoot);
+      if (component.surface === "static") return sendJson(res, 410, {ok:false,error:"frontend_served_on_frontend"});
       await proxyRequest(req, res, route, component);
     })().catch((error) => {
       process.stderr.write(`project_gateway_request_failed ${String(error.message).slice(0, 180)}\n`);

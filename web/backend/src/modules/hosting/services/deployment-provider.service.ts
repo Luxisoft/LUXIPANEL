@@ -244,11 +244,9 @@ async function staticArtifact(
 export const deploymentProviderService = {
   async staticArtifact(provider: HostingProvider, account: string, project: string, job: string, component: string) {
     const c = await staticArtifact(provider, account, project, job, component);
-    const stat = await c.executor.stat(c.file);
-    if (stat.type !== "file" || stat.size !== c.meta.bytes) throw new ConflictError("Artefacto estático inválido");
-    const bytes = await c.executor.readFile(c.file);
-    if (!Buffer.isBuffer(bytes) || bytes.length !== c.meta.bytes || hash(bytes) !== c.meta.sha256)
-      throw new ConflictError("Artefacto estático inválido");
+    const state = await readJson(c.executor, path.join(c.root,'jobs',job,'state.json'));
+    const bytes = await frontendPublicationService.readArtifact(provider,account,project,uuid.parse(state.versionId),component,c.meta);
+    if(bytes.length!==c.meta.bytes||hash(bytes)!==c.meta.sha256)throw new ConflictError("Artefacto estático inválido");
     return { bytes, sha256: c.meta.sha256 };
   },
   async deleteStaticArtifact(provider: HostingProvider, account: string, project: string, job: string, component: string) {
@@ -265,20 +263,12 @@ export const deploymentProviderService = {
     if (!Buffer.isBuffer(bytes) || bytes.length !== c.meta.bytes || hash(bytes) !== c.meta.sha256)
       throw new ConflictError("Artefacto estático inválido");
     return locked(c.id, async () => {
-      const state = await readJson(c.executor, path.join(c.root, "jobs", job, "state.json")),
-        versionId = uuid.parse(state.versionId),
-        releaseRoot = path.join(c.root, "releases", versionId),
-        archive = path.join(releaseRoot, `${component}-${c.meta.sha256}.zip`);
-      await c.executor.mkdir(releaseRoot, { recursive: true });
-      if (await pathExists(c.executor, archive)) {
-        const current = await c.executor.readFile(archive);
-        if (!Buffer.isBuffer(current) || current.length !== c.meta.bytes || hash(current) !== c.meta.sha256)
-          throw new ConflictError("Artefacto estático retenido inválido");
-      } else {
-        await c.executor.writeFile(archive + ".next", bytes, { mode: 0o600 });
-        const moved = await c.executor.exec(`mv -f -- ${quoteArg(archive + ".next")} ${quoteArg(archive)}`, { timeoutMs: 5000 });
-        if (moved.exitCode !== 0) throw new ConflictError("No se pudo retener el artefacto estático");
-      }
+      const state = await readJson(c.executor, path.join(c.root,'jobs',job,'state.json'));
+      const versionId=uuid.parse(state.versionId);
+      await frontendPublicationService.putArtifact(provider,account,project,versionId,component,bytes);
+      const metadataFile=path.join(c.root,'versions',versionId,'frontend-artifacts.json');
+      const previous=await optionalJson(c.executor,metadataFile)??{};
+      await c.executor.writeFile(metadataFile,JSON.stringify({...previous,[component]:c.meta}),{mode:0o600});
       return { retained: true, versionId, component, sha256: c.meta.sha256 };
     });
   },
@@ -327,8 +317,9 @@ export const deploymentProviderService = {
     const { digest, ...contents } = input.manifest;
     if (hash(canonicalJson(contents)) !== digest)
       throw new ConflictError("Manifiesto modificado");
-    if (provider.frontendTargetId) {
+    {
       const frontend = input.manifest.components.filter(p => p.surface === "static" || p.surface === "mobile" && p.role === "frontend");
+      if(frontend.length)await frontendPublicationService.requireTarget(provider);
       if (frontend.length > 1) throw new ConflictError("Consolida la interfaz en un componente frontend independiente");
       for (const part of input.manifest.components) {
         if (part.surface === 'mobile' && part.role !== 'frontend')
@@ -404,6 +395,23 @@ export const deploymentProviderService = {
         snapshot = deploymentSnapshotSchema.parse(
           await readJson(c.executor, path.join(versionRoot, "manifest.json")),
         );
+      const frontend = snapshot.manifest.components.filter(p=>p.surface==='static'||p.surface==='mobile'&&p.role==='frontend');
+      for(const part of snapshot.manifest.components)if(part.surface==='http'&&part.role!=='backend')throw new ConflictError('backend_role_required');
+      if(frontend.length)await frontendPublicationService.requireTarget(provider);
+      const artifacts=await optionalJson(c.executor,path.join(versionRoot,'frontend-artifacts.json'))??{};
+      if(input.environment==='production'&&frontend.some(part=>!artifacts[part.name])) {
+        const jobs=await c.executor.readdir(path.join(c.root,'jobs')).catch(()=>[]);
+        for(const job of jobs){
+          if(!/^[a-f0-9-]{36}$/.test(job.name))continue;
+          const previous=await optionalJson(c.executor,path.join(c.root,'jobs',job.name,'state.json'));
+          if(previous?.versionId!==input.versionId||previous?.status!=='finished')continue;
+          for(const part of previous.result?.components??[])if(part.surface==='static'&&part.staticArchive&&!artifacts[part.name]) {
+            const bytes=await frontendPublicationService.readArtifact(provider,account,project,input.versionId,part.name,part.staticArchive);
+            artifacts[part.name]=await frontendPublicationService.putArtifact(provider,account,project,input.versionId,part.name,bytes);
+          }
+        }
+        if(frontend.some(part=>!artifacts[part.name]))throw new ConflictError('frontend_artifact_missing_rebuild_preview');
+      }
       if (!(await pathExists(c.executor, path.join(versionRoot, "source.zip"))))
         throw new ConflictError("Falta el código de la versión");
       const probe = await c.executor.exec(
@@ -434,6 +442,8 @@ export const deploymentProviderService = {
         root,
         versionRoot,
         snapshot,
+        frontendPolicyVersion:2,
+        frontendArtifacts: artifacts,
         limits: {
           memoryMb: 512,
           cpuPercent: 100,
@@ -548,26 +558,13 @@ export const deploymentProviderService = {
         if (result.port !== null || !/^[a-f0-9]{64}$/.test(meta?.sha256 ?? "") ||
             !Number.isSafeInteger(meta?.bytes) || meta.bytes < 1 || meta.bytes > 32 * 1024 * 1024)
           throw new ConflictError("Artefacto estático inválido");
-        const releaseRoot = path.join(c.root, "releases", input.versionId);
-        await c.executor.mkdir(releaseRoot, { recursive: true });
-        const archive = path.join(releaseRoot, `${manifest.name}-${meta.sha256}.zip`);
-        if (!(await pathExists(c.executor, archive))) {
-          const source = path.join(jobRoot, "static", manifest.name + ".zip"),
-            bytes = await c.executor.readFile(source);
-          if (!Buffer.isBuffer(bytes) || bytes.length !== meta.bytes || hash(bytes) !== meta.sha256)
-            throw new ConflictError("Artefacto estático inválido");
-          await c.executor.writeFile(archive, bytes, { mode: 0o600 });
-        } else {
-          const bytes = await c.executor.readFile(archive);
-          if (!Buffer.isBuffer(bytes) || bytes.length !== meta.bytes || hash(bytes) !== meta.sha256)
-            throw new ConflictError("Artefacto estático inválido");
-        }
+        await frontendPublicationService.readArtifact(provider,account,project,input.versionId,manifest.name,meta);
         components.push({
           name: manifest.name,
           surface,
           port: null,
           routePrefix: manifest.routePrefix ?? null,
-          staticArchive: { archive, sha256: meta.sha256, bytes: meta.bytes, spa: ["vite", "expo"].includes(manifest.stack) },
+          staticArchive: { sha256: meta.sha256, bytes: meta.bytes, spa: ["vite", "expo"].includes(manifest.stack) },
         });
       }
       for (const host of input.hosts) {
@@ -579,7 +576,7 @@ export const deploymentProviderService = {
       for (const host of input.hosts)
         if (!publicNames.has(host.defaultComponent)) throw new ConflictError("Componente principal inválido");
       const staticParts = components.filter(part => part.surface === "static");
-      if (provider.frontendTargetId) {
+      {
         for (const part of components) {
           // Legacy forms already have a separate API with an explicit prefix.
           // An unclassified HTTP app must be rebuilt before it can resume here.
@@ -589,9 +586,10 @@ export const deploymentProviderService = {
       }
       if (provider.frontendTargetId && migratedBackend.size && staticParts.length === 0)
         await frontendPublicationService.reconfigure(provider, account, project, input.hosts.map(host => host.hostname), redirects);
-      if (provider.frontendTargetId && staticParts.length === 1) {
-        const part = staticParts[0] as { name: string; staticArchive: { archive: string; sha256: string } };
-        const bytes = await c.executor.readFile(part.staticArchive.archive);
+      if (staticParts.length === 1) {
+        await frontendPublicationService.requireTarget(provider);
+        const part = staticParts[0] as { name: string; staticArchive: { sha256: string; bytes:number } };
+        const bytes = await frontendPublicationService.readArtifact(provider,account,project,input.versionId,part.name,part.staticArchive);
         if (!Buffer.isBuffer(bytes)) throw new ConflictError("Artefacto estático inválido");
         const backend = components.filter(part => part.surface === "http");
         await frontendPublicationService.publish(provider, account, project, {

@@ -186,3 +186,29 @@ sin modificar nginx ni activar/desactivar proyectos. Migrar y verificar todos lo
 registros antes de retirar los ZIP antiguos del panel. Los archivos sin registro
 se conservan en el archivo privado de FRONTEND. Eliminar un proyecto conserva
 releases y respaldos retirados, sin dejarlos publicados.
+
+### Hosting: compilación temporal y publicación remota (2026-11-18)
+
+`frontendArtifactsVersion=2`: las interfaces estáticas/Expo web requieren un
+frontendTargetId distinto al target de datos y al machine-id local, con helper
+remoto disponible. No existe fallback nginx local. Cada build frontend usa un
+almacenamiento Podman vfs propio bajo scratch/<requestId>; ninguna imagen
+frontend entra al registro de imágenes de versión. El resultado estático tiene
+image=null y hash/tamaño del ZIP. El supervisor entrega ese ZIP a FRONTEND con
+frontend-handoff.mjs antes de terminar el job y retira todos los temporales.
+Frontend conserva artifacts/<version>/<component>-<sha>.zip fuera de public/;
+la promoción y el rollback verifican y reutilizan esos bytes. Las descargas del
+proveedor leen FRONTEND con codificación base64 explícita, sin cache ZIP local.
+
+Instalar scripts nativos con deployments/install-frontend-policy.sh y actualizar
+hosting/frontend-publication.py en FRONTEND desde el mismo commit publicado.
+El recuperador cada minuto elimina scratch y staging huérfanos tras tres minutos,
+protegiendo procesos vivos mediante PID/startTicks. No toca repositorios, fuentes
+archivadas, imágenes backend, volúmenes ni respaldos. El gateway devuelve JSON
+410 para rutas estáticas heredadas. Los HTTP nuevos requieren role=backend;
+los previews Expo heredados que persistían preview.json rechazan la validación
+hasta disponer de publicación remota. EAS nativo mantiene su contrato.
+Los jobs encolados refrescan las referencias de artefactos al adquirir el candado
+de compilación, por lo que dos previews de la misma versión no reconstruyen su
+frontend. Ante fallo de transferencia se descarta solo el candidato nuevo; el
+preview previo no se finaliza hasta confirmar la entrega remota.

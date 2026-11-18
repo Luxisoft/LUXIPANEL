@@ -24,10 +24,7 @@ PY
 printf '%s ALL=(root) NOPASSWD: /usr/lib/luxipanel/deployment-helper\n' "$service_user" > /etc/sudoers.d/luxisoft-deployments
 chmod 0440 /etc/sudoers.d/luxisoft-deployments
 visudo -cf /etc/sudoers.d/luxisoft-deployments
-printf 'f /run/lock/luxisoft-heavy-build.lock 0644 root root -\n' > /etc/tmpfiles.d/luxisoft-builds.conf
-systemd-tmpfiles --create /etc/tmpfiles.d/luxisoft-builds.conf
-touch /run/lock/luxisoft-heavy-build.lock
-chmod 0644 /run/lock/luxisoft-heavy-build.lock
+bash "$script_dir/install-frontend-policy.sh"
 cat > /etc/luxipanel-project-gateway.env <<EOF
 PROJECT_GATEWAY_PORT=$gateway_port
 PROJECT_GATEWAY_HOST=0.0.0.0

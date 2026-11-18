@@ -60,6 +60,9 @@ export const expoProviderService = {
   await c.records.update(c.id,{[store]:seal(config)});return {provider:store,status:"verified",connectedToExpo:true};
  },
  async enqueue(provider:HostingProvider,accountRef:string,appRef:string,input:z.infer<typeof jobSchema>) {
+  // Legacy Expo validation retains preview.json on the data host. Refuse that
+  // path until a remote publication driver is used; EAS builds remain external.
+  if(input.kind==='validate')throw new ConflictError('frontend_preview_requires_remote_publication');
   const c=await context(provider,accountRef,appRef);
   return locked(c.id,async()=>{
    const row=await c.records.get(c.id);if(!row)throw new NotFoundError("App Expo");
