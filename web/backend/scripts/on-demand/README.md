@@ -75,3 +75,9 @@ privados y contenedores detenidos. Su despliegue debe aplicar el overlay generad
 por `preserve_backend_runtime.py`, que conserva el socket del proxy, los límites
 y `restart: no`. Verificarlo por el proxy en `8090`; no usar `compose start` a
 ciegas, pues los contenedores de reversión también permanecen detenidos.
+
+Los relojes `--once` conectan únicamente a la base que contiene el trabajo
+seleccionado y cierran su conexión incluso si el lanzamiento falla por memoria
+insuficiente o un error del ejecutor. El proceso termina y systemd puede volver a
+intentarlo en el siguiente vencimiento; no debe quedar abierto bloqueando el
+reloj. Esto también protege los plazos de activación y liberación de dominios.

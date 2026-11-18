@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -89,4 +89,29 @@ test("serves a verified retained static release without any control-plane lookup
   assert.equal(response.status, 200); assert.equal(response.body, "<main>durable release</main>");
   assert.equal(response.headers["x-luxi-static-sha256"], sha256); assert.equal(response.headers["x-luxi-version"], "7");
   await new Promise((resolve) => gateway.server.close(resolve));
+});
+
+test('redirects require a local non-redirecting target and a finite expiry', () => {
+ const value=record();value.hosts.push({hostname:'own.example',defaultComponent:'web'});
+ value.hosts[0]={...value.hosts[0],redirectTo:'own.example',expiresAt:'2027-05-16T12:00:00.000Z'};
+ assert.equal(parseRouteRecord(value,'test').hosts[0].redirectTo,'own.example');
+ assert.throws(()=>parseRouteRecord({...value,hosts:[value.hosts[0]]},'test'),/redirect_target/);
+ assert.throws(()=>parseRouteRecord({...value,hosts:[{...value.hosts[0],expiresAt:'bad'},value.hosts[1]]},'test'),/redirect/);
+ assert.throws(()=>parseRouteRecord({...value,hosts:[{...value.hosts[0],redirectTo:value.hosts[0].hostname},value.hosts[1]]},'test'),/redirect/);
+});
+
+test('serves temporary redirects with path and query, and stops at expiry without a control-plane call', async () => {
+ const base=path.join(process.cwd(),'.cache','gateway-tests');await mkdir(base,{recursive:true});
+ const root=await mkdtemp(path.join(base,'redirect-'));const folder=path.join(root,'f'.repeat(64));await mkdir(folder);
+ const value=record();value.hosts.push({hostname:'own.example',defaultComponent:'web'});
+ value.hosts[0]={...value.hosts[0],redirectTo:'own.example',expiresAt:new Date(Date.now()+60000).toISOString()};
+ const file=path.join(folder,'routes.json');await writeFile(file,JSON.stringify(value));
+ const gateway=createGateway({routesRoot:root,cacheRoot:path.join(root,'cache'),trustedIps:new Set()});
+ try{
+  await gateway.reload();await new Promise(resolve=>gateway.server.listen(0,'127.0.0.1',resolve));
+  const ask=()=>new Promise((resolve,reject)=>{const req=http.get({host:'127.0.0.1',port:gateway.server.address().port,path:'/shop/item?ref=old',headers:{host:'demo.luxisoft.com'}},res=>{res.resume();res.on('end',()=>resolve({status:res.statusCode,headers:res.headers}));});req.on('error',reject);});
+  const first=await ask();assert.equal(first.status,307);assert.equal(first.headers.location,'https://own.example/shop/item?ref=old');assert.equal(first.headers['cache-control'],'no-store');
+  value.hosts[0].expiresAt='2020-01-01T00:00:00.000Z';await writeFile(file,JSON.stringify(value));await gateway.reload();
+  assert.equal((await ask()).status,421);
+ }finally{await new Promise(resolve=>gateway.server.close(resolve));await rm(root,{recursive:true,force:true});}
 });
