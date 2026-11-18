@@ -156,3 +156,16 @@ se reconstruyen ambas rutas; las versiones HTTP sin rol deben separarse antes de
 reactivarse en BACKEND. La eliminación de enlaces nginx utiliza el destino y la
 propiedad persistidos junto con el marcador exacto del archivo, aun después de
 eliminar la cuenta; una configuración ajena o modificada sigue bloqueada.
+
+Las aplicaciones Node heredadas que mezclan interfaz y API se separan con el
+operador publicado `scripts/hosting/migrate-legacy-http.py`: exporta únicamente
+raíces públicas permitidas y páginas GET enumeradas, sin copiar volúmenes ni
+entorno al frontend. La operación `api-only` instala una imagen derivada con
+`backend-only.mjs`, mantiene puertos/configuración/API y bloquea tráfico de
+páginas/recursos en el servidor HTTP. Conserva imagen y Quadlet originales y
+restaura la unidad ante fallo de arranque o salud. Ejecutar bajo el bloqueo de
+build compartido; no pasar solicitudes de clientes a esta herramienta de root.
+Los estáticos localizados pueden conservar redirección por idioma de navegador,
+cookie validada y ruta mediante `localeRouting`, sin un servidor SSR en BACKEND.
+El cambio de una versión HTTP antigua a una nueva publicación requiere un
+manifiesto separado; el reintento de versiones sin clasificar se bloquea.

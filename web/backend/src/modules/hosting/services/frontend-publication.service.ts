@@ -14,6 +14,11 @@ export const frontendPublicationSchema = z.object({
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   hosts: z.array(z.string().max(253).regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)).min(1).max(30),
   canonicalHost: z.string().max(253).optional(),
+  localeRouting: z.object({
+    locales: z.array(z.string().regex(/^[a-z]{2}$/)).min(1).max(10),
+    defaultLocale: z.string().regex(/^[a-z]{2}$/),
+    cookie: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
+  }).strict().refine(x => x.locales.includes(x.defaultLocale) && new Set(x.locales).size === x.locales.length).optional(),
   apiRoutes: z.array(z.string().regex(/^\/[a-zA-Z0-9_/-]+$/)).max(10).optional(),
   proxyHosts: z.array(z.string().max(253)).max(30).optional(),
   environment: z.enum(["production", "preview"]).optional(),
@@ -84,6 +89,7 @@ export const frontendPublicationService = {
       versionId: current.versionId, versionNumber: current.versionNumber, sha256: current.sha256, hosts,
       redirects,
       ...(current.component ? { component: current.component } : {}),
+      ...(current.localeRouting ? { localeRouting: current.localeRouting } : {}),
       ...(current.canonicalHost && hosts.includes(current.canonicalHost) ? { canonicalHost: current.canonicalHost } : {}),
       ...(current.apiRoutes ? { apiRoutes: current.apiRoutes, proxyHosts: (current.proxyHosts ?? []).filter((host: string) => hosts.includes(host)) } : {}),
     }, bytes);
@@ -106,6 +112,7 @@ export const frontendPublicationService = {
         const request = { providerId: provider.id, accountId: account, projectId: project, targetId,
           versionId: input.versionId, sha256: input.sha256, hosts: input.hosts,
           ...(input.redirects ? {redirects:input.redirects} : {}),
+          ...(input.localeRouting ? {localeRouting:input.localeRouting} : {}),
           ...(input.versionNumber ? { versionNumber: input.versionNumber } : {}),
           ...(input.component ? { component: input.component } : {}),
           ...(input.environment === 'preview' ? { environment: 'preview', previewAuthorizationUrl: provider.previewAuthorizationUrl } : {}),

@@ -56,6 +56,13 @@ def validate(request):
         raise ValueError('backend_origin_required')
     if not isinstance(request.get('targetId'), str) or not re.fullmatch(r'[a-zA-Z0-9-]{1,100}', request['targetId']):
         raise ValueError('invalid_target')
+    routing = request.get('localeRouting')
+    if routing is not None:
+        if not isinstance(routing, dict) or set(routing) != {'locales', 'defaultLocale', 'cookie'}:
+            raise ValueError('invalid_locale_routing')
+        locales = routing['locales']
+        if not isinstance(locales, list) or not 1 <= len(locales) <= 10 or any(not isinstance(x, str) or not re.fullmatch('[a-z]{2}', x) for x in locales) or len(set(locales)) != len(locales) or routing['defaultLocale'] not in locales or not re.fullmatch('[a-z][a-z0-9-]{0,39}', routing['cookie']):
+            raise ValueError('invalid_locale_routing')
     environment = request.get('environment', 'production')
     if environment not in ('preview', 'production'):
         raise ValueError('invalid_environment')
@@ -150,6 +157,18 @@ def config(request, host, public):
         proxy_hide_header X-Luxi-Version;
         proxy_buffering off;
     }}''' if host in request.get('proxyHosts', []) else '    location / { try_files $uri $uri/ /index.html; }'
+    if request.get('localeRouting') and host not in request.get('proxyHosts', []):
+        routing = request['localeRouting']
+        declarations = f"    set $lxp_locale {routing['defaultLocale']};\n"
+        # Request values are tested against fixed validated literals, never interpolated.
+        for locale in routing['locales']:
+            declarations += f'    if ($http_accept_language ~* "^{locale}(?:[-,;]|$)") {{ set $lxp_locale {locale}; }}\n'
+        for locale in routing['locales']:
+            declarations += f'    if ($http_cookie ~* "(?:^|; *){routing["cookie"]}={locale}(?:;|$)") {{ set $lxp_locale {locale}; }}\n'
+        for locale in routing['locales']:
+            declarations += f'    if ($uri ~ "^/{locale}(?:/|$)") {{ set $lxp_locale {locale}; }}\n'
+        exact = ''.join(f'    location = /{locale}/ {{ try_files /{locale}/index.html =404; }}\n' for locale in routing['locales'])
+        main_location = declarations + '    location = / { return 302 /$lxp_locale/; }\n' + exact + '    location / {\n        if ($uri !~ "\\.[^/]+$") { return 301 /$lxp_locale/; }\n        try_files $uri =404;\n    }'
     preview_auth = ''
     if request.get('environment') == 'preview':
         preview_auth = f'''    auth_request /__lxp_frontend_auth;
