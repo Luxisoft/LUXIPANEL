@@ -28,8 +28,10 @@ def main():
  if image and not re.fullmatch(r'sha256:[a-f0-9]{64}',image):raise ValueError('invalid_image')
  command=['/usr/sbin/runuser','-u',username,'--','/usr/bin/env','HOME='+user.pw_dir,'XDG_RUNTIME_DIR=/run/user/'+str(user.pw_uid),'/usr/bin/podman']
  def podman(args,**kw):return subprocess.run(command+args,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120,**kw).stdout
+ exists=bool(image) and subprocess.run(command+['image','exists',image],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
  if action=='export':
-  if not image:raise ValueError('image_missing')
+  if not exists:
+   print(json.dumps({'imageMissing':True}));return
   container='luxi-frontend-archive-'+uuid.uuid4().hex
   try:
    podman(['create','--network=none','--name',container,image])
@@ -52,14 +54,13 @@ def main():
    podman(['rm','--force',container])
  elif action=='retire':
   receipts=json.load(sys.stdin);allowed=set(receipts['verifiedRemoteDigests'])
-  if not allowed or any(not re.fullmatch(r'[a-f0-9]{64}',sha) for sha in allowed):raise ValueError('remote_receipts_required')
   files=list(root.glob('static-'+component+'-*.zip'))
+  if (not allowed and (files or exists)) or any(not re.fullmatch(r'[a-f0-9]{64}',sha) for sha in allowed):raise ValueError('remote_receipts_required')
   for file in files:
    if file.is_symlink() or not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest() not in allowed:raise ValueError('unverified_archive')
   if image:
    if image in [value for name,value in images.items() if name!=component]:raise ValueError('shared_backend_image')
    # Without force, Podman refuses an image still used by another container.
-   exists=subprocess.run(command+['image','exists',image],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
    if exists:podman(['rmi',image])
   for file in files:file.unlink()
   images.pop(component,None)
