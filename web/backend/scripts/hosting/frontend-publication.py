@@ -217,7 +217,7 @@ def atomic_json(file, value):
     staged.replace(file)
 
 
-def publication(request, archive=None, remove=False):
+def publication(request, archive=None, remove=False, stage_only=False):
     identity = validate(request)
     for directory in (ROOT, STATE, BACKUPS):
         directory.mkdir(parents=True, exist_ok=True)
@@ -229,6 +229,8 @@ def publication(request, archive=None, remove=False):
         previous = json.loads(record.read_text()) if record.exists() else None
         if previous and previous['targetId'] != request['targetId']:
             raise ValueError('publication_target_conflict')
+        if stage_only and previous and previous.get('active', True):
+            raise ValueError('publication_already_active')
         if remove and not previous:
             return {'removed': True, 'alreadyRemoved': True}
         marker = f"# LUXIPANEL_FRONTEND {request['providerId']}:{request['accountId']}:{request['projectId']}"
@@ -272,6 +274,9 @@ def publication(request, archive=None, remove=False):
             headers = release / 'headers.conf'
             if not headers.exists():
                 headers.write_text(f"add_header X-Luxi-Frontend-Release {request['versionId']} always;\nadd_header X-Luxi-Static-Sha256 {request['sha256']} always;\nadd_header X-Luxi-Project-Type repository always;\n")
+            if stage_only:
+                atomic_json(record, {**{k: v for k, v in request.items() if k != 'adoptionHashes'}, 'release': str(release), 'active': False})
+                return {'staged': True, 'active': False, 'targetId': request['targetId'], 'versionId': request['versionId'], 'sha256': request['sha256']}
             generated = {host: config(request, host, release / 'public') for host in request['hosts']}
         else:
             generated = {}
@@ -308,7 +313,7 @@ def publication(request, archive=None, remove=False):
             if remove:
                 record.unlink(missing_ok=True)
             else:
-                atomic_json(record, {**{k: v for k, v in request.items() if k != 'adoptionHashes'}, 'release': str(release), 'backup': str(backup)})
+                atomic_json(record, {**{k: v for k, v in request.items() if k != 'adoptionHashes'}, 'release': str(release), 'backup': str(backup), 'active': True})
         except BaseException:
             if not remove:
                 active.unlink(missing_ok=True)
@@ -336,9 +341,9 @@ def main():
     if request_file.is_symlink() or not request_file.is_file() or request_file.stat().st_size > 32768:
         raise ValueError('invalid_request')
     request = json.loads(request_file.read_text())
-    if operation not in ('publish', 'remove'):
+    if operation not in ('publish', 'remove', 'stage'):
         raise ValueError('invalid_operation')
-    result = publication(request, Path(sys.argv[3]) if len(sys.argv) == 4 else None, operation == 'remove')
+    result = publication(request, Path(sys.argv[3]) if len(sys.argv) == 4 else None, operation == 'remove', operation == 'stage')
     print(json.dumps(result))
 
 

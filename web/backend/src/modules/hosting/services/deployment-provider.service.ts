@@ -522,7 +522,7 @@ export const deploymentProviderService = {
       }
       const redirects = Object.fromEntries(input.hosts.filter(host => host.redirectTo).map(host => [host.hostname,host.redirectTo!]));
       const relocated = await frontendPublicationService.get(provider, account, project);
-      if (relocated?.versionId === input.versionId) {
+      if (relocated?.versionId === input.versionId && !relocated.apiRoutes?.length && !relocated.proxyHosts?.length) {
         await frontendPublicationService.reconfigure(provider, account, project, input.hosts.map(host => host.hostname), redirects);
         return { revision: relocated.sha256, versionId: input.versionId, hosts: input.hosts.length, targetId: relocated.targetId };
       }
@@ -578,6 +578,14 @@ export const deploymentProviderService = {
       for (const host of input.hosts)
         if (!publicNames.has(host.defaultComponent)) throw new ConflictError("Componente principal inválido");
       const staticParts = components.filter(part => part.surface === "static");
+      if (provider.frontendTargetId) {
+        for (const part of components) {
+          // Legacy forms already have a separate API with an explicit prefix.
+          // An unclassified HTTP app must be rebuilt before it can resume here.
+          if (part.surface === 'http' && part.role !== 'backend' && !(staticParts.length === 1 && part.routePrefix))
+            throw new ConflictError("Separa la interfaz del backend antes de reactivar esta versión");
+        }
+      }
       if (provider.frontendTargetId && staticParts.length === 1) {
         const part = staticParts[0] as { name: string; staticArchive: { archive: string; sha256: string } };
         const bytes = await c.executor.readFile(part.staticArchive.archive);
@@ -585,7 +593,7 @@ export const deploymentProviderService = {
         const backend = components.filter(part => part.surface === "http");
         await frontendPublicationService.publish(provider, account, project, {
           versionId: input.versionId, versionNumber: input.versionNumber,
-          sha256: part.staticArchive.sha256, hosts: input.hosts.map(host => host.hostname),
+          component: part.name, sha256: part.staticArchive.sha256, hosts: input.hosts.map(host => host.hostname),
           redirects,
           ...(backend.length ? { apiRoutes: backend.map(part => String(part.routePrefix)), proxyHosts: input.hosts.filter(host => host.defaultComponent !== part.name).map(host => host.hostname) } : {}),
           ...(input.hosts.find(host => !host.hostname.endsWith('.luxisoft.com') && !host.hostname.startsWith('www.')) ? {canonicalHost:input.hosts.find(host => !host.hostname.endsWith('.luxisoft.com') && !host.hostname.startsWith('www.'))!.hostname} : {}),

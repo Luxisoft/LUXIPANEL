@@ -297,8 +297,10 @@ export const providerService = {
     assertReference(siteId);
     const site = await providerRepository.findSite(provider.id, siteId);
     if (!site || site.externalAccountId !== externalId) throw new NotFoundError("Sitio de proveedor");
-    return withLock(`${provider.targetId}:domain:${site.domain}`, async () => {
-      await ownedAccount(provider, externalId);
+    return withLock(`${site.targetId}:domain:${site.domain}`, async () => {
+      // The stored binding and the exact nginx marker retain ownership even
+      // after its project/account has been deleted. Never resolve a new target.
+
       const executor = await executorFor({ ...provider, targetId: site.targetId });
       let current: string;
       try { current = await nginxSitesService.readRaw(executor, site.domain); }

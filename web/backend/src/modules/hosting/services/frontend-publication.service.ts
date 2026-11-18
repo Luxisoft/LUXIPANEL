@@ -45,6 +45,15 @@ export const frontendPublicationService = {
       throw new ConflictError("Artefacto frontend inválido");
     return this.apply(provider, account, project, input, bytes);
   },
+  /** Preserve an existing suspended release without ever exposing its hosts. */
+  async stage(provider: HostingProvider, account: string, project: string, raw: unknown, bytes: Buffer) {
+    await providerService.ownedAccount(provider, account);
+    const input = frontendPublicationSchema.parse(raw);
+    if (input.environment === 'preview' || !Buffer.isBuffer(bytes) || !bytes.length || bytes.length > 32 * 1024 * 1024 ||
+        createHash("sha256").update(bytes).digest("hex") !== input.sha256)
+      throw new ConflictError("Artefacto frontend inválido");
+    return this.apply(provider, account, project, input, bytes, false, true);
+  },
   async remove(provider: HostingProvider, account: string, project: string) {
     await providerService.ownedAccount(provider, account);
     let entries: Awaited<ReturnType<typeof localExecutor.readdir>>;
@@ -74,15 +83,17 @@ export const frontendPublicationService = {
     return this.publish(provider, account, project, {
       versionId: current.versionId, versionNumber: current.versionNumber, sha256: current.sha256, hosts,
       redirects,
+      ...(current.component ? { component: current.component } : {}),
       ...(current.canonicalHost && hosts.includes(current.canonicalHost) ? { canonicalHost: current.canonicalHost } : {}),
       ...(current.apiRoutes ? { apiRoutes: current.apiRoutes, proxyHosts: (current.proxyHosts ?? []).filter((host: string) => hosts.includes(host)) } : {}),
     }, bytes);
   },
-  async apply(provider: HostingProvider, account: string, project: string, input: z.infer<typeof frontendPublicationSchema> & { targetId?: string }, bytes?: Buffer, retain = false) {
+  async apply(provider: HostingProvider, account: string, project: string, input: z.infer<typeof frontendPublicationSchema> & { targetId?: string }, bytes?: Buffer, retain = false, stageOnly = false) {
     const id = identity(provider, account, project, input.environment === 'preview' ? input.versionId : undefined), redis = getRedis(), token = randomUUID(), key = `lxp:frontend:${id}`;
     if (await redis.set(key, token, "EX", 180, "NX") !== "OK") throw new ConflictError("Publicación en curso");
     try {
       const previous = await readPublication(id);
+      if (stageOnly && previous && previous.active !== false) throw new ConflictError("Publicación frontend activa");
       const targetId = previous?.targetId ?? provider.frontendTargetId;
       if (!targetId) throw new ConflictError("Selecciona el servidor frontend en HOSTING");
       if (bytes && previous && previous.targetId !== provider.frontendTargetId)
@@ -96,7 +107,8 @@ export const frontendPublicationService = {
           versionId: input.versionId, sha256: input.sha256, hosts: input.hosts,
           ...(input.redirects ? {redirects:input.redirects} : {}),
           ...(input.versionNumber ? { versionNumber: input.versionNumber } : {}),
-          ...(input.environment === 'preview' ? { environment: 'preview', component: input.component, previewAuthorizationUrl: provider.previewAuthorizationUrl } : {}),
+          ...(input.component ? { component: input.component } : {}),
+          ...(input.environment === 'preview' ? { environment: 'preview', previewAuthorizationUrl: provider.previewAuthorizationUrl } : {}),
           ...(input.apiRoutes?.length || input.proxyHosts?.length ? { apiRoutes: input.apiRoutes ?? [], proxyHosts: input.proxyHosts ?? [], backendOrigin: input.environment === 'preview' ? provider.previewBackendGatewayUrl : provider.backendGatewayUrl } : {}),
           ...(input.canonicalHost ? { canonicalHost: input.canonicalHost } : {}) };
         await executor.writeFile(directory + "/request.json", JSON.stringify(request), { mode: 0o600 });
@@ -105,14 +117,14 @@ export const frontendPublicationService = {
           await localExecutor.writeFile(`${panelConfigDir()}/hosting/frontend-publications/${id}-${input.sha256}.zip`, bytes, { mode: 0o600 });
           await executor.writeFile(directory + "/artifact.zip", bytes, { mode: 0o600 });
         }
-        const command = `/usr/bin/sudo -n /usr/lib/luxipanel/frontend-publication ${bytes ? "publish" : "remove"} ${quoteArg(directory + "/request.json")}${bytes ? " " + quoteArg(directory + "/artifact.zip") : ""}`;
+        const command = `/usr/bin/sudo -n /usr/lib/luxipanel/frontend-publication ${bytes ? (stageOnly ? "stage" : "publish") : "remove"} ${quoteArg(directory + "/request.json")}${bytes ? " " + quoteArg(directory + "/artifact.zip") : ""}`;
         const result = await executor.exec(command, { timeoutMs: 120000 });
         if (result.exitCode !== 0) throw new ConflictError("No se pudo actualizar la publicación frontend");
         const receipt = JSON.parse(result.stdout);
         await localExecutor.mkdir(`${panelConfigDir()}/hosting/frontend-publications`, { recursive: true });
         if (bytes) {
           const staged = registry(id) + ".next";
-          await localExecutor.writeFile(staged, JSON.stringify({ ...request, ...receipt, active:true }), { mode: 0o600 });
+          await localExecutor.writeFile(staged, JSON.stringify({ ...request, ...receipt, active:!stageOnly }), { mode: 0o600 });
           const saved = await localExecutor.exec(`mv -f -- ${quoteArg(staged)} ${quoteArg(registry(id))}`, { timeoutMs: 5000 });
           if (saved.exitCode !== 0) throw new ConflictError("Registro frontend pendiente de reconciliar");
         } else if (previous && retain) await localExecutor.writeFile(registry(id),JSON.stringify({...previous,active:false}),{mode:0o600});

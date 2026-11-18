@@ -143,3 +143,16 @@ Un servidor sin MOVE conserva las fuentes y devuelve un error de compatibilidad.
 La protección de INBOX/Sent/Trash se amplía a Junk/Spam, Cuarentena y sus alias
 heredados; los padres que contienen carpetas protegidas tampoco se renombran ni
 eliminan. La lista expone `protected`; los servicios revalidan antes de mutar.
+
+### Migración de publicaciones suspendidas (2026-11-18)
+
+HOSTING distingue preparar una interfaz (`frontendPublicationService.stage`) de
+publicarla. La preparación valida y conserva el ZIP inmutable en el destino
+frontend fijado, registra `active:false` y no escribe ni recarga nginx ni cambia
+el enlace `current`. No permite reemplazar una publicación activa. La suspensión
+comercial sigue siendo responsabilidad de Luxisoft y no debe modificarse para
+migrar archivos. Al reactivar formularios heredados con estático y API separada,
+se reconstruyen ambas rutas; las versiones HTTP sin rol deben separarse antes de
+reactivarse en BACKEND. La eliminación de enlaces nginx utiliza el destino y la
+propiedad persistidos junto con el marcador exacto del archivo, aun después de
+eliminar la cuenta; una configuración ajena o modificada sigue bloqueada.
