@@ -37,6 +37,48 @@ async function readPublication(id: string) {
 /** Registry is on the panel; the immutable release and nginx are on its pinned
  * target. Never resolve deletion using the provider's current preference. */
 export const frontendPublicationService = {
+  async requireTarget(provider: HostingProvider) {
+    if (!provider.frontendTargetId || provider.frontendTargetId === provider.targetId)
+      throw new ConflictError('frontend_target_required');
+    const executor = await providerService.frontendExecutor(provider);
+    const probe = await executor.exec('test -x /usr/lib/luxipanel/frontend-publication && cat /etc/machine-id', {timeoutMs:10000});
+    const local = String(await localExecutor.readFile('/etc/machine-id','utf8')).trim();
+    if (probe.exitCode !== 0 || !/^[a-f0-9]{32}$/.test(probe.stdout.trim()) || probe.stdout.trim() === local)
+      throw new ConflictError('frontend_target_unavailable_or_backend');
+    return executor;
+  },
+  async putArtifact(provider: HostingProvider, account: string, project: string, versionId: string, component: string, bytes: Buffer) {
+    await providerService.ownedAccount(provider, account);
+    uuid.parse(versionId); z.string().regex(/^[a-z][a-z0-9-]{0,29}$/).parse(component);
+    if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length > 32*1024*1024) throw new ConflictError('Artefacto frontend inválido');
+    const executor = await this.requireTarget(provider), directory = '/tmp/lxp-artifact-'+randomUUID(), sha256 = createHash('sha256').update(bytes).digest('hex');
+    await executor.mkdir(directory);
+    try {
+      await executor.writeFile(directory+'/request.json',JSON.stringify({providerId:provider.id,accountId:account,projectId:project,targetId:provider.frontendTargetId,versionId,component,sha256}),{mode:0o600});
+      await executor.writeFile(directory+'/artifact.zip',bytes,{mode:0o600});
+      const r = await executor.exec('/usr/bin/sudo -n /usr/lib/luxipanel/frontend-publication artifact '+quoteArg(directory+'/request.json')+' '+quoteArg(directory+'/artifact.zip'),{timeoutMs:120000});
+      if(r.exitCode!==0)throw new ConflictError('frontend_artifact_transfer_failed');
+      const receipt=JSON.parse(r.stdout);if(receipt.sha256!==sha256||receipt.bytes!==bytes.length)throw new ConflictError('frontend_artifact_transfer_invalid');
+      return {sha256,bytes:bytes.length};
+    } finally {await executor.exec('rm -f -- '+quoteArg(directory+'/request.json')+' '+quoteArg(directory+'/artifact.zip')+' && rmdir -- '+quoteArg(directory),{timeoutMs:10000});}
+  },
+  async readArtifact(provider: HostingProvider, account: string, project: string, versionId: string, component: string, meta:{sha256:string;bytes:number}) {
+    await providerService.ownedAccount(provider, account);
+    uuid.parse(versionId);z.number().int().min(1).max(32*1024*1024).parse(meta.bytes);z.string().regex(/^[a-z][a-z0-9-]{0,29}$/).parse(component);z.string().regex(/^[a-f0-9]{64}$/).parse(meta.sha256);
+    const id=identity(provider,account,project),executor=await providerService.frontendExecutor(provider);
+    let encoded:string|Buffer;
+    try {encoded=await executor.readFile(`/var/www/luxisoft/published/${id}/artifacts/${versionId}/${component}-${meta.sha256}.zip`,'base64');}
+    catch {
+      const rows=await Promise.all([readPublication(id),readPublication(identity(provider,account,project,versionId))]);
+      const row=rows.find(p=>p?.versionId===versionId&&p.sha256===meta.sha256&&(!p.component||p.component===component));
+      if(!row)throw new ConflictError('frontend_artifact_missing');
+      const pinned=await providerService.frontendExecutor(provider,row.targetId);
+      encoded=await pinned.readFile(`/var/www/luxisoft/published/${identity(provider,account,project,row.environment==='preview'?versionId:undefined)}/${versionId}-${meta.sha256}/artifact.zip`,'base64');
+    }
+    if(typeof encoded!=='string')throw new ConflictError('frontend_artifact_invalid');
+    const bytes=Buffer.from(encoded,'base64');if(bytes.length!==meta.bytes||createHash('sha256').update(bytes).digest('hex')!==meta.sha256)throw new ConflictError('frontend_artifact_invalid');
+    return bytes;
+  },
   async get(provider: HostingProvider, account: string, project: string) {
     await providerService.ownedAccount(provider, account);
     return readPublication(identity(provider, account, project));
@@ -129,7 +171,7 @@ export const frontendPublicationService = {
       if (!targetId) throw new ConflictError("Selecciona el servidor frontend en HOSTING");
       if (bytes && previous && previous.targetId !== provider.frontendTargetId)
         throw new ConflictError("La publicación requiere migración al nuevo servidor");
-      const executor = await providerService.frontendExecutor(provider, targetId);
+      const executor = bytes ? await this.requireTarget(provider) : await providerService.frontendExecutor(provider, targetId);
       const directory = `/tmp/lxp-frontend-${randomUUID()}`;
       await executor.mkdir(directory);
       try {

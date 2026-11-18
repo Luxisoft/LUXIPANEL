@@ -10,7 +10,7 @@ vi.mock("./provider.service.js", () => ({ providerService: { ownedAccount: mocks
 vi.mock("../../../shared/redis/index.js", () => ({ getRedis: () => ({ set: mocks.set, eval: mocks.eval }) }));
 vi.mock("../../../shared/executor/index.js", () => ({
   quoteArg: (x: string) => `'${x}'`, localExecutor: {
-    readFile: async () => { if (!mocks.record) throw Object.assign(new Error("missing"), { code: "ENOENT" }); return JSON.stringify(mocks.record); },
+    readFile: async (file:string) => { if(file==='/etc/machine-id')return "a".repeat(32); if (!mocks.record) throw Object.assign(new Error("missing"), { code: "ENOENT" }); return JSON.stringify(mocks.record); },
     mkdir: vi.fn(), readdir: async () => [], writeFile: mocks.localWrite, unlink: mocks.localUnlink, exec: mocks.exec,
   },
 }));
@@ -22,7 +22,7 @@ const request = { versionId: "4419fffd-a519-4baf-bc90-c71f4e083714", sha256: cre
 beforeEach(() => {
   vi.clearAllMocks(); mocks.record = null; mocks.ownedAccount.mockResolvedValue({account:{status:'active'}});
   mocks.set.mockResolvedValue("OK"); mocks.exec.mockResolvedValue({ exitCode: 0 });
-  mocks.remoteExec.mockResolvedValue({ exitCode: 0, stdout: JSON.stringify({ removed: true }) });
+  mocks.remoteExec.mockImplementation(async(command:string)=>({exitCode:0,stdout:command.includes("cat /etc/machine-id")?"b".repeat(32):JSON.stringify({removed:true,sha256:request.sha256,bytes:bytes.length})}));
   mocks.remoteRead.mockResolvedValue(bytes.toString('base64'));
   mocks.frontendExecutor.mockResolvedValue({ readFile:mocks.remoteRead, mkdir: vi.fn(), writeFile: mocks.remoteWrite, exec: mocks.remoteExec });
 });
@@ -37,14 +37,14 @@ describe("frontend publication target ownership", () => {
   });
   it("publishes only on the configured frontend executor", async () => {
     await service.publish(provider, account, project, request, bytes);
-    expect(mocks.frontendExecutor).toHaveBeenCalledWith(provider, "front");
+    expect(mocks.frontendExecutor).toHaveBeenCalledWith(provider);
     expect(mocks.remoteWrite).toHaveBeenCalledWith(expect.stringContaining("artifact.zip"), bytes, expect.anything());
     expect(mocks.localWrite).toHaveBeenCalledWith(expect.stringContaining(".next"), expect.stringContaining('"targetId":"front"'), expect.anything());
   });
   it("stages a suspended account without a publish command", async () => {
     mocks.ownedAccount.mockResolvedValue({account:{status:'suspended'}});
     await service.stage(provider, account, project, {...request, component:'forms'}, bytes);
-    expect(mocks.remoteExec.mock.calls[0][0]).toContain('frontend-publication stage');
+    expect(mocks.remoteExec.mock.calls.some(([command])=>String(command).includes("frontend-publication stage"))).toBe(true);
     expect(mocks.localWrite).toHaveBeenCalledWith(expect.stringContaining('.next'), expect.stringContaining('"active":false'), expect.anything());
     expect(mocks.remoteWrite).toHaveBeenCalledWith(expect.stringContaining('request.json'), expect.stringContaining('"component":"forms"'), expect.anything());
     await expect(service.publish(provider, account, project, request, bytes)).rejects.toThrow('suspendida');
@@ -87,4 +87,23 @@ describe("frontend publication target ownership", () => {
     await expect(service.remove(provider, account, project)).rejects.toThrow("publicación frontend");
     expect(mocks.localUnlink).not.toHaveBeenCalled();
   });
+});
+
+describe('frontend artifact placement',()=>{
+ it('fails closed for an absent target and a backend alias',async()=>{
+  await expect(service.requireTarget({...provider,frontendTargetId:undefined} as never)).rejects.toThrow('frontend_target_required');
+  mocks.remoteExec.mockResolvedValue({exitCode:0,stdout:'a'.repeat(32)});
+  await expect(service.requireTarget(provider)).rejects.toThrow('frontend_target_unavailable_or_backend');
+ });
+ it('stores only metadata locally and uploads immutable bytes remotely',async()=>{
+  expect(await service.putArtifact(provider,account,project,request.versionId,'web',bytes)).toEqual({sha256:request.sha256,bytes:bytes.length});
+  expect(mocks.remoteExec.mock.calls.some(([command])=>String(command).includes('frontend-publication artifact'))).toBe(true);
+  expect(mocks.localWrite).not.toHaveBeenCalled();
+ });
+ it('verifies hashes and reads binary artifacts with explicit base64',async()=>{
+  expect(await service.readArtifact(provider,account,project,request.versionId,'web',{sha256:request.sha256,bytes:bytes.length})).toEqual(bytes);
+  expect(mocks.remoteRead).toHaveBeenCalledWith(expect.stringContaining('/artifacts/'), 'base64');
+  mocks.remoteRead.mockResolvedValue(Buffer.alloc(bytes.length).toString('base64'));
+  await expect(service.readArtifact(provider,account,project,request.versionId,'web',{sha256:request.sha256,bytes:bytes.length})).rejects.toThrow('frontend_artifact_invalid');
+ });
 });

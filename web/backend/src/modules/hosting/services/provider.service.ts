@@ -258,39 +258,12 @@ export const providerService = {
 
   async bindSite(provider: HostingProvider, externalId: string, siteId: string, domain: string) {
     assertReference(siteId);
-    if (provider.frontendTargetId && siteId.startsWith("gh:")) {
-      await ownedAccount(provider, externalId);
-      const parsed = siteFormSchema.parse({ kind: "proxy", domain, proxyPass: provider.upstreamUrl, websocket: true });
-      // Durable frontend publication (or the frontend's shared API edge) owns
-      // this host. Never recreate a redundant vhost on the account/data host.
-      return { externalSiteId: siteId, domain: parsed.domain, targetId: provider.frontendTargetId };
-    }
-    const parsed = siteFormSchema.parse({ kind: "proxy", domain, proxyPass: provider.upstreamUrl, websocket: true });
-    return withLock(`${provider.targetId}:domain:${parsed.domain}`, async () => {
-      const { account, executor } = await ownedAccount(provider, externalId);
-      if (account.status !== "active") throw new ForbiddenError("Cuenta suspendida");
-      const existing = await providerRepository.findSite(provider.id, siteId);
-      if (existing) {
-        if (existing.domain !== parsed.domain || existing.externalAccountId !== externalId) throw new ConflictError("El sitio ya está vinculado con otro dominio o cuenta");
-        return existing;
-      }
-      if (await providerRepository.findDomain(provider.targetId, parsed.domain)) throw new ConflictError("Dominio ya vinculado");
-      const sites = await providerRepository.listSitesForAccount(provider.id, externalId);
-      if (sites.length >= account.maxDomains) throw new ForbiddenError("Cupo de dominios agotado");
-      const marker = `${SITE_MARK}${provider.id}:${externalId}:${siteId}\n`;
-      const generated = nginxSitesService.generateConfig(parsed);
-      const content = marker + (siteId.startsWith("gh:") ? generated.replace("        proxy_pass ", "        proxy_buffering off;\n        proxy_read_timeout 3600s;\n        proxy_pass ") : generated);
-      try {
-        const current = await nginxSitesService.readRaw(executor, parsed.domain);
-        if (current !== content) throw new ConflictError("Existe una configuración NGINX ajena para ese dominio");
-      } catch (err) {
-        if (!(err instanceof NotFoundError)) throw err;
-      }
-      await nginxSitesService.createSiteRaw(executor, parsed.domain, content, true);
-      return providerRepository.createSite({ id: randomUUID(), providerId: provider.id,
-        externalAccountId: externalId, externalSiteId: siteId, domain: parsed.domain,
-        targetId: provider.targetId } as never);
-    });
+    const {account}=await ownedAccount(provider,externalId);
+    if(account.status!=="active")throw new ForbiddenError("Cuenta suspendida");
+    const {frontendPublicationService}=await import('./frontend-publication.service.js');
+    await frontendPublicationService.requireTarget(provider);
+    const parsed=siteFormSchema.parse({kind:"proxy",domain,proxyPass:provider.upstreamUrl,websocket:true});
+    return {externalSiteId:siteId,domain:parsed.domain,targetId:provider.frontendTargetId};
   },
 
   async unbindSite(provider: HostingProvider, externalId: string, siteId: string) {

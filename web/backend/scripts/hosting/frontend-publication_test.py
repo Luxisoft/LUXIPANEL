@@ -26,6 +26,19 @@ class PublicationTests(unittest.TestCase):
                 z.writestr(name, data)
         return result
 
+    def test_retains_artifact_outside_public_tree_and_detects_corruption(self):
+        archive=self.archive([('index.html','ok')])
+        request={**self.request,'component':'web','sha256':m.hashlib.sha256(archive.read_bytes()).hexdigest()}
+        with patch.object(m,'ROOT',self.root/'published'), patch.dict(m.os.environ,{'SUDO_UID':str(m.os.getuid())}), patch.object(m.os,'chown'):
+            result=m.store_artifact(request,archive)
+            self.assertTrue(result['retained'])
+            target=next((self.root/'published').glob('*/artifacts/*/*.zip'))
+            self.assertEqual(target.stat().st_mode & 0o777,0o600)
+            self.assertFalse((target.parent/'public').exists())
+            self.assertEqual(m.store_artifact(request,archive),result)
+            target.write_bytes(b'corrupt')
+            with self.assertRaisesRegex(ValueError,'artifact_conflict'):m.store_artifact(request,archive)
+
     def test_rejects_paths_symlinks_and_duplicate_names(self):
         for entry in ['../secret', '/etc/secret', 'a\\b', 'a/./b']:
             with self.subTest(entry=entry):

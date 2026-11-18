@@ -64,7 +64,7 @@ test("serves health independently and returns 421 for unmanaged hosts", async ()
   await new Promise((resolve) => gateway.server.close(resolve));
 });
 
-test("serves a verified retained static release without any control-plane lookup", async () => {
+test("rejects legacy static routes without unpacking or serving UI on BACKEND", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "gateway-static-")), projectRoot = path.join(root, "c".repeat(64)),
     releaseRoot = path.join(projectRoot, "releases"), sourceRoot = path.join(root, "source"), archive = path.join(releaseRoot, "web.zip");
   await mkdir(releaseRoot, { recursive: true }); await mkdir(sourceRoot);
@@ -86,8 +86,8 @@ test("serves a verified retained static release without any control-plane lookup
       const chunks = []; res.on("data", chunk => chunks.push(chunk)); res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
     }); req.on("error", reject);
   });
-  assert.equal(response.status, 200); assert.equal(response.body, "<main>durable release</main>");
-  assert.equal(response.headers["x-luxi-static-sha256"], sha256); assert.equal(response.headers["x-luxi-version"], "7");
+  assert.equal(response.status, 410); assert.equal(JSON.parse(response.body).error,"frontend_served_on_frontend");
+  assert.equal(response.headers["x-luxi-static-sha256"],undefined);
   await new Promise((resolve) => gateway.server.close(resolve));
 });
 

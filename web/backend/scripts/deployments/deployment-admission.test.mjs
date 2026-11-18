@@ -15,9 +15,9 @@ async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
   surface = 'http', disk = 10, maxDatabases = 4, digest, home = '/home/fixture', hostMib = 4500, usedMib = 110, hostDiskBytes = 10 * 1024 ** 3, tenantDiskBytes = 128 * 1024 ** 2 } = {}) {
   const commands = [], reads = [], archive = Buffer.from('owned source');
   const job = { projectId: 'a'.repeat(32), home, versionId: 'v1', requestId: 'r1',
-    environment: 'preview', archive: archive.toString('base64'), limits: { diskMb: 100, maxDatabases },
+    frontendPolicyVersion:2,environment: 'preview', archive: archive.toString('base64'), limits: { diskMb: 100, maxDatabases },
     snapshot: { sourceDigest: digest ?? crypto.createHash('sha256').update(archive).digest('hex'),
-      manifest: { resources, components: [{ name: 'application', surface, context: '.',
+      manifest: { resources, components: [{ name: 'application', surface, role:'backend', context: '.',
         recipe: 'FROM node:22', port: surface === 'http' ? 8080 : null }] } } };
   let output = '';
   const process = { getuid: () => 1003, env: { HOME: '/home/fixture' },
@@ -28,6 +28,7 @@ async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
     statfs: async file => ({ bavail: file==='/' ? hostDiskBytes : tenantDiskBytes, bsize: 1 }),
     readFile: async file => {
       reads.push(file);
+      if (file === '/proc/self/stat') return '1 (node) S '+Array(30).fill('1').join(' ');
       if (file === '/proc/meminfo') return `MemAvailable: ${hostMib * 1024} kB\n`;
       if (file.endsWith('/memory.current')) return String(usedMib * 1024 ** 2);
       if (file.endsWith('/memory.max')) return String(4096 * 1024 ** 2);
