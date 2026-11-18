@@ -21,7 +21,7 @@ def main():
  if manifest.resolve()!=manifest:raise ValueError('unsafe_manifest')
  contents=json.loads(manifest.read_text())['manifest']['components']
  part=next((p for p in contents if p['name']==component),None)
- if not part or part['surface']!='static':raise ValueError('not_a_static_component')
+ if not part or not (part['surface']=='static' or part['surface']=='http' and part.get('stack')=='static' and part.get('role')!='backend'):raise ValueError('not_a_static_component')
  root=pathlib.Path(user.pw_dir)/'.luxisoft/deployments'/project.replace('-','')/'versions'/version
  if root.resolve()!=root:raise ValueError('unsafe_version')
  images_file=root/'images.json';images=json.loads(images_file.read_text());image=images.get(component)
