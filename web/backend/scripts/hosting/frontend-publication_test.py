@@ -58,6 +58,19 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.validate({**preview,'hosts':['public.example.com']})
 
+    def test_locale_redirect_preserves_language_selection_and_api_paths(self):
+        request = {**self.request, 'localeRouting': {'locales':['es','en'], 'defaultLocale':'es', 'cookie':'page-language'}, 'apiRoutes':['/api'], 'backendOrigin':'http://192.0.2.20:3460'}
+        m.validate(request)
+        with patch.object(m, 'certificate', return_value=Path('/cert')):
+            generated = m.config(request, request['hosts'][0], Path('/public'))
+        self.assertIn('location = / { return 302 /$lxp_locale/; }', generated)
+        self.assertIn('location = /en/ { try_files /en/index.html =404; }', generated)
+        self.assertIn('page-language=en', generated)
+        self.assertIn('location /api/', generated)
+        for value in ['en;include', '../../', 'EN']:
+            with self.assertRaises(ValueError):
+                m.validate({**request,'localeRouting':{'locales':[value], 'defaultLocale':value,'cookie':'page-language'}})
+
     def test_preserves_existing_config_on_nginx_failure(self):
         for key in ['ROOT', 'STATE', 'AVAILABLE', 'ENABLED', 'BACKUPS']:
             directory = self.root / key
