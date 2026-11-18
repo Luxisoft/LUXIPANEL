@@ -302,7 +302,7 @@ export default async function initScript({
       // Si el backend antiguo no devuelve el flag, no ocultamos nada
       // (`undefined !== false`) — preserva la UX previa al feature.
       if (!isHome && m.showInSidebar === false) return "";
-      const isActive = isActiveHref(meta.href);
+      const isActive = !document.querySelector("[data-workspace-shell]") && isActiveHref(meta.href);
       // Core modules (los que tienen entrada en MODULE_META) muestran su nombre
       // TRADUCIDO desde i18n (`meta.label`, namespace panelLayout.nav). El
       // endpoint /api/modules/installed devuelve `m.name` SIN localizar (nombre
@@ -411,7 +411,7 @@ export default async function initScript({
 
   function updateActiveNav() {
     document.querySelectorAll("#sidebar a, #sidebar-mobile a").forEach((a) => {
-      const active = isActiveHref(a.getAttribute("href") ?? "");
+      const active = !document.querySelector("[data-workspace-shell]") && isActiveHref(a.getAttribute("href") ?? "");
       a.classList.toggle("bg-primary/10", active);
       a.classList.toggle("text-primary", active);
       a.classList.toggle("text-muted-foreground", !active);

@@ -20,7 +20,7 @@ import PanelLayout from "../module-frame";
 import InstallModal from "./components_InstallModal";
 import ModuleDepsBanner from "./components_ModuleDepsBanner";
 import ModalNavbar from "./components_ui_ModalNavbar";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 
 import {
@@ -29,19 +29,19 @@ import {
 } from "@/config/tables/databases-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_databases_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["databases", "deps", "components"]);
-  const db: any = t.databases;
-  const dataTableI18n = (t.components as any).dataTable;
-  const isHostingTenant =
-    Astro.locals.user?.kind === "hosting" ||
-    Astro.locals.user?.tenantId !== undefined;
-  const owner = isHostingTenant ? Astro.locals.user?.owner || "" : "";
-  const tenantDatabasePrefix = context.databasePrefix || "";
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["databases","deps","components"]);
+  const db: any=t.databases;
+  const dataTableI18n=(t.components as any).dataTable;
+  const isHostingTenant=
+    Astro.locals.user?.kind==="hosting"||
+    Astro.locals.user?.tenantId!==undefined;
+  const owner=isHostingTenant? Astro.locals.user?.owner||"":"";
+  const tenantDatabasePrefix=context.databasePrefix||"";
 
   return (
     <Fragment>
@@ -66,7 +66,7 @@ export default function pages_panel_databases_index(props: any) {
                     {db.settings.table}
                   </span>
                 </button>
-                {!isHostingTenant && (
+                {!isHostingTenant&&(
                   <Fragment>
                     <button
                       type="button"
@@ -91,7 +91,7 @@ export default function pages_panel_databases_index(props: any) {
                       {db.settings.rowsPerPage}
                     </p>
                     <div className="mt-3 inline-flex overflow-hidden rounded-lg border border-border">
-                      {[10, 20, 50, 100].map((n: any) => (
+                      {[10,20,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -112,7 +112,7 @@ export default function pages_panel_databases_index(props: any) {
                       {db.settings.relatedModules}
                     </h3>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                      {!isHostingTenant && (
+                      {!isHostingTenant&&(
                         <Fragment>
                           <a
                             href="/panel/hosting"
@@ -122,7 +122,7 @@ export default function pages_panel_databases_index(props: any) {
                           </a>
                         </Fragment>
                       )}
-                      {!isHostingTenant && (
+                      {!isHostingTenant&&(
                         <Fragment>
                           <a
                             href="/panel/backups"
@@ -141,7 +141,7 @@ export default function pages_panel_databases_index(props: any) {
                     </div>
                   </div>
                 </section>
-                {!isHostingTenant && (
+                {!isHostingTenant&&(
                   <Fragment>
                     <section
                       data-db-settings-view="consola"
@@ -170,14 +170,7 @@ export default function pages_panel_databases_index(props: any) {
             </div>
           </ViewSettingsModal>
         </div>
-        <div className="mb-5 flex flex-col gap-1">
-          <h2 className="text-xl font-semibold">
-            {t.databases.header.heading}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {t.databases.header.subheading}
-          </p>
-        </div>
+
 
         {/**
       Generic deps banner (system-deps, requiresOneOf): only drives the
@@ -194,7 +187,7 @@ export default function pages_panel_databases_index(props: any) {
             <div className="h-9 w-40 animate-pulse rounded-lg bg-muted"></div>
           </div>
           {/** Install affordance: buttons for engines not yet running on the target. */}
-          {!isHostingTenant && (
+          {!isHostingTenant&&(
             <Fragment>
               <div
                 id="db-install"
@@ -288,7 +281,7 @@ export default function pages_panel_databases_index(props: any) {
                   >
                     {t.databases.tabs.structure}
                   </button>
-                  {!isHostingTenant && (
+                  {!isHostingTenant&&(
                     <Fragment>
                       <button
                         data-tab="console"
@@ -346,7 +339,7 @@ export default function pages_panel_databases_index(props: any) {
             <div
               id="db-console"
               className="hidden flex-col gap-3 p-4"
-              aria-hidden={isHostingTenant ? "true" : undefined}
+              aria-hidden={isHostingTenant? "true":undefined}
             >
               <textarea
                 id="sql-input"
@@ -393,7 +386,7 @@ export default function pages_panel_databases_index(props: any) {
       </PanelLayout>
 
       {/** Record editor (insert / edit) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-db-record"
         className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -402,11 +395,13 @@ export default function pages_panel_databases_index(props: any) {
           titleId="db-record-title"
           closeId="db-record-x"
         />
-        <div
-          id="db-record-fields"
-          className="max-h-[60vh] overflow-y-auto px-6 py-4"
-        ></div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-body>
+          <div
+            id="db-record-fields"
+            className="max-h-[60vh] overflow-y-auto px-6 py-4"
+          ></div>
+        </div>
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="db-record-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -424,7 +419,7 @@ export default function pages_panel_databases_index(props: any) {
       </dialog>
 
       {/** Export database */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-db-export"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -432,36 +427,38 @@ export default function pages_panel_databases_index(props: any) {
           title={t.databases.titles.exportDb}
           closeId="db-export-x"
         />
-        <div className="px-6 py-4">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {t.databases.labels.tablesLabel}
-            </span>
-            <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+        <div data-aux-body>
+          <div className="px-6 py-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {t.databases.labels.tablesLabel}
+              </span>
+              <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  id="db-export-all"
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 rounded border-input text-primary"
+                />{" "}
+                {t.databases.labels.allTables}
+              </label>
+            </div>
+            <div
+              id="db-export-tables"
+              className="mb-4 max-h-56 overflow-y-auto rounded-lg border border-border p-2 text-sm"
+            ></div>
+            <label className="inline-flex items-center gap-2 text-sm">
               <input
-                id="db-export-all"
+                id="db-export-data"
                 type="checkbox"
                 defaultChecked
                 className="h-4 w-4 rounded border-input text-primary"
-              />{" "}
-              {t.databases.labels.allTables}
+              />
+              <span>{t.databases.labels.includeData}</span>
             </label>
           </div>
-          <div
-            id="db-export-tables"
-            className="mb-4 max-h-56 overflow-y-auto rounded-lg border border-border p-2 text-sm"
-          ></div>
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              id="db-export-data"
-              type="checkbox"
-              defaultChecked
-              className="h-4 w-4 rounded border-input text-primary"
-            />
-            <span>{t.databases.labels.includeData}</span>
-          </label>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="db-export-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"

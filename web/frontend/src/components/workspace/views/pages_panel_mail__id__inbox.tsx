@@ -18,22 +18,22 @@ import PanelLayout from "../module-frame";
 import ModalNavbar from "./components_ui_ModalNavbar";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_mail__id__inbox(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["mail"]);
-  const { id } = Astro.params;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["mail"]);
+  const { id }=Astro.params;
 
   return (
     <Fragment>
       <PanelLayout title={t.mail.inbox.pageTitle} activeModule="mail">
-        <div className="flex h-[calc(100dvh-6rem)] rounded-xl border border-border bg-card overflow-hidden">
+        <div data-inbox-layout className="flex h-[calc(100dvh-6rem)] rounded-xl border border-border bg-card overflow-hidden">
           {/** ── Folder sidebar ─────────────────────────────────── */}
           <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-border bg-muted/20">
             {/** Account header */}
-            <div className="border-b border-border px-4 py-3">
+            <div data-inbox-header="folders" className="border-b border-border px-4 py-3">
               <p
                 id="account-email"
                 className="text-xs font-semibold truncate text-foreground"
@@ -85,7 +85,7 @@ export default function pages_panel_mail__id__inbox(props: any) {
           {/** ── Message list ───────────────────────────────────── */}
           <div className="flex w-72 shrink-0 flex-col border-r border-border">
             {/** Toolbar */}
-            <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+            <div data-inbox-header="list" className="flex items-center justify-between border-b border-border px-3 py-2.5">
               <div className="flex items-center gap-2">
                 {/** Mobile: back to folders */}
                 <button
@@ -130,52 +130,51 @@ export default function pages_panel_mail__id__inbox(props: any) {
                   <i className="ti ti-checks text-sm"></i>
                 </button>
               </div>
-            </div>
 
-            {/** Search */}
-            <div className="border-b border-border px-3 py-2">
-              <div className="relative">
-                <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs"></i>
-                <input
-                  id="msg-search"
-                  type="text"
-                  placeholder={t.mail.inbox.placeholderSearch}
-                  className="w-full rounded-lg border border-input bg-background pl-8 pr-3 py-1.5 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <input
-                  id="msg-filter-email"
-                  type="text"
-                  placeholder={t.mail.inbox.placeholderFilterEmail}
-                  className="col-span-2 h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
-                />
-                <input
-                  id="msg-filter-date-from"
-                  type="date"
-                  className="h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
-                />
-                <input
-                  id="msg-filter-date-to"
-                  type="date"
-                  className="h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
-                />
-                <select
-                  id="msg-sort-order"
-                  className="h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
-                >
-                  <option value="desc">{t.mail.inbox.sortNewest}</option>
-                  <option value="asc">{t.mail.inbox.sortOldest}</option>
-                </select>
-                <button
-                  id="btn-clear-filters"
-                  type="button"
-                  className="h-8 rounded-lg border border-border px-2.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                >
-                  {t.mail.inbox.btnClearFilters}
-                </button>
-              </div>
-            </div>
+              {/** Search */}
+              <div className="inbox-search-tools">
+                <div className="relative">
+                  <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs"></i>
+                  <input
+                    id="msg-search"
+                    type="text"
+                    placeholder={t.mail.inbox.placeholderSearch}
+                    className="w-full rounded-lg border border-input bg-background pl-8 pr-3 py-1.5 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  />
+                </div>
+                <details className="inbox-advanced-filters"><summary aria-label={t.mail.inbox.btnClearFilters}><i className="ti ti-filter" /></summary><div className="grid grid-cols-2 gap-2">
+                  <input
+                    id="msg-filter-email"
+                    type="text"
+                    placeholder={t.mail.inbox.placeholderFilterEmail}
+                    className="col-span-2 h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  />
+                  <input
+                    id="msg-filter-date-from"
+                    type="date"
+                    className="h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  />
+                  <input
+                    id="msg-filter-date-to"
+                    type="date"
+                    className="h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  />
+                  <select
+                    id="msg-sort-order"
+                    className="h-8 rounded-lg border border-input bg-background px-2.5 text-[11px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  >
+                    <option value="desc">{t.mail.inbox.sortNewest}</option>
+                    <option value="asc">{t.mail.inbox.sortOldest}</option>
+                  </select>
+                  <button
+                    id="btn-clear-filters"
+                    type="button"
+                    className="h-8 rounded-lg border border-border px-2.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  >
+                    {t.mail.inbox.btnClearFilters}
+                  </button>
+                </div></details>
+              </div></div>
 
             {/** Messages */}
             <div
@@ -245,7 +244,7 @@ export default function pages_panel_mail__id__inbox(props: any) {
               className="hidden flex flex-col h-full overflow-hidden"
             >
               {/** Message header */}
-              <div className="border-b border-border px-6 py-4 space-y-3">
+              <div data-inbox-header="reader" className="border-b border-border px-6 py-4 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <h3
                     id="msg-subject"
@@ -356,15 +355,14 @@ export default function pages_panel_mail__id__inbox(props: any) {
                   className="mt-2 hidden text-xs text-destructive"
                 ></p>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div data-mail-body-viewport className="min-h-0 min-w-0 flex-1 overflow-y-auto">
                 {/** HTML content in sandboxed iframe */}
-                <iframe
-                  id="msg-iframe"
-                  className="hidden w-full border-0 block"
-                  style={cssStyle("min-height:240px")}
-                  sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-                  title={t.mail.inbox.msgIframeTitle}
-                ></iframe>
+                <div id="msg-loading" hidden role="status" aria-live="polite" className="lxp-mail-reader-loading">
+                  <i className="ti ti-loader-2 animate-spin text-primary text-2xl" aria-hidden="true" />
+                  <span>{t.mail.inbox.readerLoading}</span>
+                </div>
+                <div id="msg-html-host" hidden data-title={t.mail.inbox.msgIframeTitle} className="h-full min-h-0 w-full" />
+                <button id="msg-retry" hidden type="button" className="mx-6 mb-4 rounded-lg border border-border px-3 py-2 text-sm">{t.mail.inbox.retryMessage}</button>
                 {/** Plain text fallback */}
                 <pre
                   id="msg-text"
@@ -390,31 +388,29 @@ export default function pages_panel_mail__id__inbox(props: any) {
         </div>
 
         {/** Move to folder dialog */}
-        <dialog
-          id="dlg-move"
-          className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl backdrop:bg-black/50"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">
-              {t.mail.inbox.moveDlgTitle}
-            </h3>
-            <button
-              onClick={() => {
-                (document.getElementById("dlg-move") as HTMLDialogElement | null)?.close();
-              }}
-              className="rounded-lg p-1 text-muted-foreground hover:bg-accent"
-            >
-              <i className="ti ti-x"></i>
-            </button>
+        <dialog id="dlg-move" data-aux-drawer className="border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60" aria-labelledby="move-title">
+          <ModalNavbar title={t.mail.inbox.moveDlgTitle} titleId="move-title" icon="ti-folder-share" closeId="move-close" />
+          <div data-aux-body className="flex min-h-0 flex-col gap-4">
+            <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+              <p id="move-account" className="text-xs text-muted-foreground break-all" />
+              <p id="move-subject" className="text-sm font-semibold break-words" />
+              <p id="move-origin" className="text-xs text-muted-foreground break-all" />
+            </div>
+            <label className="relative block shrink-0">
+              <i className="ti ti-search absolute left-3 top-3 text-muted-foreground" aria-hidden="true" />
+              <input id="move-search" type="search" className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm" placeholder={t.mail.inbox.moveUi.search} aria-label={t.mail.inbox.moveUi.search} />
+            </label>
+            <div id="move-error" hidden role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive" />
+            <div id="move-folders-list" role="radiogroup" aria-label={t.mail.inbox.moveUi.destination} className="min-h-0 flex-1 overflow-y-auto space-y-1 rounded-xl border border-border p-2" />
           </div>
-          <div
-            id="move-folders-list"
-            className="space-y-1 max-h-64 overflow-y-auto mb-4"
-          ></div>
+          <div data-aux-footer>
+            <button id="move-cancel" type="button" className="rounded-lg border border-border hover:bg-accent">{t.mail.inbox.moveUi.cancel}</button>
+            <button id="move-confirm" type="button" disabled className="rounded-lg bg-primary text-primary-foreground disabled:opacity-40">{t.mail.inbox.moveUi.confirm}</button>
+          </div>
         </dialog>
 
         {/** Folder manager dialog */}
-        <dialog
+        <dialog data-aux-drawer
           id="dlg-folders-manager"
           className="w-full max-w-3xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
         >
@@ -422,85 +418,87 @@ export default function pages_panel_mail__id__inbox(props: any) {
             title={t.mail.inbox.foldersDlgTitle}
             closeId="folders-manager-close"
           />
-          <p
-            id="folders-manager-account-email"
-            className="px-6 pt-4 text-xs text-muted-foreground"
-          ></p>
-
-          <div className="grid grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-[1.2fr_1fr]">
-            <div className="rounded-xl border border-border">
-              <div className="border-b border-border bg-muted/30 px-4 py-2 text-sm font-medium">
-                {t.mail.inbox.foldersExistingHeader}
+          <div data-aux-body>
+            <p
+              id="folders-manager-account-email"
+              className="px-6 pt-4 text-xs text-muted-foreground"
+            ></p>
+            <div className="grid grid-cols-1 gap-4 px-6 py-5 @lg:grid-cols-[1.2fr_1fr]">
+              <div className="rounded-xl border border-border">
+                <div className="border-b border-border bg-muted/30 px-4 py-2 text-sm font-medium">
+                  {t.mail.inbox.foldersExistingHeader}
+                </div>
+                <div
+                  id="folders-manager-list-body"
+                  className="max-h-[420px] space-y-2 overflow-auto p-3 text-xs"
+                ></div>
               </div>
-              <div
-                id="folders-manager-list-body"
-                className="max-h-[420px] space-y-2 overflow-auto p-3 text-xs"
-              ></div>
+
+              <form
+                id="folders-manager-form"
+                className="space-y-3 rounded-xl border border-border p-4"
+              >
+                <input id="folders-manager-edit-path" type="hidden" />
+                <div
+                  id="folders-manager-feedback"
+                  className="hidden rounded-lg px-4 py-2 text-sm"
+                ></div>
+                <div
+                  id="folders-manager-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+                ></div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="folders-manager-parent"
+                    className="text-sm font-medium"
+                  >
+                    {t.mail.inbox.labelFolderParent}
+                  </label>
+                  <select
+                    id="folders-manager-parent"
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">
+                      {t.mail.inbox.selectFolderParentDefault}
+                    </option>
+                  </select>
+                  <p
+                    id="folders-manager-parent-help"
+                    className="text-[11px] text-muted-foreground"
+                  >
+                    {t.mail.inbox.folderParentHelp}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="folders-manager-name"
+                    className="text-sm font-medium"
+                  >
+                    {t.mail.inbox.labelFolderName}
+                  </label>
+                  <input
+                    id="folders-manager-name"
+                    type="text"
+                    required
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                  >
+                    {t.mail.inbox.btnSaveFolder}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <form
-              id="folders-manager-form"
-              className="space-y-3 rounded-xl border border-border p-4"
-            >
-              <input id="folders-manager-edit-path" type="hidden" />
-              <div
-                id="folders-manager-feedback"
-                className="hidden rounded-lg px-4 py-2 text-sm"
-              ></div>
-              <div
-                id="folders-manager-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
-              ></div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="folders-manager-parent"
-                  className="text-sm font-medium"
-                >
-                  {t.mail.inbox.labelFolderParent}
-                </label>
-                <select
-                  id="folders-manager-parent"
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">
-                    {t.mail.inbox.selectFolderParentDefault}
-                  </option>
-                </select>
-                <p
-                  id="folders-manager-parent-help"
-                  className="text-[11px] text-muted-foreground"
-                >
-                  {t.mail.inbox.folderParentHelp}
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="folders-manager-name"
-                  className="text-sm font-medium"
-                >
-                  {t.mail.inbox.labelFolderName}
-                </label>
-                <input
-                  id="folders-manager-name"
-                  type="text"
-                  required
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                />
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-                >
-                  {t.mail.inbox.btnSaveFolder}
-                </button>
-              </div>
-            </form>
           </div>
+
         </dialog>
 
         {/** Contacts dialog */}
-        <dialog
+        <dialog data-aux-drawer
           id="dlg-contacts"
           className="w-full max-w-4xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
         >
@@ -508,99 +506,101 @@ export default function pages_panel_mail__id__inbox(props: any) {
             title={t.mail.inbox.contactsDlgTitle}
             closeId="contacts-dialog-close"
           />
-          <p
-            id="contacts-account-email"
-            className="px-6 pt-4 text-xs text-muted-foreground"
-          ></p>
+          <div data-aux-body>
+            <p
+              id="contacts-account-email"
+              className="px-6 pt-4 text-xs text-muted-foreground"
+            ></p>
+            <div className="grid grid-cols-1 gap-4 px-6 py-5 @lg:grid-cols-[1.1fr_1fr]">
+              <div className="rounded-xl border border-border">
+                <div className="border-b border-border bg-muted/30 px-4 py-2 text-sm font-medium">
+                  {t.mail.inbox.contactsSavedHeader}
+                </div>
+                <div className="max-h-[420px] overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="px-3 py-2 text-left">
+                          {t.mail.inbox.colEmail}
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          {t.mail.inbox.colName}
+                        </th>
+                        <th className="px-3 py-2 text-right">
+                          {t.mail.inbox.colActions}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="contacts-list-body"></tbody>
+                  </table>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-[1.1fr_1fr]">
-            <div className="rounded-xl border border-border">
-              <div className="border-b border-border bg-muted/30 px-4 py-2 text-sm font-medium">
-                {t.mail.inbox.contactsSavedHeader}
-              </div>
-              <div className="max-h-[420px] overflow-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-muted-foreground">
-                      <th className="px-3 py-2 text-left">
-                        {t.mail.inbox.colEmail}
-                      </th>
-                      <th className="px-3 py-2 text-left">
-                        {t.mail.inbox.colName}
-                      </th>
-                      <th className="px-3 py-2 text-right">
-                        {t.mail.inbox.colActions}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody id="contacts-list-body"></tbody>
-                </table>
-              </div>
+              <form
+                id="contacts-form"
+                className="space-y-3 rounded-xl border border-border p-4"
+              >
+                <input id="contacts-edit-id" type="hidden" />
+                <div
+                  id="contacts-feedback"
+                  className="hidden rounded-lg px-4 py-2 text-sm"
+                ></div>
+                <div
+                  id="contacts-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+                ></div>
+                <div className="space-y-1.5">
+                  <label htmlFor="contacts-email" className="text-sm font-medium">
+                    {t.mail.inbox.labelEmail}
+                  </label>
+                  <input
+                    id="contacts-email"
+                    type="email"
+                    required
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="contacts-name" className="text-sm font-medium">
+                    {t.mail.inbox.labelName}
+                  </label>
+                  <input
+                    id="contacts-name"
+                    type="text"
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    id="contacts-new"
+                    className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    {t.mail.inbox.btnNew}
+                  </button>
+                  <button
+                    type="button"
+                    id="contacts-cancel"
+                    className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    {t.mail.inbox.btnClose}
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                  >
+                    {t.mail.inbox.btnSave}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <form
-              id="contacts-form"
-              className="space-y-3 rounded-xl border border-border p-4"
-            >
-              <input id="contacts-edit-id" type="hidden" />
-              <div
-                id="contacts-feedback"
-                className="hidden rounded-lg px-4 py-2 text-sm"
-              ></div>
-              <div
-                id="contacts-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
-              ></div>
-              <div className="space-y-1.5">
-                <label htmlFor="contacts-email" className="text-sm font-medium">
-                  {t.mail.inbox.labelEmail}
-                </label>
-                <input
-                  id="contacts-email"
-                  type="email"
-                  required
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="contacts-name" className="text-sm font-medium">
-                  {t.mail.inbox.labelName}
-                </label>
-                <input
-                  id="contacts-name"
-                  type="text"
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  id="contacts-new"
-                  className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
-                >
-                  {t.mail.inbox.btnNew}
-                </button>
-                <button
-                  type="button"
-                  id="contacts-cancel"
-                  className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
-                >
-                  {t.mail.inbox.btnClose}
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-                >
-                  {t.mail.inbox.btnSave}
-                </button>
-              </div>
-            </form>
           </div>
+
         </dialog>
 
         {/** Credential recovery dialog */}
         {/** Modal A: usar contraseña ACTUAL (validar por IMAP, sin cambiarla) */}
-        <dialog
+        <dialog data-aux-drawer
           id="dlg-mail-credential-current"
           className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
         >
@@ -608,86 +608,89 @@ export default function pages_panel_mail__id__inbox(props: any) {
             title={t.mail.inbox.credentialCurrentTitle}
             closeId="mailcur-close"
           />
-          <p
-            id="mailcur-account-email"
-            className="px-6 pt-4 text-xs text-muted-foreground"
-          ></p>
-          <form id="mailcur-form" className="space-y-3 px-6 py-5">
-            <p className="text-xs text-muted-foreground">
-              {t.mail.inbox.credentialCurrentDesc}{" "}
-              <strong>{t.mail.inbox.credentialCurrentDescStrong}</strong>{" "}
-              {t.mail.inbox.credentialCurrentDescSuffix}{" "}
-              <strong>{t.mail.inbox.credentialCurrentNoChange}</strong>
-              {t.mail.inbox.credentialCurrentDescEnd}
-            </p>
-            <div
-              id="mailcur-feedback"
-              className="hidden rounded-lg px-4 py-2 text-sm"
-            ></div>
-            <div
-              id="mailcur-error"
-              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
-            ></div>
-            <div
-              id="mailcur-loading"
-              className="hidden rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm text-primary"
-            >
-              <span className="inline-flex items-center gap-2">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
+          <div data-aux-body>
+            <p
+              id="mailcur-account-email"
+              className="px-6 pt-4 text-xs text-muted-foreground"
+            ></p>
+            <form id="mailcur-form" className="space-y-3 px-6 py-5">
+              <p className="text-xs text-muted-foreground">
+                {t.mail.inbox.credentialCurrentDesc}{" "}
+                <strong>{t.mail.inbox.credentialCurrentDescStrong}</strong>{" "}
+                {t.mail.inbox.credentialCurrentDescSuffix}{" "}
+                <strong>{t.mail.inbox.credentialCurrentNoChange}</strong>
+                {t.mail.inbox.credentialCurrentDescEnd}
+              </p>
+              <div
+                id="mailcur-feedback"
+                className="hidden rounded-lg px-4 py-2 text-sm"
+              ></div>
+              <div
+                id="mailcur-error"
+                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+              ></div>
+              <div
+                id="mailcur-loading"
+                className="hidden rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm text-primary"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-80"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
+                    ></path>
+                  </svg>
+                  <span>{t.mail.inbox.credentialValidating}</span>
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="mailcur-password" className="text-sm font-medium">
+                  {t.mail.inbox.labelCurrentPassword}
+                </label>
+                <input
+                  id="mailcur-password"
+                  type="password"
+                  required
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  id="mailcur-cancel"
+                  className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
                 >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  ></circle>
-                  <path
-                    className="opacity-80"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
-                  ></path>
-                </svg>
-                <span>{t.mail.inbox.credentialValidating}</span>
-              </span>
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="mailcur-password" className="text-sm font-medium">
-                {t.mail.inbox.labelCurrentPassword}
-              </label>
-              <input
-                id="mailcur-password"
-                type="password"
-                required
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                id="mailcur-cancel"
-                className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
-              >
-                {t.mail.inbox.btnCancelCurrent}
-              </button>
-              <button
-                id="mailcur-submit"
-                type="submit"
-                className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-              >
-                {t.mail.inbox.btnValidateUse}
-              </button>
-            </div>
-          </form>
+                  {t.mail.inbox.btnCancelCurrent}
+                </button>
+                <button
+                  id="mailcur-submit"
+                  type="submit"
+                  className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                >
+                  {t.mail.inbox.btnValidateUse}
+                </button>
+              </div>
+            </form>
+          </div>
+
         </dialog>
 
         {/** Modal B: CAMBIAR la contraseña del buzón (define una nueva) */}
-        <dialog
+        <dialog data-aux-drawer
           id="dlg-mail-credentials"
           className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
         >
@@ -695,101 +698,104 @@ export default function pages_panel_mail__id__inbox(props: any) {
             title={t.mail.inbox.credentialChangeTitle}
             closeId="mail-credential-dialog-close"
           />
-          <p
-            id="mail-credential-account-email"
-            className="px-6 pt-4 text-xs text-muted-foreground"
-          ></p>
-          <form id="mail-credential-form" className="space-y-3 px-6 py-5">
-            <p className="text-xs text-muted-foreground">
-              {t.mail.inbox.credentialChangeDesc}{" "}
-              <strong>{t.mail.inbox.credentialChangeDescStrong}</strong>{" "}
-              {t.mail.inbox.credentialChangeDescSuffix}
-            </p>
-            <div
-              id="mail-credential-feedback"
-              className="hidden rounded-lg px-4 py-2 text-sm"
-            ></div>
-            <div
-              id="mail-credential-error"
-              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
-            ></div>
-            <div
-              id="mail-credential-loading"
-              className="hidden rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm text-primary"
-            >
-              <span className="inline-flex items-center gap-2">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  ></circle>
-                  <path
-                    className="opacity-80"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
-                  ></path>
-                </svg>
-                <span id="mail-credential-loading-text">
-                  {t.mail.inbox.credentialChangingText}
+          <div data-aux-body>
+            <p
+              id="mail-credential-account-email"
+              className="px-6 pt-4 text-xs text-muted-foreground"
+            ></p>
+            <form id="mail-credential-form" className="space-y-3 px-6 py-5">
+              <p className="text-xs text-muted-foreground">
+                {t.mail.inbox.credentialChangeDesc}{" "}
+                <strong>{t.mail.inbox.credentialChangeDescStrong}</strong>{" "}
+                {t.mail.inbox.credentialChangeDescSuffix}
+              </p>
+              <div
+                id="mail-credential-feedback"
+                className="hidden rounded-lg px-4 py-2 text-sm"
+              ></div>
+              <div
+                id="mail-credential-error"
+                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+              ></div>
+              <div
+                id="mail-credential-loading"
+                className="hidden rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm text-primary"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-80"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
+                    ></path>
+                  </svg>
+                  <span id="mail-credential-loading-text">
+                    {t.mail.inbox.credentialChangingText}
+                  </span>
                 </span>
-              </span>
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="mail-credential-password"
-                className="text-sm font-medium"
-              >
-                {t.mail.inbox.labelNewPassword}
-              </label>
-              <input
-                id="mail-credential-password"
-                type="password"
-                minLength={6}
-                required
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="mail-credential-confirm"
-                className="text-sm font-medium"
-              >
-                {t.mail.inbox.labelConfirmPassword}
-              </label>
-              <input
-                id="mail-credential-confirm"
-                type="password"
-                minLength={6}
-                required
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                id="mail-credential-cancel"
-                className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
-              >
-                {t.mail.inbox.btnCancelChange}
-              </button>
-              <button
-                id="mail-credential-submit"
-                type="submit"
-                className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-              >
-                {t.mail.inbox.btnChangePassword}
-              </button>
-            </div>
-          </form>
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="mail-credential-password"
+                  className="text-sm font-medium"
+                >
+                  {t.mail.inbox.labelNewPassword}
+                </label>
+                <input
+                  id="mail-credential-password"
+                  type="password"
+                  minLength={6}
+                  required
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="mail-credential-confirm"
+                  className="text-sm font-medium"
+                >
+                  {t.mail.inbox.labelConfirmPassword}
+                </label>
+                <input
+                  id="mail-credential-confirm"
+                  type="password"
+                  minLength={6}
+                  required
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  id="mail-credential-cancel"
+                  className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent"
+                >
+                  {t.mail.inbox.btnCancelChange}
+                </button>
+                <button
+                  id="mail-credential-submit"
+                  type="submit"
+                  className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                >
+                  {t.mail.inbox.btnChangePassword}
+                </button>
+              </div>
+            </form>
+          </div>
+
         </dialog>
       </PanelLayout>
 

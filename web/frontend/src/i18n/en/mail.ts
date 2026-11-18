@@ -6,7 +6,7 @@ import mailPart2 from "./mail/part2";
 
 const mail = { ...mailPart1, ...mailPart2, serverConnection: {
   "title": "SMTP / IMAP server",
-  "intro": "Use mailboxes from another saved server. This selection applies to Mail in this tab; other modules keep their active server.",
+  "intro": "Use mailboxes from another saved server. Your selection is remembered for your user on this panel; other modules keep their active server.",
   "serverLabel": "Mail server",
   "hint": "The server needs compatible Postfix/Dovecot and accessible mail ports. Mailboxes and credentials come from the selected server.",
   "apply": "Apply server",

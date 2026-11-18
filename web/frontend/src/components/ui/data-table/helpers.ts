@@ -42,7 +42,7 @@ export function dataColumnIds(order: string[]): string[] {
 }
 
 export function withSentinels(ids: string[]): string[] {
-  return ["_select", ...ids, "_actions"];
+  return ["_select", ...ids];
 }
 
 // Igualdad superficial de dos datasets de filas: misma longitud y, por índice,

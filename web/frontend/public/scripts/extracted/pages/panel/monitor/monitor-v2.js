@@ -31,7 +31,7 @@ function showToast(msg, ok = true) {
 function setBar(id, pct) {
   const bar = document.getElementById(id);
   if (!bar) return;
-  bar.style.width = `${Math.min(pct, 100)}%`;
+  bar.style.width = `${Math.max(0, Math.min(pct, 100))}%`;
   bar.className = `h-full rounded-full transition-all duration-500 ${pct > 90 ? "bg-destructive" : pct > 70 ? "bg-amber-500" : "bg-emerald-500"}`;
 }
 function updateHealthBadge(cpu, mem, disk) {
@@ -60,7 +60,7 @@ let _lastSnap = null;
 let _topFolders = [];
 function updateStats(snap) {
   _lastSnap = snap;
-  window.dispatchEvent(new CustomEvent("lxp:monitor:snapshot", { detail: { ts: snap.ts ?? Date.now() } }));
+  window.dispatchEvent(new CustomEvent("lxp:monitor:snapshot", { detail: { ts: snap.ts ?? Date.now(), snapshot: snap } }));
   if (!document.getElementById("stat-cpu")) return;
   const cpuPct = snap.cpu?.usagePercent ?? 0;
   const statCpu = document.getElementById("stat-cpu");
@@ -73,24 +73,31 @@ function updateStats(snap) {
   const statTx = document.getElementById("stat-tx");
   const statUptime = document.getElementById("stat-uptime");
   if (!statCpu || !loadAvg || !statMem || !memDetail || !statDisk || !diskDetail || !statRx || !statTx) return;
-  statCpu.textContent = cpuPct.toFixed(1);
+  statCpu.textContent = Number.isFinite(snap.cpu?.usagePercent) ? cpuPct.toFixed(1) : "—";
   setBar("bar-cpu", cpuPct);
   const la = snap.cpu;
   loadAvg.textContent = la ? `${la.loadAvg1m?.toFixed(2)} / ${la.loadAvg5m?.toFixed(2)} / ${la.loadAvg15m?.toFixed(2)}` : "\u2014";
+  for (const min of [1, 5, 15]) {
+    const el = document.getElementById(`load-avg-${min}`);
+    const value = snap.cpu?.[`loadAvg${min}m`];
+    if (el) el.textContent = Number.isFinite(value) ? value.toFixed(2) : "—";
+  }
+  const cpuDetail = document.getElementById("cpu-detail");
+  if (cpuDetail) cpuDetail.textContent = `${t("stats.loadAvg", "Load avg")} · ${Number.isFinite(la?.loadAvg1m) ? la.loadAvg1m.toFixed(2) : "—"} (1 min)`;
   const memPct = snap.memory?.usagePercent ?? 0;
-  statMem.textContent = memPct.toFixed(1);
+  statMem.textContent = Number.isFinite(snap.memory?.usagePercent) ? memPct.toFixed(1) : "—";
   setBar("bar-mem", memPct);
-  const usedMb = snap.memory ? Math.round(snap.memory.usedBytes / 1048576) : null;
-  const totalMb = snap.memory ? Math.round(snap.memory.totalBytes / 1048576) : null;
-  memDetail.textContent = usedMb != null ? `${usedMb} / ${totalMb} MB` : "\u2014 / \u2014 MB";
+  const usedMb = Number.isFinite(snap.memory?.usedBytes) ? Math.round(snap.memory.usedBytes / 1048576) : null;
+  const totalMb = Number.isFinite(snap.memory?.totalBytes) ? Math.round(snap.memory.totalBytes / 1048576) : null;
+  memDetail.textContent = usedMb != null && totalMb != null ? `${usedMb} / ${totalMb} MB · ${t("overview.available", "Disponible")}: ${Number.isFinite(snap.memory.freeBytes) ? Math.round(snap.memory.freeBytes / 1048576) : "—"} MB` : "\u2014 / \u2014 MB";
   const diskPct = snap.disk?.usagePercent ?? 0;
-  statDisk.textContent = diskPct.toFixed(1);
+  statDisk.textContent = Number.isFinite(snap.disk?.usagePercent) ? diskPct.toFixed(1) : "—";
   setBar("bar-disk", diskPct);
-  const usedGb = snap.disk ? (snap.disk.usedBytes / 1073741824).toFixed(1) : null;
-  const totalGb = snap.disk ? (snap.disk.totalBytes / 1073741824).toFixed(1) : null;
-  diskDetail.textContent = usedGb != null ? `${usedGb} / ${totalGb} GB` : "\u2014 / \u2014 GB";
-  statRx.textContent = fmtBytes(snap.network?.rxBytesPerSec ?? 0);
-  statTx.textContent = fmtBytes(snap.network?.txBytesPerSec ?? 0);
+  const usedGb = Number.isFinite(snap.disk?.usedBytes) ? (snap.disk.usedBytes / 1073741824).toFixed(1) : null;
+  const totalGb = Number.isFinite(snap.disk?.totalBytes) ? (snap.disk.totalBytes / 1073741824).toFixed(1) : null;
+  diskDetail.textContent = usedGb != null && totalGb != null ? `${usedGb} / ${totalGb} GB · ${t("overview.available", "Disponible")}: ${Number.isFinite(snap.disk.availableBytes) ? (snap.disk.availableBytes / 1073741824).toFixed(1) : "—"} GB` : "\u2014 / \u2014 GB";
+  statRx.textContent = Number.isFinite(snap.network?.rxBytesPerSec) ? fmtBytes(snap.network.rxBytesPerSec) : "—";
+  statTx.textContent = Number.isFinite(snap.network?.txBytesPerSec) ? fmtBytes(snap.network.txBytesPerSec) : "—";
   if (statUptime) {
     const seconds = Number(snap.uptime);
     if (Number.isFinite(seconds) && seconds >= 0) {
@@ -112,43 +119,86 @@ function updateStats(snap) {
     if (nameEl) nameEl.textContent = process?.name || "—";
     if (valueEl) valueEl.textContent = process ? `${Number(process[metric] || 0).toFixed(1)}%` : "—";
   }
+  renderOverviewProcesses();
   updateHealthBadge(cpuPct, memPct, diskPct);
 }
 
-async function loadTopFolders() {
-  if (!isMonitorPage()) return;
-  const el = document.getElementById("monitor-top-folders");
-  if (!el) return;
-  if (!el.getClientRects().length || document.hidden) return;
-  // Reuse the dashboard endpoint — it already exposes the cached `du` result
-  // for the connected target, so we don't pay the filesystem walk twice.
-  const res = await api.get("/api/dashboard/overview");
-  if (!res.ok || !res.data?.disk?.data) {
-    el.innerHTML = `<p class="text-xs text-muted-foreground">${t("topFolders.measureError","No se pudo medir el uso por carpeta.")}</p>`;
-    return;
+// Lists fill a bounded flex area; content never sets the card height.
+function renderOverviewProcesses() {
+  if (!_lastSnap || document.hidden) return;
+  for (const [kind, processes, metric] of [["cpu", _lastSnap.topProcesses?.cpu, "cpu"], ["ram", _lastSnap.topProcesses?.mem, "mem"]]) {
+    const list = document.getElementById(`overview-processes-${kind}`);
+    if (!list || !list.getClientRects().length) continue;
+    const limit = Math.max(1, Math.floor(list.clientHeight / 26));
+    list.innerHTML = Array.isArray(processes) && processes.length
+      ? processes.slice(0, Math.min(25, limit)).map(p => `<div title="${escapeHtml(p.name || "—")} · PID ${Number(p.pid)}"><span>${escapeHtml(p.name || "—")}</span><strong>${Number.isFinite(p[metric]) ? p[metric].toFixed(1) + "%" : "—"}</strong></div>`).join("")
+      : `<span class="text-muted-foreground">${escapeHtml(t("overview.emptyProcesses", "Sin procesos registrados"))}</span>`;
   }
-  const folders = Array.isArray(res.data.disk.data.topFolders) ? res.data.disk.data.topFolders : [];
-  _topFolders = folders;
-  if (folders.length === 0) {
-    el.innerHTML = `<p class="text-xs text-muted-foreground">${t("topFolders.empty","No hay carpetas con consumo registrado.")}</p>`;
-    return;
-  }
-  const max = folders[0]?.bytes || 1;
-  el.innerHTML = folders.map((f) => {
-    const pct = Math.min(100, Math.round((f.bytes / max) * 100));
-    const gb = (f.bytes / 1073741824).toFixed(2);
-    return `
-      <div>
-        <div class="flex items-center justify-between text-xs">
-          <span class="truncate font-mono text-muted-foreground">${escapeHtml(f.path)}</span>
-          <span class="font-medium tabular-nums">${gb} GB</span>
-        </div>
-        <div class="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
-          <div class="h-full rounded-full bg-blue-500" style="width:${pct}%"></div>
-        </div>
-      </div>`;
-  }).join("");
 }
+let foldersInFlight = false;
+let foldersLoadedAt = 0;
+let overviewDisposed = false;
+let overviewObserver = null;
+let overviewFrame = null;
+function scheduleOverview() {
+  if (overviewFrame !== null || overviewDisposed) return;
+  overviewFrame = requestAnimationFrame(() => {
+    overviewFrame = null;
+    renderOverviewProcesses();
+    void loadTopFolders();
+  });
+}
+async function loadTopFolders(force = false) {
+  if (!isMonitorPage() || overviewDisposed || foldersInFlight) return;
+  const el = document.getElementById("monitor-top-folders");
+  if (!el || !el.getClientRects().length || document.hidden) return;
+  if (!force && Date.now() - foldersLoadedAt < 60000) return;
+  foldersInFlight = true;
+  const status = document.getElementById("monitor-folders-status");
+  const retry = document.getElementById("monitor-folders-retry");
+  if (status) status.textContent = t("topFolders.loading", "Midiendo carpetas…");
+  if (retry) retry.hidden = true;
+  try {
+    const res = await api.get("/api/dashboard/overview");
+    if (overviewDisposed || document.hidden || el !== document.getElementById("monitor-top-folders")) return;
+    if (!res.ok || res.data?.disk?.ok === false || !Array.isArray(res.data?.disk?.data?.topFolders)) throw new Error("Folder measurement failed");
+    _topFolders = res.data.disk.data.topFolders;
+    const max = Math.max(1, ..._topFolders.map(f => Number(f.bytes) || 0));
+    el.innerHTML = _topFolders.length ? _topFolders.slice(0, 3).map(f => `
+      <div><div class="flex items-center justify-between gap-2 text-xs">
+        <span class="truncate font-mono text-muted-foreground" title="${escapeHtml(f.path)}">${escapeHtml(f.path)}</span>
+        <span class="shrink-0 font-medium tabular-nums">${(f.bytes / 1073741824).toFixed(2)} GB</span>
+      </div><div class="mt-1 h-1 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full bg-blue-500" style="width:${Math.max(0, Math.min(100, f.bytes / max * 100))}%"></div></div></div>`).join("")
+      : `<p class="text-xs text-muted-foreground">${escapeHtml(t("topFolders.empty", "No hay carpetas con consumo registrado."))}</p>`;
+    foldersLoadedAt = Date.now();
+    if (status) status.textContent = "";
+  } catch {
+    if (overviewDisposed || document.hidden) return;
+    // Retain a successful measurement; only the initial skeleton is removed.
+    if (!foldersLoadedAt) el.replaceChildren();
+    if (status) status.textContent = t("topFolders.measureError", "No se pudo medir el uso por carpeta.");
+    if (retry) retry.hidden = false;
+    // Suppress resize-triggered retry loops; the button still retries now.
+    foldersLoadedAt = Date.now();
+  } finally { foldersInFlight = false; }
+}
+function bindOverview() {
+  overviewDisposed = false;
+  overviewObserver?.disconnect();
+  overviewObserver = new ResizeObserver(scheduleOverview);
+  for (const el of document.querySelectorAll(".monitor-process-list, #monitor-top-folders")) overviewObserver.observe(el);
+  scheduleOverview();
+}
+document.addEventListener("click", event => {
+  if (event.target?.closest?.("#monitor-folders-retry")) void loadTopFolders(true);
+});
+function disposeOverviewWidgets() {
+  overviewDisposed = true;
+  overviewObserver?.disconnect();
+  if (overviewFrame !== null) cancelAnimationFrame(overviewFrame);
+  overviewFrame = null;
+}
+document.addEventListener("lxp:module:dispose", disposeOverviewWidgets);
 
 let _ws = null;
 let _wsRetry = null;
@@ -199,9 +249,7 @@ async function connectWS() {
   };
 }
 // Services pagination ----------------------------------------------------
-const SERVICES_PAGE_SIZE = 5;
 let _allServices = [];
-let _servicesPage = 1;
 // Active status filter: all | active | inactive | uninstalled
 let _servicesFilter = "all";
 const SERVICE_FILTERS = [
@@ -305,18 +353,13 @@ function renderServicesPage() {
   }
 
   const filtered = _allServices.filter(serviceMatchesFilter);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / SERVICES_PAGE_SIZE));
-  if (_servicesPage > totalPages) _servicesPage = totalPages;
-  if (_servicesPage < 1) _servicesPage = 1;
-  const start = (_servicesPage - 1) * SERVICES_PAGE_SIZE;
-  const slice = filtered.slice(start, start + SERVICES_PAGE_SIZE);
 
-  const rows = slice.length
-    ? slice.map((s) => `
-      <div class="flex items-center justify-between rounded-lg border border-border px-4 py-2.5">
-        <div class="flex items-center gap-2.5">
+  const rows = filtered.length
+    ? filtered.map((s) => `
+      <div class="monitor-service-row rounded-lg border border-border">
+        <div class="monitor-service-name flex items-center gap-2.5">
           <i class="ti ${svcIcon(s.name)} text-sm text-muted-foreground"></i>
-          <span class="text-sm font-medium">${escapeHtml(s.name)}</span>
+          <span class="truncate text-sm font-medium" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
         </div>
         <div class="flex items-center gap-2.5">
           ${svcActionButton(s)}
@@ -327,28 +370,14 @@ function renderServicesPage() {
 
   el.innerHTML = `
     ${renderServicesFilters()}
-    <div class="space-y-2 px-3 py-3">${rows}</div>
-    ${totalPages > 1 ? `
-      <div class="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
-        <span>${tf("servicesWidget.pagination", "Página {page} de {total} · {count} servicios", { page: _servicesPage, total: totalPages, count: filtered.length })}</span>
-        <div class="flex items-center gap-1">
-          <button id="svc-prev" ${_servicesPage <= 1 ? "disabled" : ""}
-            class="flex h-7 w-7 items-center justify-center rounded-md border border-border ${_servicesPage <= 1 ? "opacity-40 cursor-not-allowed" : "hover:bg-accent"}">
-            <i class="ti ti-chevron-left text-sm"></i>
-          </button>
-          <button id="svc-next" ${_servicesPage >= totalPages ? "disabled" : ""}
-            class="flex h-7 w-7 items-center justify-center rounded-md border border-border ${_servicesPage >= totalPages ? "opacity-40 cursor-not-allowed" : "hover:bg-accent"}">
-            <i class="ti ti-chevron-right text-sm"></i>
-          </button>
-        </div>
-      </div>
-    ` : ""}
+    <div class="monitor-services-rows">${rows}</div>
+
   `;
 
   el.querySelectorAll("[data-svc-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-svc-filter");
-      if (key && key !== _servicesFilter) { _servicesFilter = key; _servicesPage = 1; renderServicesPage(); }
+      if (key && key !== _servicesFilter) { _servicesFilter = key; renderServicesPage(); }
     });
   });
   el.querySelectorAll("[data-svc-start]").forEach((btn) => {
@@ -357,12 +386,7 @@ function renderServicesPage() {
   el.querySelectorAll("[data-svc-install]").forEach((btn) => {
     btn.addEventListener("click", () => installServiceAction(btn.getAttribute("data-svc-install"), btn));
   });
-  document.getElementById("svc-prev")?.addEventListener("click", () => {
-    if (_servicesPage > 1) { _servicesPage--; renderServicesPage(); }
-  });
-  document.getElementById("svc-next")?.addEventListener("click", () => {
-    if (_servicesPage < totalPages) { _servicesPage++; renderServicesPage(); }
-  });
+
 }
 
 function setSvcBtnBusy(btn, label) {
@@ -407,12 +431,18 @@ async function installServiceAction(name, btn) {
   await loadServices();
 }
 
+let servicesInFlight = false;
 async function loadServices() {
   if (!isMonitorPage()) return;
   const el = document.getElementById("services-list");
   if (!el) return;
   if (!el.getClientRects().length || document.hidden) return;
-  const res = await api.get("/api/monitor/services");
+  if (servicesInFlight) return;
+  servicesInFlight = true;
+  let res;
+  try { res = await api.get("/api/monitor/services"); }
+  finally { servicesInFlight = false; }
+  if (overviewDisposed || document.hidden) return;
   if (!res.ok) {
     el.innerHTML = `<div class="px-4 py-4 text-center text-sm text-muted-foreground">${t("servicesWidget.error", "No se pudo consultar el estado de los servicios.")}</div>`;
     return;
@@ -1107,7 +1137,7 @@ function init() {
   connectWS();
   loadServices();
   loadProcesses();
-  loadTopFolders();
+  bindOverview();
   updatePushUI();
   const t1 = setInterval(loadServices, 3e4);
   syncProcessTimer();
@@ -1115,6 +1145,7 @@ function init() {
   const t2 = setInterval(loadTopFolders, 6e4);
   document.addEventListener("astro:before-swap", () => {
     monitorStarted = false;
+    disposeOverviewWidgets();
     clearInterval(t1);
     clearInterval(t2);
     if (procRefreshTimer) clearInterval(procRefreshTimer);
@@ -1132,5 +1163,10 @@ init();
 
 document.addEventListener("lxp:module:visibility",()=>{
  if(document.hidden){if(_wsRetry)clearTimeout(_wsRetry);_wsAlive=false;const old=_ws;_ws=null;old?.close();}
- else {void connectWS();void pollSnapshot();}
+ else {void connectWS();void pollSnapshot();scheduleOverview();}
 });
+
+window.addEventListener("lxp:module:section-changed", event => {
+  if (event.detail?.module === "monitor" && event.detail.section === "services") void loadServices();
+});
+document.addEventListener("lxp:module:visibility", () => { if (!document.hidden) void loadServices(); });

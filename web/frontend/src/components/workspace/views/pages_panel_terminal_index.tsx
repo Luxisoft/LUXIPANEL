@@ -48,7 +48,7 @@ export default function pages_panel_terminal_index(props: any) {
     <Fragment>
       <PanelLayout
         title={t.terminal.pageTitle}
-        activeModule=""
+        activeModule="terminal"
         titleInActions
         fullBleed
       >

@@ -190,14 +190,7 @@ export default function pages_panel_codebase_graph_index(props: any) {
                   canOpenOriginal && !isolatedGraphView && "hidden",
                 ])}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h1 className="text-xl font-semibold">{g.explorerTitle}</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {g.explorerDescription}
-                    </p>
-                  </div>
-                </div>
+
                 <div
                   id="cg-error"
                   role="alert"

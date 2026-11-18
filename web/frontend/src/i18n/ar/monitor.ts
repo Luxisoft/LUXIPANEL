@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "آخر 5 دقائق · مباشر",
+    "collecting": "جارٍ جمع العينات",
+    "received": "استقبال",
+    "sent": "إرسال",
+    "available": "متاح",
+    "emptyProcesses": "لا توجد عمليات مسجلة"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "إنهاء"
   },
   "history": {
+    "gapLegend": "الأحمر: لا توجد بيانات",
+    "gapLabel": "لا توجد بيانات",
+    "gapDuration": "المدة: {duration}",
+
     "workspaceLabel": "المراقبة",
     "coverageLabel": "تغطية السجل",
     "availableSince": "البيانات متاحة منذ",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "تعذّر تثبيت {name}."
   },
   "topFolders": {
+    "retry": "إعادة المحاولة",
+    "loading": "جارٍ قياس المجلدات…",
     "measureError": "تعذّر قياس الاستهلاك حسب المجلد.",
     "empty": "لا توجد مجلدات ذات استهلاك مسجّل."
   },

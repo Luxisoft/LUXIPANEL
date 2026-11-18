@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "閉じる（ターミナルはアクティブのまま）"
   },
   "sidebar": {
-    "tabSnippets": "スニペット",
+    "tabSnippets": "保存したコマンド",
     "tabHistory": "履歴",
     "tabConfig": "設定",
     "closePanel": "サイドパネルを閉じる",
     "closePanelTitle": "パネルを閉じる"
   },
   "snippets": {
-    "heading": "スニペット",
-    "newSnippet": "新しいスニペット",
-    "searchPlaceholder": "スニペットを検索...",
-    "searchAria": "スニペットを検索",
+    "heading": "保存したコマンド",
+    "newSnippet": "新しいコマンド",
+    "searchPlaceholder": "コマンドを検索...",
+    "searchAria": "保存したコマンドを検索",
     "filterByCategoryAria": "カテゴリでフィルター",
     "allCategories": "すべてのカテゴリ"
   },

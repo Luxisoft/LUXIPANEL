@@ -1,3 +1,4 @@
+import { ModuleCard } from "../ModuleContent";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Internal component migrated from src/components/panel-mail/MailSpamFiltersPanel.astro.
 import { SlotFragment as Fragment } from "../view-context";
@@ -20,21 +21,16 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
   return (
     <Fragment>
       <section data-mail-main-panel="spam-filters" className="hidden space-y-4">
-        <div className="rounded-xl border border-border bg-background p-4">
-          <h4 className="text-sm font-semibold">
-            {t.mail.spamFilters.sectionTitle}
-          </h4>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t.mail.spamFilters.sectionDesc}
-          </p>
+        <ModuleCard className="rounded-xl border border-border bg-background p-4">
+
           <div
             id="mail-spam-error"
-            className="mt-3 hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+            className="mb-3 hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
           ></div>
           <p
             id="mail-spam-status"
             role="status"
-            className="mt-3 rounded-lg border border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground"
+            className="rounded-lg border border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground"
           ></p>
 
           <div className="mt-4 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
@@ -170,9 +166,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
             data-mail-spam-view="adjust-threshold"
             className="mt-4 hidden space-y-3"
           >
-            <h5 className="text-base font-semibold">
-              {t.mail.spamFilters.adjustThresholdTitle}
-            </h5>
+
             <p className="text-xs text-muted-foreground">
               {t.mail.spamFilters.adjustThresholdDesc}
             </p>
@@ -233,9 +227,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
           </div>
 
           <div data-mail-spam-view="spam-box" className="mt-4 hidden space-y-3">
-            <h5 className="text-base font-semibold">
-              {t.mail.spamFilters.spamBoxViewTitle}
-            </h5>
+
             <label className="inline-flex items-center gap-2 text-sm font-medium">
               <input
                 id="mail-spam-box-view-enabled"
@@ -269,9 +261,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
             data-mail-spam-view="auto-delete"
             className="mt-4 hidden space-y-3"
           >
-            <h5 className="text-base font-semibold">
-              {t.mail.spamFilters.autoDeleteViewTitle}
-            </h5>
+
             <label className="inline-flex items-center gap-2 text-sm font-medium">
               <input
                 id="mail-spam-autodelete-view-enabled"
@@ -318,9 +308,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
             data-mail-spam-view="whitelist"
             className="mt-4 hidden space-y-3"
           >
-            <h5 className="text-base font-semibold">
-              {t.mail.spamFilters.whitelistViewTitle}
-            </h5>
+
             <p className="text-xs text-muted-foreground">
               {t.mail.spamFilters.whitelistDesc}
             </p>
@@ -354,9 +342,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
             data-mail-spam-view="blacklist"
             className="mt-4 hidden space-y-3"
           >
-            <h5 className="text-base font-semibold">
-              {t.mail.spamFilters.blacklistViewTitle}
-            </h5>
+
             <p className="text-xs text-muted-foreground">
               {t.mail.spamFilters.blacklistDesc}
             </p>
@@ -390,9 +376,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
             data-mail-spam-view="calculated"
             className="mt-4 hidden space-y-3"
           >
-            <h5 className="text-base font-semibold">
-              {t.mail.spamFilters.calculatedViewTitle}
-            </h5>
+
             <p className="text-xs text-muted-foreground">
               {t.mail.spamFilters.calculatedDesc}
             </p>
@@ -424,7 +408,7 @@ export default function components_panel_mail_MailSpamFiltersPanel(props: any) {
               </button>
             </div>
           </div>
-        </div>
+        </ModuleCard>
       </section>
     </Fragment>
   );

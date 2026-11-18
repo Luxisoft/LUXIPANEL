@@ -132,3 +132,14 @@ Los documentos y ajustes del proveedor pertenecen a `${LUXIPANEL_CONFIG_DIR}/ass
 Las lecturas de proyectos antiguos no escriben: muestran el documento original con el contexto legado. Crear un proyecto, guardar Contexto/Estructura o cambiar su ruta/proveedor prepara una migración privada, verifica copias y publica la carpeta mediante rename bajo flock por proyecto. Se conservan originales y un manifiesto de procedencia. Fallos de transporte, enlaces externos, archivos demasiado grandes o fuentes inaccesibles bloquean la migración; nunca se interpretan como un proyecto vacío. El contexto se guarda por revisión y comparación del hash en el target; cambiar cwd no selecciona otro documento.
 Los prompts nuevos y reanudados apuntan al archivo permanente. El alcance de archivos añade solo carpetas de datos de los proyectos autorizados; nunca toda la configuración del panel. Los adaptadores cargan los ajustes nativos guardados para Claude, Codex y Gemini sin cambiar cwd, las políticas de aprobación ni los canales protegidos. Las instrucciones propias del repositorio siguen existiendo.
 Obsidian conecta la misma carpeta del proyecto. Las notas históricas se copian a `notes/`, se verifican y se reasocia el contenedor; los archivos originales se conservan y los vaults compartidos no se redirigen. El propietario, permisos de archivos, rutas físicas y target siguen validándose. La interfaz distingue directorio de trabajo y datos del proyecto. `expectedPath` es una precondición opcional de PATCH para detectar cambios de ruta desde otro editor; GET context-document añade `storagePath`, `documentPath` y `managed`.
+
+### Carpetas de cuarentena del correo
+
+Cuarentena es el destino canónico de la IA. La normalización autenticada por
+cuenta se realiza mediante POST, en pasos reanudables de hasta 500 UIDs, usando
+MOVE nativo y un bloqueo por target/cuenta. Los GET no modifican carpetas. No se
+purgan carpetas antiguas: solo se retiran después de una nueva consulta vacía.
+Un servidor sin MOVE conserva las fuentes y devuelve un error de compatibilidad.
+La protección de INBOX/Sent/Trash se amplía a Junk/Spam, Cuarentena y sus alias
+heredados; los padres que contienen carpetas protegidas tampoco se renombran ni
+eliminan. La lista expone `protected`; los servicios revalidan antes de mutar.

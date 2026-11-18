@@ -186,3 +186,17 @@ it("observes only the module DOM when a library passes the scoped document", asy
   await new Promise(resolve => setTimeout(resolve, 10));
   expect(changes).toHaveBeenCalledOnce();
 });
+
+it("scopes header controls to their registered owner and releases them", () => {
+  const root = document.createElement("div"), other = document.createElement("div"), header = document.createElement("div");
+  header.innerHTML = '<input id="header-filter" />'; document.body.append(root, other, header);
+  const scope = createControllerScope(root, new URL("https://panel.example/panel/expo"));
+  const second = createControllerScope(other, new URL("https://panel.example/panel/users"));
+  const release = scope.registerOwnedRoot(header);
+  expect(scope.document.getElementById("header-filter")).toBe(header.firstElementChild);
+  expect(second.document.getElementById("header-filter")).toBeNull();
+  const handler = vi.fn(); scope.document.addEventListener("input", handler);
+  header.firstElementChild!.dispatchEvent(new Event("input", {bubbles:true})); expect(handler).toHaveBeenCalledOnce();
+  release(); expect(scope.document.getElementById("header-filter")).toBeNull();
+  scope.dispose(); second.dispose();
+});

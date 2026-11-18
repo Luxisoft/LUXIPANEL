@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "বন্ধ করুন (টার্মিনাল সক্রিয় থাকবে)"
   },
   "sidebar": {
-    "tabSnippets": "কোড অংশ",
+    "tabSnippets": "সংরক্ষিত কমান্ড",
     "tabHistory": "ইতিহাস",
     "tabConfig": "কনফিগারেশন",
     "closePanel": "পার্শ্ব প্যানেল বন্ধ করুন",
     "closePanelTitle": "প্যানেল বন্ধ করুন"
   },
   "snippets": {
-    "heading": "কোড অংশ",
-    "newSnippet": "নতুন snippet",
-    "searchPlaceholder": "Snippet খুঁজুন...",
-    "searchAria": "Snippets অনুসন্ধান",
+    "heading": "সংরক্ষিত কমান্ড",
+    "newSnippet": "নতুন কমান্ড",
+    "searchPlaceholder": "কমান্ড খুঁজুন...",
+    "searchAria": "সংরক্ষিত কমান্ড খুঁজুন",
     "filterByCategoryAria": "বিভাগ দিয়ে ফিল্টার করুন",
     "allCategories": "সব বিভাগ"
   },

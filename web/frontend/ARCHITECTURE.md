@@ -80,6 +80,115 @@ acciones usan una fila de ancho completo que se adapta sin scroll horizontal.
 
 El frontend sirve el login y workspace del panel instalado. El backend autentica Linux y ejecuta operaciones locales o SSH directo. No configurar MANAGED_BY_LICENSE_SERVER ni un bridge central de LP. El control API KEY vincula servicios de cuenta mediante una clave con nombre; las funciones protegidas pueden exigir validación online. App móvil consume APIs directas; Desktop abre esta interfaz web en una vista aislada.
 
+## Drawers de módulos: tablas y navegación
+
+Todas las vistas del registro y sus componentes internos omiten títulos de presentación que repiten el módulo o la
+pestaña seleccionada, junto con sus subtítulos genéricos. El nombre accesible se
+mantiene en `ModuleTopbar`; controles, avisos, instrucciones operativas y títulos
+de tarjetas que distinguen funciones se conservan. Los contenedores sin título
+no reservan una fila vacía cuando sus acciones pasan al topbar. Esto incluye
+cabeceras h3/h4 y textos introductorios anidados en las pestañas; las etiquetas
+interactivas y el contenido funcional mantienen su significado.
+
+
+`ModuleTopbar`, compartido por `InternalModuleHost` y la revisión visual, mantiene
+una fila de 56 px con tres bloques permanentes: navegación 25%, búsqueda/filtros
+45% y acciones/estado/herramientas 30%. Los separadores y espacios vacíos se
+conservan al cambiar de pestaña. Cada bloque se mide de forma independiente y
+mantiene visibles los controles que caben; solo los sobrantes pasan al dropdown.
+El buscador se expande hasta los filtros o el botón de desbordamiento; sin buscador,
+los filtros de un campo reparten el ancho disponible del centro.
+Los hosts independientes conservan los nodos React/nativos y sus valores.
+El dropdown ordena los controles en una lista vertical con etiquetas y separadores.
+Los grupos visibles y el desplegable de navegación conservan Rubber Segment
+de React Bits. Los slots con `display:contents` no reciben indicadores propios;
+el indicador decorativo no participa en el cálculo del espacio.
+Cerrar permanece visible dentro del bloque derecho. En móvil sigue una sola fila.
+`DataTable.toolbarTargets` mantiene los destinos separados y el toolbar legado.
+Los controles nativos conservan su propiedad de scope y se restauran al ocultar
+el módulo.
+
+Los drawers mantienen las suscripciones de datos en vivo sin mostrar la fila
+genérica «Actualizado · hora / Actualizar» de `watchModuleData`.
+
+
+`ModuleDataTable` comparte filtros y herramientas de la tabla visible con el topbar.
+El modo `DataTable.layout="fill"` mantiene la cabecera y paginación visibles y da
+scroll propio a las filas. `module-table-layout` marca únicamente los ancestros
+de la tabla activa para quitar rellenos; los formularios y diálogos conservan su
+espaciado. Los slots de estado, tabla y controles nativos son independientes.
+
+`ModuleSection` conserva montadas las secciones y alterna su visibilidad desde
+`ModuleFrame`: Respaldos, Expo y Monitor utilizan pestañas, y Recibir en Webhooks
+separa endpoints de receptores. El menú derecho ofrece submenús solo para rutas
+que abren drawers independientes; el catálogo de `workspaceView` sigue disponible.
+
+Las acciones de fila se abren con `contextmenu` (clic derecho o Shift+F10), sin
+columna `_actions`. `lib/context-menu` comparte posicionamiento y popover con
+Files. `DataTable` conserva `ROW_ACTION`, permisos y filtros por fila; cierra el
+menú al cambiar datos, orden, página o visibilidad. Las tablas nativas conservan
+sus botones originales conectados al controlador mediante
+`native-row-context-menu`; el menú se monta dentro del diálogo propietario.
+Verificación: `node scripts/qa-row-context-menus.mjs`.
+
+Los controles nativos trasladados al header se registran con
+`ControllerScope.registerOwnedRoot`; consultas DOM y eventos conservan el ámbito
+propietario, y al ocultar o desmontar el módulo se restauran los controles.
+Revisión visual reproducible: `node scripts/qa-module-drawers.mjs` (datos de
+contexto simulados, sin operaciones en el backend).
+
+La bandeja comparte medidas entre el topbar y sus tres paneles. El host monta el
+topbar del scope activo en el mismo ciclo de layout que los demás módulos: su
+limpieza restaura los controles antes de reutilizar los slots. Esto conserva
+Redactar/Herramientas al volver a una cuenta guardada. El header mantiene una
+sola fila centrada y mueve acciones secundarias al popover en anchos pequeños.
+Las carpetas se ordenan por función, independientemente de su protección:
+INBOX, Drafts, Sent, Archive, personales, Trash, Junk/Spam y Cuarentena.
+El lector tiene estados vacío/cargando/listo/error. Cada selección tiene su
+petición cancelable y su iframe propio, con spinner inmediato, límite de 60 s
+para HTTP y 10 s para recursos del documento. Solo la generación activa puede
+mostrar contenido o terminar la carga; errores ofrecen Reintentar. El refresco
+de la lista no reinicia un mensaje ya abierto. `htmlDocument` contiene HTML/CSS
+saneado para un iframe opaco, sin scripts y con CSP; `html` conserva el fragmento
+compatible. El iframe ocupa el alto del lector y mantiene su scroll, evitando
+ciclos de crecimiento con estilos `100vh`.
+Al abrir una cuenta se solicita la normalización de cuarentena por lotes mediante
+un POST; un backend anterior sin ese endpoint conserva su comportamiento.
+Verificación con cuenta simulada: `node scripts/qa-mail-inbox.mjs`.
+Presentación y reglas responsivas: desde backend,
+`pnpm exec tsx ../frontend/scripts/qa-mail-message-render.mjs` (sin recursos remotos).
+
+La primera pestaña de Monitor distribuye CPU, RAM, disco, red, actividad y
+procesos destacados en seis tarjetas que llenan el drawer. Las columnas se
+adaptan al contenedor (1/2/3); el contenido conserva scroll vertical en anchos
+o alturas pequeños. CPU, RAM y red muestran una ventana de cinco minutos de
+muestras de la sesión mediante el evento interno `lxp:monitor:snapshot`, cuyo
+`detail` conserva `ts` y añade `snapshot`. No hay polling adicional; el buffer
+rechaza duplicados y muestras anteriores, marca huecos tras desconexiones y se
+limpia al desmontar el scope. «Ver procesos» activa también la sección React.
+Las columnas de procesos muestran las filas completas que quepan (26 px por fila,
+hasta 25 por columna), recalculadas con ResizeObserver sin scroll interno.
+Top carpetas se carga al mostrar su sección y al reabrir el módulo; comparte una
+petición, limita refrescos a 60 s y ofrece Reintentar conservando datos previos.
+Las secciones notifican `lxp:module:section-changed` dentro de su scope.
+Procesos mantiene CPU/RAM, actualizar, modo en vivo e intervalo histórico en una
+sola fila debajo del topbar, sin título ni hora de actualización visibles. Los
+controles permanecen dentro de su sección y no se trasladan al header.
+Monitor carga historial y servicios al activarlos, pausa sus refrescos al ocultarlos
+y conserva la sección al pulsar contenido sin id de botón. El historial se renueva
+al volver y el sondeo HTTP guarda muestras locales mediante el colector por target.
+Historial mantiene un contenedor de canvas con altura explícita y etiquetas de
+fecha adaptadas al ancho; los puntos aislados y los extremos de las series son
+visibles. En el rango de una hora se unen observaciones separadas hasta tres
+minutos para tolerar el muestreo bajo demanda; ausencias mayores y los buckets
+faltantes en resoluciones superiores se señalan con puentes rojos discontinuos.
+El tramo rojo muestra «Sin datos», inicio, fin y duración; no es una medición ni
+abre procesos. En periodos vacíos y extremos sin dos anclas, se usa la base
+temporal roja. La comparación conserva las fechas originales del periodo previo. No se crean muestras
+ni se cambian los promedios, contadores o cobertura. Servicios muestra todo el inventario en una cuadrícula y reserva un
+lateral compacto para el watchdog, con disposición vertical en móvil.
+Verificación con API y WebSocket simulados: `node scripts/qa-monitor-overview.mjs`.
+
 ## Scripts extraídos por módulo (`scripts/extracted/pages/panel/<mod>/`)
 
 Cada módulo del panel tiene un `index-script1.ts` que se importa desde su
@@ -556,3 +665,96 @@ Al terminar una ejecución CLI, la narración permanece en el historial y deja d
 Los tipos de historial, turno y eventos SSE de cierre incorporan `messageId?: string` y `presentation?: "full" | "summary"`, acordados con el backend. `messageId` identifica la respuesta lógica; `runId/seq` siguen identificando únicamente el transporte. Historial, páginas solapadas y cierres repetidos reconcilian solo ids explícitos dentro de la misma conversación. Una respuesta pendiente puede completarse con el mismo id y un snapshot pendiente tardío no revierte el resultado confirmado. Los mensajes sin id o con ids distintos permanecen separados aunque tengan el mismo texto y fecha.
 
 La correlación por id precede a las guardas de contexto del historial legado; no hay migración ni ids inferidos. Se conservan los controles de target, conversación y respuesta tardía. Los cuerpos nuevos mantienen `textTranslated ?? content` sin extraer una síntesis de la consola. Las regresiones de identidad están en `chat-engine/message-identity.test.ts`; el render comprueba documentos, código, planes completos, aprobaciones y apertura/cierre de síntesis explícitas.
+
+### Auxiliares de módulos
+
+Los diálogos auxiliares de las vistas declaran `data-aux-drawer` y regiones
+explícitas `data-aux-header`, `data-aux-body`, `data-aux-footer` y, cuando corresponde,
+`data-aux-form`. El formulario conserva sus controles y botones; solo su cuerpo
+se desplaza. `ModalNavbar` y `ModalShell` comparten las regiones de presentación.
+Los anchos originales y las excepciones de editores/visores se conservan.
+Mover mensaje captura cuenta/UID/origen, permite buscar destinos y exige
+confirmación. Un fallo conserva la selección; ocultar o desmontar el módulo
+invalida la petición de interfaz sin repetir movimientos. No cambia la API.
+QA reproducible con datos simulados: `scripts/qa-auxiliary-drawers.mjs` y
+`scripts/qa-auxiliary-modules.mjs`.
+
+El catálogo GitHub inicia su búsqueda pública sin esperar al estado de copias y
+preferencias del target; un fallo de estado se informa sin bloquear resultados.
+Las categorías se leen del JSON de la propia vista, sin depender del orden de
+inicialización de globals. QA con controlador real y API simulada:
+`node scripts/qa-module-drawers.mjs --repository-controller`.
+
+NGINX reúne servicio, rendimiento, diagnóstico de sitio y renovación HTTPS en
+Resumen. Sitios conserva su tabla; Tráfico sigue reservado a administradores.
+Las entradas antiguas de Servicio/Rendimiento abren Resumen. El diagnóstico
+general se registra en herramientas del topbar, inmediatamente antes de Configuración.
+Resumen alinea las columnas de servicio/sitios/HTTPS y rendimiento; nginx.conf
+ocupa una fila de ancho completo debajo, con separación uniforme entre tarjetas;
+las acciones de sitios y el envío de rendimiento pertenecen a sus tarjetas. Logs ocupa el alto restante
+y suspende su refresco al salir de la pestaña o esconder el módulo. Rendimiento
+conserva los valores editados entre pestañas y vuelve a leerse tras aplicar.
+QA con controlador real y API simulada: `node scripts/qa-module-drawers.mjs --nginx-controller`.
+
+### Superficies de contenido de módulos
+
+`ModuleContent` aplica a las vistas del registro el patrón de Correo → Filtros de
+spam: margen exterior único de 40 px (>=1024 px) / 32 px, tarjeta exterior con
+16 px de relleno y tarjetas interiores con 12 px; separación entre grupos de
+12 px. Bordes, fondos y radios pertenecen al tema. `ModuleCard` permite declarar
+nuevos grupos sin títulos automáticos. Las vistas heredadas conservan sus nodos,
+IDs y eventos y reciben las mismas superficies mediante atributos de layout.
+Las pestañas mixtas limitan el modo de tabla a su propio viewport; las tarjetas y
+formularios hermanos conservan borde y relleno. Las pestañas puramente tabulares
+siguen a ancho completo. QA con cuerpo real: `--spacing-audit`.
+
+Archivos conserva su presentación anterior completa: topbar propio, buscador en
+el cuerpo, árbol, pestañas y diálogos originales. No participa en los tres bloques
+del topbar ni en `ModuleContent` y la normalización de tarjetas y espacios.
+
+La revisión de contenido `--content-review` recorre todas las vistas y paneles
+semánticos del cuerpo, guarda capturas y un informe en `.cache`, y comprueba
+campos fuera de formularios, contenedores, margen exterior real, desbordamiento y
+formato nativo de tablas. La fixture monta también el footer IA del host.
+`--mail-controller` prueba navegación, consulta de entregas, filtros y columnas
+con el controlador real y API simulada. Los campos fuera de `<form>` y los bloques
+de código junto a tablas también determinan una pestaña mixta; los grupos de
+botones no se usan como tarjeta exterior. Los wrappers de pestañas trasladadas al
+topbar se colapsan sin alterar los nodos ni sus listeners.
+
+Module configuration drawers are separate from main module drawers. Preserve
+their original navigation, responsive menu labels, titles and spacing. Main
+topbar/content normalization must exclude `dialog`, `[data-lxp-module-settings]`
+and `[data-view-settings-modal]`, including portalled React settings. Shared
+auxiliary drawer padding must not affect module settings. Validate settings
+separately with `scripts/qa-module-drawers.mjs --settings-audit` and
+`--react-settings-audit` for Chat/Assistant portal navigation.
+
+El menú lateral de módulos del workspace actúa como lanzador: ningún módulo ni
+submenú mantiene estado seleccionado o `aria-current`, aunque su drawer esté
+abierto. La carga inicial SSR y la reconstrucción de módulos instalados conservan
+este comportamiento en escritorio y móvil; hover y foco siguen disponibles.
+
+Files and Terminal have their own complete presentation. Keep their original
+headers, edge-to-edge workspaces, live tab controls and mobile navigation. They
+must never use the three shared topbar blocks, ModuleContent cards, spacing
+normalization or individual native-control extraction. Use hasOwnModuleLayout
+for these exclusions; preserve configuration drawer isolation as well.
+
+Las nuevas sesiones de Terminal usan el directorio predeterminado del servidor,
+sin heredar la carpeta activa ni rutas guardadas de Files. Navegar por Files no
+envía comandos `cd` a terminales abiertas. La reconexión conserva únicamente el
+directorio propio conocido de la sesión; las peticiones explícitas de directorio
+siguen disponibles para los flujos que las necesitan.
+
+Terminal muestra un spinner accesible centrado dentro de `terminal-container`
+desde el montaje React, durante la carga diferida, preflight y conexión de PTY.
+El controlador comparte ese indicador y lo retira al estar listo, re-adjuntar o
+fallar. Reintentos vuelven a mostrarlo; no ocupa el topbar ni el panel lateral,
+y respeta movimiento reducido sin añadir contenedores de presentación.
+
+Terminal presenta los snippets como «Comandos guardados», conservando IDs,
+almacenamiento y acciones. Editar/eliminar pertenecen a la fila del título;
+el filtro de etiquetas no reserva texto ni espacio sin categoría. Historial
+usa su propio layout de tabla a alto completo, con scroll de filas y paginación
+visible para comandos, Codex y Claude; no activa el layout común del módulo.

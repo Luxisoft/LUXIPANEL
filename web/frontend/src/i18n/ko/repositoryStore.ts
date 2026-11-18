@@ -54,6 +54,7 @@ const repositoryStore = {
     "catalogoNote": "GitHub 공개 API에 의해 카탈로그가 제한됩니다"
   },
   "filters": {
+    "allCategories": "모든 카테고리",
     "stackLabel": "스택",
     "categoriaLabel": "카테고리",
     "estadoLabel": "상태",

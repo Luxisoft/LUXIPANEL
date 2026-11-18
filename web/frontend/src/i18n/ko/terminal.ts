@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "닫기 (터미널은 계속 실행됨)"
   },
   "sidebar": {
-    "tabSnippets": "스니펫",
+    "tabSnippets": "저장된 명령",
     "tabHistory": "기록",
     "tabConfig": "설정",
     "closePanel": "사이드 패널 닫기",
     "closePanelTitle": "패널 닫기"
   },
   "snippets": {
-    "heading": "스니펫",
-    "newSnippet": "새 스니펫",
-    "searchPlaceholder": "스니펫 검색...",
-    "searchAria": "스니펫 검색",
+    "heading": "저장된 명령",
+    "newSnippet": "새 명령",
+    "searchPlaceholder": "명령 검색...",
+    "searchAria": "저장된 명령 검색",
     "filterByCategoryAria": "카테고리 필터",
     "allCategories": "전체 카테고리"
   },

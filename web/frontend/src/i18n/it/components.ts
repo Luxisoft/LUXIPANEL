@@ -1,4 +1,5 @@
 const components = {
+  "moduleTopbar": { "search": "Cerca e filtra", "filters": "Filtri", "context": "Contesto", "tools": "Strumenti"},
   "setupWizardFooter": {
     "rights": "Tutti i diritti riservati.",
     "madeBy": "Realizzato da LUXISOFT",

@@ -1,4 +1,5 @@
 const components = {
+  "moduleTopbar": { "search": "البحث والتصفية", "filters": "عوامل التصفية", "context": "السياق", "tools": "الأدوات"},
   "setupWizardFooter": {
     "rights": "جميع الحقوق محفوظة.",
     "madeBy": "صنع بواسطة LUXISOFT",

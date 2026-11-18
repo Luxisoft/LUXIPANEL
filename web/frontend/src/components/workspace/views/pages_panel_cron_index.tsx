@@ -17,13 +17,13 @@ import {
 import PanelLayout from "../module-frame";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import ModalNavbar from "./components_ui_ModalNavbar";
-import { getSession, canSeeSidebar } from "../view-context";
+import { getSession,canSeeSidebar } from "../view-context";
 import ModuleDepsBanner from "./components_ModuleDepsBanner";
 import ScheduleBuilder from "./components_cron_ScheduleBuilder";
 import { getPageMessages } from "../view-context";
 
-function CronListToolbar({ pane, selectAllId, messages }: {
-  pane: "jobs" | "agents";
+function CronListToolbar({ pane,selectAllId,messages }: {
+  pane: "jobs"|"agents";
   selectAllId: string;
   messages: { bulk: { selectAll: string }; views: { list: string; grid: string } };
 }) {
@@ -34,18 +34,18 @@ function CronListToolbar({ pane, selectAllId, messages }: {
         {messages.bulk.selectAll}
       </label>
       <div id={`${pane}-view-controls`} className="flex items-center gap-1">
-        {(["list", "grid"] as const).map((view) => (
+        {(["list","grid"] as const).map((view) => (
           <button
             key={view}
             type="button"
             data-cron-view={view}
             aria-controls={`${pane}-list`}
-            aria-pressed={view === "grid"}
+            aria-pressed={view==="grid"}
             aria-label={messages.views[view]}
             title={messages.views[view]}
             className="inline-flex h-9 items-center justify-center rounded-lg border border-transparent px-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground aria-pressed:border-primary/25 aria-pressed:bg-primary/10 aria-pressed:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
-            <i className={`ti ti-${view === "list" ? "list" : "grid-dots"} text-sm`} aria-hidden="true" />
+            <i className={`ti ti-${view==="list"? "list":"grid-dots"} text-sm`} aria-hidden="true" />
           </button>
         ))}
       </div>
@@ -54,23 +54,23 @@ function CronListToolbar({ pane, selectAllId, messages }: {
 }
 
 export default function pages_panel_cron_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["cron", "deps"]);
-  const c = t.cron;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["cron","deps"]);
+  const c=t.cron;
   // AI quick-ask bar — same gate as the files module's help bar.
-  const user = getSession(Astro.request);
-  const canUseAssistant = user ? canSeeSidebar(user, "assistant") : false;
-  const isAdmin = user?.kind === "admin";
-  const cronView = Astro.url.searchParams.get("workspaceView");
-  const isolatedCronView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    !Astro.url.searchParams.has("settingsOverlay") &&
-    ["jobs", "agents"].includes(cronView ?? "");
-  const showCronView = (view: string) => !isolatedCronView || cronView === view;
+  const user=getSession(Astro.request);
+  const canUseAssistant=user? canSeeSidebar(user,"assistant"):false;
+  const isAdmin=user?.kind==="admin";
+  const cronView=Astro.url.searchParams.get("workspaceView");
+  const isolatedCronView=
+    Astro.url.searchParams.get("embed")==="1"&&
+    !Astro.url.searchParams.has("settingsOverlay")&&
+    ["jobs","agents"].includes(cronView??"");
+  const showCronView=(view: string) => !isolatedCronView||cronView===view;
 
   return (
     <Fragment>
@@ -230,7 +230,7 @@ export default function pages_panel_cron_index(props: any) {
                       className="mt-1 text-xs text-muted-foreground"
                     ></p>
                   </div>
-                  {isAdmin && (
+                  {isAdmin&&(
                     <Fragment>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -250,7 +250,7 @@ export default function pages_panel_cron_index(props: any) {
                       </div>
                     </Fragment>
                   )}
-                  {!isAdmin && (
+                  {!isAdmin&&(
                     <Fragment>
                       <p className="text-xs text-muted-foreground">
                         {c.settings.adminOnly}
@@ -271,7 +271,7 @@ export default function pages_panel_cron_index(props: any) {
             {/** Generic system-deps banner: covers the "cron not installed" state.
          The check hits GET /api/system-deps/cron; the install goes through the
          cron module's own POST /api/cron/install (extra runner setup). */}
-            {isAdmin && (
+            {isAdmin&&(
               <Fragment>
                 <ModuleDepsBanner module="cron" t={t.deps} />
               </Fragment>
@@ -297,7 +297,7 @@ export default function pages_panel_cron_index(props: any) {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {isAdmin && (
+                  {isAdmin&&(
                     <Fragment>
                       <button
                         id="btn-enable-service"
@@ -315,7 +315,7 @@ export default function pages_panel_cron_index(props: any) {
               className={
                 isolatedCronView
                   ? "sr-only"
-                  : "mb-4 flex gap-1 rounded-xl border border-border bg-muted/20 p-1"
+                  :"mb-4 flex gap-1 rounded-xl border border-border bg-muted/20 p-1"
               }
               role="tablist"
               aria-label={c.pageTitle}
@@ -339,14 +339,14 @@ export default function pages_panel_cron_index(props: any) {
                 {c.tabs.agents}
               </button>
             </div>
-            {showCronView("jobs") && (
+            {showCronView("jobs")&&(
               <Fragment>
                 <section
-                  id="cron-jobs-pane"
+                  id="cron-jobs-pane" role="tabpanel"
                   className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden"
                 >
                   <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3">
-                    {isAdmin && (
+                    {isAdmin&&(
                       <Fragment>
                         <label className="text-xs text-muted-foreground">
                           {c.settings.linuxUser}
@@ -412,9 +412,9 @@ export default function pages_panel_cron_index(props: any) {
                 </section>
               </Fragment>
             )}
-            {showCronView("agents") && (
+            {showCronView("agents")&&(
               <Fragment>
-                <div id="cron-agents-pane" className="hidden space-y-6">
+                <div id="cron-agents-pane" role="tabpanel" className="hidden space-y-6">
                   <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                     <div className="border-b border-border/70 px-5 py-4">
                       <div
@@ -668,7 +668,7 @@ export default function pages_panel_cron_index(props: any) {
           </div>
           {/* Barra de consulta IA: comparte el patrón de Archivos y permanece visible
         debajo de la lista mientras el contenido de Cron se desplaza. */}
-          {canUseAssistant && (
+          {canUseAssistant&&(
             <Fragment>
               <form
                 id="cron-ai-form"
@@ -708,7 +708,7 @@ export default function pages_panel_cron_index(props: any) {
       </PanelLayout>
 
       {/** Job dialog (create/edit) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-job"
         className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -717,80 +717,86 @@ export default function pages_panel_cron_index(props: any) {
           titleId="job-dialog-title"
           closeId="job-close"
         />
-        <form
+        <form data-aux-form
           id="form-job"
           className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-6 py-5"
         >
-          <input type="hidden" id="job-id" />
-          <div
-            id="job-error"
-            className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-          ></div>
-          <p
-            id="job-owner-hint"
-            data-default-user={user?.username || ""}
-            className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
-          ></p>
+          <div data-aux-body>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="job-name">
-              {c.jobDialog.labelName}
-            </label>
-            <input
-              id="job-name"
-              type="text"
-              required
-              placeholder={c.jobDialog.placeholderName}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
+            <input type="hidden" id="job-id" />
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              {c.jobDialog.labelSchedule}
-            </label>
-            <ScheduleBuilder prefix="job" t={t} />
-          </div>
+            <div
+              id="job-error"
+              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+            ></div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="job-command">
-              {c.jobDialog.labelCommand}
-            </label>
-            <div className="flex gap-2">
+            <p
+              id="job-owner-hint"
+              data-default-user={user?.username||""}
+              className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+            ></p>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="job-name">
+                {c.jobDialog.labelName}
+              </label>
               <input
-                id="job-command"
+                id="job-name"
                 type="text"
                 required
-                placeholder={c.jobDialog.placeholderCommand}
-                className="h-10 flex-1 rounded-lg border border-input bg-background px-3 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder={c.jobDialog.placeholderName}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <button
-                type="button"
-                id="btn-browse"
-                className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent whitespace-nowrap"
-              >
-                <i className="ti ti-folder-search text-sm mr-1"></i>
-                {c.jobDialog.btnBrowse}
-              </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {c.jobDialog.commandHint}
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              id="job-enabled"
-              type="checkbox"
-              defaultChecked
-              className="h-4 w-4 rounded border-input text-primary"
-            />
-            <label htmlFor="job-enabled" className="text-sm">
-              {c.jobDialog.labelEnabled}
-            </label>
-          </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                {c.jobDialog.labelSchedule}
+              </label>
+              <ScheduleBuilder prefix="job" t={t} />
+            </div>
 
-          <div className="flex gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="job-command">
+                {c.jobDialog.labelCommand}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="job-command"
+                  type="text"
+                  required
+                  placeholder={c.jobDialog.placeholderCommand}
+                  className="h-10 flex-1 rounded-lg border border-input bg-background px-3 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <button
+                  type="button"
+                  id="btn-browse"
+                  className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent whitespace-nowrap"
+                >
+                  <i className="ti ti-folder-search text-sm mr-1"></i>
+                  {c.jobDialog.btnBrowse}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {c.jobDialog.commandHint}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="job-enabled"
+                type="checkbox"
+                defaultChecked
+                className="h-4 w-4 rounded border-input text-primary"
+              />
+              <label htmlFor="job-enabled" className="text-sm">
+                {c.jobDialog.labelEnabled}
+              </label>
+            </div>
+
+
+          </div>
+          <div data-aux-footer className="flex gap-3">
             <button
               type="button"
               id="job-cancel"
@@ -810,7 +816,7 @@ export default function pages_panel_cron_index(props: any) {
       </dialog>
 
       {/** AI agent dialog (create/edit) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-agent"
         className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -819,224 +825,229 @@ export default function pages_panel_cron_index(props: any) {
           titleId="agent-dialog-title"
           closeId="agent-close"
         />
-        <form
+        <form data-aux-form
           id="form-agent"
           className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-6 py-5"
         >
-          <input type="hidden" id="agent-id" />
-          <div
-            id="agent-error"
-            className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-          ></div>
+          <div data-aux-body>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-name">
-              {c.agentDialog.labelName}
-            </label>
-            <input
-              id="agent-name"
-              type="text"
-              required
-              placeholder={c.agentDialog.placeholderName}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
+            <input type="hidden" id="agent-id" />
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-saved">
-              {c.agentDialog.labelSavedAgent}
-            </label>
-            <select
-              id="agent-saved"
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            ></select>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.savedAgentHint}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="agent-provider">
-                {c.agentDialog.labelProvider}
-              </label>
-              <select
-                id="agent-provider"
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              ></select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="agent-model">
-                {c.agentDialog.labelModel}
-              </label>
-              <select
-                id="agent-model"
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              ></select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-project">
-              {c.agentDialog.labelProject}
-            </label>
             <div
-              id="agent-project"
-              data-empty={c.agentDialog.projectNone}
-              className="max-h-44 overflow-y-auto rounded-lg border border-input bg-background p-1"
+              id="agent-error"
+              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
             ></div>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.projectHint}
-            </p>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="agent-category">
-                {c.agentDialog.labelCategory}
+              <label className="text-sm font-medium" htmlFor="agent-name">
+                {c.agentDialog.labelName}
+              </label>
+              <input
+                id="agent-name"
+                type="text"
+                required
+                placeholder={c.agentDialog.placeholderName}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="agent-saved">
+                {c.agentDialog.labelSavedAgent}
               </label>
               <select
-                id="agent-category"
+                id="agent-saved"
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">—</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                {c.agentDialog.labelTags}
-              </label>
-              <div
-                id="agent-tags"
-                className="flex min-h-10 flex-wrap items-start gap-1.5 rounded-lg border border-input bg-background p-2"
-              ></div>
+              ></select>
               <p className="text-xs text-muted-foreground">
-                {c.agentDialog.tagsHint}
+                {c.agentDialog.savedAgentHint}
               </p>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-mode">
-              {c.agentDialog.labelMode}
-            </label>
-            <select
-              id="agent-mode"
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="single">{c.agentDialog.modeSingle}</option>
-              <option value="multi">{c.agentDialog.modeMulti}</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.modeHint}
-            </p>
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="agent-provider">
+                  {c.agentDialog.labelProvider}
+                </label>
+                <select
+                  id="agent-provider"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                ></select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="agent-model">
+                  {c.agentDialog.labelModel}
+                </label>
+                <select
+                  id="agent-model"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                ></select>
+              </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-next">
-              {c.agentDialog.labelNext}
-            </label>
-            <select
-              id="agent-next"
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">{c.agentDialog.nextNone}</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.nextHint}
-            </p>
-          </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="agent-project">
+                {c.agentDialog.labelProject}
+              </label>
+              <div
+                id="agent-project"
+                data-empty={c.agentDialog.projectNone}
+                className="max-h-44 overflow-y-auto rounded-lg border border-input bg-background p-1"
+              ></div>
+              <p className="text-xs text-muted-foreground">
+                {c.agentDialog.projectHint}
+              </p>
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-prompt">
-              {c.agentDialog.labelPrompt}
-            </label>
-            <textarea
-              id="agent-prompt"
-              rows={3}
-              required
-              placeholder={c.agentDialog.placeholderPrompt}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            ></textarea>
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="agent-category">
+                  {c.agentDialog.labelCategory}
+                </label>
+                <select
+                  id="agent-category"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">—</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  {c.agentDialog.labelTags}
+                </label>
+                <div
+                  id="agent-tags"
+                  className="flex min-h-10 flex-wrap items-start gap-1.5 rounded-lg border border-input bg-background p-2"
+                ></div>
+                <p className="text-xs text-muted-foreground">
+                  {c.agentDialog.tagsHint}
+                </p>
+              </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              {c.agentDialog.rulesPreset}
-            </label>
-            <div
-              id="agent-rules-presets"
-              className="max-h-40 overflow-y-auto rounded-lg border border-input bg-background p-1"
-            ></div>
-          </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="agent-mode">
+                {c.agentDialog.labelMode}
+              </label>
+              <select
+                id="agent-mode"
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="single">{c.agentDialog.modeSingle}</option>
+                <option value="multi">{c.agentDialog.modeMulti}</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {c.agentDialog.modeHint}
+              </p>
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="agent-rules">
-              {c.agentDialog.labelRules}
-            </label>
-            <textarea
-              id="agent-rules"
-              rows={2}
-              placeholder={c.agentDialog.placeholderRules}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            ></textarea>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.rulesHint}
-            </p>
-          </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="agent-next">
+                {c.agentDialog.labelNext}
+              </label>
+              <select
+                id="agent-next"
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">{c.agentDialog.nextNone}</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {c.agentDialog.nextHint}
+              </p>
+            </div>
 
-          <div className="space-y-1.5">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="agent-prompt">
+                {c.agentDialog.labelPrompt}
+              </label>
+              <textarea
+                id="agent-prompt"
+                rows={3}
+                required
+                placeholder={c.agentDialog.placeholderPrompt}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              ></textarea>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                {c.agentDialog.rulesPreset}
+              </label>
+              <div
+                id="agent-rules-presets"
+                className="max-h-40 overflow-y-auto rounded-lg border border-input bg-background p-1"
+              ></div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="agent-rules">
+                {c.agentDialog.labelRules}
+              </label>
+              <textarea
+                id="agent-rules"
+                rows={2}
+                placeholder={c.agentDialog.placeholderRules}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              ></textarea>
+              <p className="text-xs text-muted-foreground">
+                {c.agentDialog.rulesHint}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  id="agent-notify"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-input text-primary"
+                />
+                <label htmlFor="agent-notify" className="text-sm font-medium">
+                  {c.agentDialog.labelNotify}
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {c.agentDialog.notifyHint}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  id="agent-approval"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-input text-primary"
+                />
+                <label htmlFor="agent-approval" className="text-sm font-medium">
+                  {c.agentDialog.labelApproval}
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {c.agentDialog.approvalHint}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                {c.agentDialog.labelSchedule}
+              </label>
+              <ScheduleBuilder prefix="agent" t={t} allowNone />
+            </div>
+
             <div className="flex items-center gap-2">
               <input
-                id="agent-notify"
+                id="agent-enabled"
                 type="checkbox"
+                defaultChecked
                 className="h-4 w-4 rounded border-input text-primary"
               />
-              <label htmlFor="agent-notify" className="text-sm font-medium">
-                {c.agentDialog.labelNotify}
+              <label htmlFor="agent-enabled" className="text-sm">
+                {c.agentDialog.labelEnabled}
               </label>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.notifyHint}
-            </p>
-          </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <input
-                id="agent-approval"
-                type="checkbox"
-                className="h-4 w-4 rounded border-input text-primary"
-              />
-              <label htmlFor="agent-approval" className="text-sm font-medium">
-                {c.agentDialog.labelApproval}
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {c.agentDialog.approvalHint}
-            </p>
-          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              {c.agentDialog.labelSchedule}
-            </label>
-            <ScheduleBuilder prefix="agent" t={t} allowNone />
           </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="agent-enabled"
-              type="checkbox"
-              defaultChecked
-              className="h-4 w-4 rounded border-input text-primary"
-            />
-            <label htmlFor="agent-enabled" className="text-sm">
-              {c.agentDialog.labelEnabled}
-            </label>
-          </div>
-
-          <div className="flex gap-3">
+          <div data-aux-footer className="flex gap-3">
             <button
               type="button"
               id="agent-cancel"
@@ -1056,38 +1067,41 @@ export default function pages_panel_cron_index(props: any) {
       </dialog>
 
       {/** File browser */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-files"
         className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <ModalNavbar title={c.fileBrowser.title} closeId="files-close" />
-        <div className="px-4 py-2 border-b border-border flex items-center gap-2">
-          <button
-            id="files-up"
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
-            title={c.fileBrowser.up}
-          >
-            <i className="ti ti-arrow-up text-sm"></i>
-          </button>
-          <code
-            id="files-path"
-            className="flex-1 truncate font-mono text-xs text-muted-foreground"
-          ></code>
-          <button
-            id="files-use-folder"
-            className="rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
-          >
-            {c.fileBrowser.useFolder}
-          </button>
+        <div data-aux-body>
+          <div className="px-4 py-2 border-b border-border flex items-center gap-2">
+            <button
+              id="files-up"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+              title={c.fileBrowser.up}
+            >
+              <i className="ti ti-arrow-up text-sm"></i>
+            </button>
+            <code
+              id="files-path"
+              className="flex-1 truncate font-mono text-xs text-muted-foreground"
+            ></code>
+            <button
+              id="files-use-folder"
+              className="rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
+            >
+              {c.fileBrowser.useFolder}
+            </button>
+          </div>
+          <div
+            id="files-list"
+            className="max-h-[55vh] overflow-y-auto divide-y divide-border"
+          ></div>
         </div>
-        <div
-          id="files-list"
-          className="max-h-[55vh] overflow-y-auto divide-y divide-border"
-        ></div>
+
       </dialog>
 
       {/** Log viewer */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-logs"
         className="w-full max-w-3xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -1096,33 +1110,36 @@ export default function pages_panel_cron_index(props: any) {
           titleId="logs-title"
           closeId="logs-close"
         />
-        <div className="grid grid-cols-3 max-h-[70vh]">
-          <div
-            id="logs-runs"
-            className="col-span-1 overflow-y-auto divide-y divide-border border-r border-border"
-          ></div>
-          <div className="col-span-2 flex flex-col">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span
-                id="logs-run-title"
-                className="text-xs text-muted-foreground"
-              >
-                {c.logs.pickRun}
-              </span>
-              <button
-                id="logs-refresh"
-                className="rounded-md p-1 text-muted-foreground hover:bg-accent"
-                title={c.logs.refresh}
-              >
-                <i className="ti ti-refresh text-sm"></i>
-              </button>
+        <div data-aux-body>
+          <div className="grid grid-cols-3 max-h-[70vh]">
+            <div
+              id="logs-runs"
+              className="col-span-1 overflow-y-auto divide-y divide-border border-r border-border"
+            ></div>
+            <div className="col-span-2 flex flex-col">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span
+                  id="logs-run-title"
+                  className="text-xs text-muted-foreground"
+                >
+                  {c.logs.pickRun}
+                </span>
+                <button
+                  id="logs-refresh"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+                  title={c.logs.refresh}
+                >
+                  <i className="ti ti-refresh text-sm"></i>
+                </button>
+              </div>
+              <pre
+                id="logs-content"
+                className="flex-1 overflow-auto bg-muted/30 p-3 text-xs font-mono whitespace-pre-wrap"
+              ></pre>
             </div>
-            <pre
-              id="logs-content"
-              className="flex-1 overflow-auto bg-muted/30 p-3 text-xs font-mono whitespace-pre-wrap"
-            ></pre>
           </div>
         </div>
+
       </dialog>
 
       <div

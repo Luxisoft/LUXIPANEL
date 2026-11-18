@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "Últimos 5 minutos · ao vivo",
+    "collecting": "Coletando amostras",
+    "received": "Recepção",
+    "sent": "Envio",
+    "available": "Disponível",
+    "emptyProcesses": "Nenhum processo registrado"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "Encerrar"
   },
   "history": {
+    "gapLegend": "Vermelho: sem dados",
+    "gapLabel": "Sem dados",
+    "gapDuration": "Duração: {duration}",
+
     "workspaceLabel": "Monitor",
     "coverageLabel": "Cobertura do histórico",
     "availableSince": "Dados disponíveis desde",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "Não foi possível instalar {name}."
   },
   "topFolders": {
+    "retry": "Tentar novamente",
+    "loading": "Medindo pastas…",
     "measureError": "Não foi possível medir o uso por pasta.",
     "empty": "Nenhuma pasta com consumo registrado."
   },

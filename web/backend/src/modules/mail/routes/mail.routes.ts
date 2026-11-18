@@ -48,6 +48,7 @@ router.post("/api/mail/outbound/test", requireModule("admin"), csrfProtection, m
 // Selection stays reachable even if the chosen mail server is unavailable.
 // Outbound notification identity above still belongs to the active panel server.
 router.get("/api/mail/server-settings", mailServerSettingsController.list);
+router.put("/api/mail/server-settings", csrfProtection, mailServerSettingsController.save);
 router.post("/api/mail/server-settings/validate", csrfProtection, mailServerSettingsController.validate);
 router.use(["/api/accounts", "/api/mail"], mailServerMiddleware);
 router.get("/api/mail/jobs/:id", jobsController.get);
@@ -103,6 +104,7 @@ router.delete("/api/mail/master-access", requireModule("admin"), csrfProtection,
 // ---- Mailbox (IMAP) ----
 router.post("/api/mail/:accountId/credential", csrfProtection, mailboxController.setCredential);
 router.get("/api/mail/:accountId/folders", mailboxController.listFolders);
+router.post("/api/mail/:accountId/folders/normalize-quarantine", csrfProtection, mailboxController.normalizeQuarantine);
 router.post("/api/mail/:accountId/folders", csrfProtection, mailboxController.createFolder);
 router.put("/api/mail/:accountId/folders", csrfProtection, mailboxController.renameFolder);
 router.delete("/api/mail/:accountId/folders", csrfProtection, mailboxController.deleteFolder);

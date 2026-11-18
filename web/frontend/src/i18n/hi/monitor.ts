@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "पिछले 5 मिनट · लाइव",
+    "collecting": "नमूने एकत्र हो रहे हैं",
+    "received": "प्राप्त",
+    "sent": "भेजा गया",
+    "available": "उपलब्ध",
+    "emptyProcesses": "कोई प्रक्रिया दर्ज नहीं"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "समाप्त करें"
   },
   "history": {
+    "gapLegend": "लाल: डेटा नहीं",
+    "gapLabel": "डेटा नहीं",
+    "gapDuration": "अवधि: {duration}",
+
     "workspaceLabel": "मॉनिटर",
     "coverageLabel": "इतिहास का कवरेज",
     "availableSince": "डेटा उपलब्ध है",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "{name} इंस्टॉल नहीं किया जा सका।"
   },
   "topFolders": {
+    "retry": "फिर से प्रयास करें",
+    "loading": "फ़ोल्डर मापे जा रहे हैं…",
     "measureError": "फ़ोल्डर के अनुसार उपयोग मापा नहीं जा सका।",
     "empty": "कोई भी फ़ोल्डर दर्ज किए गए उपयोग के साथ नहीं है।"
   },

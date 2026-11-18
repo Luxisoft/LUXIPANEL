@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "모든 수신자와 발신자의 유효한 키가 필요합니다."
   },
   "inbox": {
+    "readerLoading": "메시지 로딩 중…",
+    "retryMessage": "다시 시도",
+    "readerTimeout": "로딩 시간이 초과되었습니다. 다시 시도하세요.",
+
+    "toolsLabel": "도구",
+    "filtersLabel": "필터",
     "pageTitle": "받은편지함",
     "loadingAccount": "계정 불러오는 중...",
     "allAccounts": "모든 계정",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "이동",
     "msgIframeTitle": "메시지 내용",
     "attachmentsLabel": "첨부파일",
+    "moveUi": {
+      "search": "폴더 검색…",
+      "destination": "대상 폴더",
+      "cancel": "취소",
+      "confirm": "여기로 이동",
+      "moving": "이동 중…",
+      "empty": "사용 가능한 폴더가 없습니다",
+      "error": "메시지를 이동하지 못했습니다. 다시 시도하세요.",
+      "origin": "원본"
+},
     "moveDlgTitle": "메시지 이동",
     "foldersDlgTitle": "폴더 관리",
     "foldersExistingHeader": "기존 폴더",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "계정 #{id}",
-    "cleanupPrompt": "{account}(accountId: {id})의 INBOX를 정리하세요. 모든 메시지를 페이지별로 확인하고 의심스러운 메시지는 본문, SPF, DKIM, DMARC, Return-Path, 첨부 파일을 검사하세요. 스팸, 피싱, 악성 코드를 분류하세요. 정상 메일, 아는 연락처, 답장, 청구서는 건드리지 마세요. 의심스러운 메일은 Revisar-IA로 옮기고 삭제하지 마세요. 옮긴 개수와 이유를 요약하세요."
+    "cleanupPrompt": "{account}(accountId: {id})의 INBOX를 정리하세요. 모든 메시지를 페이지별로 확인하고 의심스러운 메시지는 본문, SPF, DKIM, DMARC, Return-Path, 첨부 파일을 검사하세요. 스팸, 피싱, 악성 코드를 분류하세요. 정상 메일, 아는 연락처, 답장, 청구서는 건드리지 마세요. 의심스러운 메일은 Cuarentena로 옮기고 삭제하지 마세요. 옮긴 개수와 이유를 요약하세요."
   }
 } as const;
 

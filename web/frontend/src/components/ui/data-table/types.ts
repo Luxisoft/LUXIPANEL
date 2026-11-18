@@ -111,17 +111,21 @@ export type DataTableProps = {
   pageSizeOptions?: number[];
   /** Render the same settings control beside an owning module's counter. */
   settingsButtonContainer?: HTMLElement | null;
+  /** Render filters, bulk actions and table settings in an owning toolbar. */
+  toolbarContainer?: HTMLElement | null;
+  /** Independent toolbar regions in the module drawer; legacy toolbar stays supported. */
+  toolbarTargets?: Partial<Record<"search" | "filters" | "actions" | "tools", HTMLElement>>;
+  layout?: "default" | "fill";
+  /** Optional compact module summary between the count and page navigation. */
+  paginationCenter?: React.ReactNode;
   /** Incremental API source; snapshots use the same two-page window locally. */
   pageWindowSource?: PageWindowSource;
   /** Cuando es false, oculta la columna de selección (checkboxes) y, por
    * tanto, la barra de acciones masivas. Default: true. */
   selectable?: boolean;
-  /**
-   * Cuando se proporciona, sustituye la celda por defecto de acciones
-   * (botón ⋯ con menú) por contenido custom inline por fila. Útil para
-   * mostrar siempre íconos rápidos (estrella favorita, copiar, eliminar)
-   * sin esconderlos detrás de un menú.
-   */
+  /** Handle a context-menu action locally instead of emitting ROW_ACTION. */
+  onRowAction?: (actionId: string, row: RowData) => void;
+  /** Legacy custom action content, rendered inside the row context menu. */
   renderRowActions?: (row: Record<string, unknown>) => React.ReactNode;
   /**
    * Permite anular cómo se pinta el contenido de una columna por id.

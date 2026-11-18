@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "Requires valid keys for every recipient and the sender."
   },
   "inbox": {
+    "readerLoading": "Loading message…",
+    "retryMessage": "Retry",
+    "readerTimeout": "Loading took too long. Please try again.",
+
+    "toolsLabel": "Tools",
+    "filtersLabel": "Filters",
     "pageTitle": "Inbox",
     "loadingAccount": "Loading account…",
     "allAccounts": "All accounts",
@@ -487,6 +493,16 @@ const mailPart1 = {
     "showOriginal": "Show original",
     "msgIframeTitle": "Message content",
     "attachmentsLabel": "Attachments",
+    "moveUi": {
+      "search": "Search folders…",
+      "destination": "Destination folder",
+      "cancel": "Cancel",
+      "confirm": "Move here",
+      "moving": "Moving…",
+      "empty": "No folders available",
+      "error": "Could not move the message. Try again.",
+      "origin": "From"
+},
     "moveDlgTitle": "Move message",
     "foldersDlgTitle": "Manage folders",
     "foldersExistingHeader": "Existing folders",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "Account #{id}",
-    "cleanupPrompt": "Clean up the INBOX of {account} (accountId: {id}). Page through every message. Read suspicious messages and check SPF, DKIM, DMARC, Return-Path, and attachments. Identify spam, phishing, and malware. Leave legitimate mail, known contacts, replies, and invoices untouched. Move suspicious messages to Revisar-IA; do not delete anything. Summarize how many you moved and why."
+    "cleanupPrompt": "Clean up the INBOX of {account} (accountId: {id}). Page through every message. Read suspicious messages and check SPF, DKIM, DMARC, Return-Path, and attachments. Identify spam, phishing, and malware. Leave legitimate mail, known contacts, replies, and invoices untouched. Move suspicious messages to Cuarentena; do not delete anything. Summarize how many you moved and why."
   }
 } as const;
 

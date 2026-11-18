@@ -67,6 +67,8 @@ export type ModalShellProps = {
   footer?: ReactNode;
   /** Extra classes (merged) for the scrollable body wrapper. */
   bodyClassName?: string;
+  /** Module settings retain their own navigation and body spacing. */
+  moduleSettings?: boolean;
 
   /**
    * Ref to the fixed overlay element (e.g. a consumer's document-level focus
@@ -169,6 +171,7 @@ export function ModalShell({
   hideClose,
   footer,
   bodyClassName,
+  moduleSettings = false,
   overlayRef,
   closeController,
   children,
@@ -215,9 +218,9 @@ export function ModalShell({
           className="shrink-0"
         />
       )}
-      <div className={cn("min-h-0 flex-1 overflow-y-auto", bodyClassName)}>{children}</div>
+      <div data-aux-body className={cn("min-h-0 flex-1 overflow-y-auto", !moduleSettings && "p-4 sm:p-6", bodyClassName)}>{children}</div>
       {footer != null && (
-        <div className="mt-auto flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-4 py-3">
+        <div data-aux-footer className="mt-auto flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-4 py-3">
           {footer}
         </div>
       )}
@@ -229,6 +232,7 @@ export function ModalShell({
   return createPortal(
     <ModalCloseContext.Provider value={guardedClose}>
     <div
+      data-lxp-module-settings={moduleSettings ? "" : undefined}
       ref={overlayRef}
       style={zIndex === undefined ? undefined : { zIndex }}
       inert={inactive}

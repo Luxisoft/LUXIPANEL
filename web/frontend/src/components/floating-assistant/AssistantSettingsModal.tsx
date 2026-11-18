@@ -93,6 +93,7 @@ export function AssistantSettingsModal({
     <SettingsFooterContext.Provider value={setFooterAction}>
     <SettingsHeaderContext.Provider value={setHeaderOverride}>
       <ModalShell
+      moduleSettings
         onClose={onClose}
         cardClassName="w-[min(96vw,68rem)] max-lg:w-[85vw] max-sm:w-full"
         title={headerOverride?.title ?? activeSection?.label ?? t.settingsModal.title}

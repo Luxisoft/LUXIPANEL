@@ -4,6 +4,7 @@
 // lifecycle (cooldown + astro hooks). No DataTable here, so no request-ready
 // handshake.
 import { SCRIPT_INIT_COOLDOWN_MS } from "/scripts/extracted/lib/script-init.js";
+import { normalizeAccountQuarantine } from "./quarantine-normalization";
 import { accountId } from "./state";
 import { loadAccountInfo, loadFolders } from "./folders";
 import { loadMessages } from "./messages";
@@ -24,6 +25,7 @@ function init() {
   if (!accountId) return;
   if (Date.now() - initLastAt < INIT_COOLDOWN_MS) return;
   initLastAt = Date.now();
+  void normalizeAccountQuarantine();
   loadAccountInfo();
   loadFolders();
   loadMessages();
@@ -31,3 +33,25 @@ function init() {
 document.addEventListener("astro:page-load", init);
 document.addEventListener("astro:after-swap", init);
 init();
+
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+let refreshing = false;
+async function refreshInbox() {
+  clearTimeout(refreshTimer);
+  if (document.hidden || refreshing) return;
+  refreshing = true;
+  try {
+    await Promise.allSettled([loadFolders(), loadMessages({ showLoading: false, autoOpenLatest: false })]);
+  } finally {
+    refreshing = false;
+    if (!document.hidden) refreshTimer = setTimeout(refreshInbox, 30000);
+  }
+}
+function visibilityRefresh() {
+  clearTimeout(refreshTimer);
+  if (!document.hidden) void refreshInbox();
+}
+document.addEventListener("visibilitychange", visibilityRefresh);
+document.addEventListener("lxp:module:visibility", visibilityRefresh);
+document.addEventListener("lxp:module:dispose", () => clearTimeout(refreshTimer));
+refreshTimer = setTimeout(refreshInbox, 30000);

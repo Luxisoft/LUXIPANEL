@@ -16,7 +16,6 @@ import { apiModuleMessage } from "../../../shared/i18n/module-messages.js";
 import { statsCollectorService } from "../services/stats-collector.service.js";
 import { sampleHistory } from "../services/history-sampling.js";
 import { buildHistoryChart } from "../services/history-chart.js";
-import { systemStatsService } from "../services/system-stats.service.js";
 import { resolveMonitorExecutor } from "../services/monitor-executor.service.js";
 import { readSystemSnapshot } from "../../../shared/system-stats/system-snapshot.js";
 import { readAccountsFromServer } from "../../mail/controllers/accounts.helpers.js";
@@ -424,9 +423,9 @@ export const monitorController = {
   snapshot: asyncHandler(async (_req: Request, res: Response) => {
     const executor = await resolveMonitorExecutor(res.locals.user?.bridgeSessionId, { direct: sessionDirect(res) });
     const scope = executor.target.id;
-    const snap = scope === "local"
-      ? (statsCollectorService.getLatest(scope) ?? await systemStatsService.collect())
-      : await statsCollectorService.collectWithExecutorCached(executor, scope);
+    // The HTTP fallback must persist samples too: an on-demand local monitor
+    // may have neither a WebSocket nor an alert-driven background collector.
+    const snap = await statsCollectorService.collectWithExecutorCached(executor, scope);
     res.json({ ok: true, data: snap });
   }),
 

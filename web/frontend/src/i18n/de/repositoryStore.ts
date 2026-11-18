@@ -54,6 +54,7 @@ const repositoryStore = {
     "catalogoNote": "Katalog begrenzt durch die öffentliche GitHub-API"
   },
   "filters": {
+    "allCategories": "Alle Kategorien",
     "stackLabel": "Stack",
     "categoriaLabel": "Kategorie",
     "estadoLabel": "Status",

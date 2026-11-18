@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "Últimos 5 minutos · en vivo",
+    "collecting": "Recopilando muestras",
+    "received": "Recepción",
+    "sent": "Envío",
+    "available": "Disponible",
+    "emptyProcesses": "Sin procesos registrados"
+},
   "assistantAdmission": {
     "title": "Admisión de agentes IA",
     "hint": "Permite iniciar varios agentes mientras la RAM del servidor esté por debajo del umbral. Los builds y despliegues siguen en serie.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "Terminar"
   },
   "history": {
+    "gapLegend": "Rojo: sin datos",
+    "gapLabel": "Sin datos",
+    "gapDuration": "Duración: {duration}",
+
     "workspaceLabel": "Monitor",
     "coverageLabel": "Cobertura del historial",
     "availableSince": "Datos disponibles desde",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "No se pudo instalar {name}."
   },
   "topFolders": {
+    "retry": "Reintentar",
+    "loading": "Midiendo carpetas…",
     "measureError": "No se pudo medir el uso por carpeta.",
     "empty": "No hay carpetas con consumo registrado."
   },

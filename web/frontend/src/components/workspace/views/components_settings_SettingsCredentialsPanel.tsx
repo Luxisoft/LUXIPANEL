@@ -17,11 +17,11 @@ import { DIALOG_CHROME } from "@/lib/ui-classes";
 export default function components_settings_SettingsCredentialsPanel(
   props: any,
 ) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
   const {
     isAdmin,
     cred,
@@ -32,19 +32,19 @@ export default function components_settings_SettingsCredentialsPanel(
     STORAGE_CREDENTIALS,
     CONNECTOR_CREDENTIALS,
     MANAGED_CREDENTIALS,
-  } = Astro.props;
+  }=Astro.props;
   useCredentialsLayout(Boolean(cred));
 
   return (
     <Fragment>
-      {cred && (
+      {cred&&(
         <Fragment>
           <div
             id="panel-credentials"
             className="tab-panel hidden space-y-5"
             data-lxp-collapse-group
           >
-            <a href="/connect-github" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 font-medium hover:bg-muted"><i className="ti ti-brand-github" aria-hidden="true"/>{githubCopy(context.scope.document.documentElement.lang || "en").title}</a>
+            <a href="/connect-github" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 font-medium hover:bg-muted"><i className="ti ti-brand-github" aria-hidden="true" />{githubCopy(context.scope.document.documentElement.lang||"en").title}</a>
             <div
               id="cred-empty"
               className="hidden rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
@@ -62,7 +62,7 @@ export default function components_settings_SettingsCredentialsPanel(
                     data-lxp-collapse
                     data-cred-card
                     data-cred-id={c.id}
-                    data-cred-gate={c.gate ?? c.id}
+                    data-cred-gate={c.gate??c.id}
                     data-cred-base={c.base}
                     data-cred-delete={c.del}
                     data-cred-test={c.test}
@@ -78,7 +78,7 @@ export default function components_settings_SettingsCredentialsPanel(
                       aria-expanded="false"
                     >
                       <div className="flex size-11 flex-none items-center justify-center rounded-lg bg-muted/60 transition-colors group-hover:bg-muted">
-                        {c.id === "openclaw" ? (
+                        {c.id==="openclaw"? (
                           <Fragment>
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -115,7 +115,7 @@ export default function components_settings_SettingsCredentialsPanel(
                               />
                             </svg>
                           </Fragment>
-                        ) : (
+                        ):(
                           <Fragment>
                             <i
                               className={`ti ${c.icon} text-base text-foreground`}
@@ -187,7 +187,7 @@ export default function components_settings_SettingsCredentialsPanel(
                             {t.settings.credentials.save}
                           </button>
                         </div>
-                        {c.extraField && (
+                        {c.extraField&&(
                           <Fragment>
                             <div>
                               <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -204,7 +204,7 @@ export default function components_settings_SettingsCredentialsPanel(
                             </div>
                           </Fragment>
                         )}
-                        {c.hint && (
+                        {c.hint&&(
                           <Fragment>
                             <p className="text-xs text-muted-foreground">
                               {c.hint}
@@ -214,7 +214,7 @@ export default function components_settings_SettingsCredentialsPanel(
                         {/* Nota viva del contrato genérico: el GET de la tarjeta puede
                 devolver un resumen legible (p.ej. el plan de Tolqia y sus
                 límites) que se pinta aquí y se refresca tras "Probar". */}
-                        {c.noteField && (
+                        {c.noteField&&(
                           <Fragment>
                             <p
                               className="cred-note hidden rounded-lg bg-background px-3 py-2 text-xs text-muted-foreground"
@@ -223,7 +223,7 @@ export default function components_settings_SettingsCredentialsPanel(
                           </Fragment>
                         )}
                         <div className="flex flex-wrap items-center gap-2">
-                          {c.test && (
+                          {c.test&&(
                             <Fragment>
                               <button className="cred-test inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-accent disabled:opacity-50">
                                 <i className="ti ti-plug-connected text-sm"></i>{" "}
@@ -241,7 +241,7 @@ export default function components_settings_SettingsCredentialsPanel(
                         className="cred-pane hidden space-y-3 p-5"
                         data-pane="help"
                       >
-                        {credGuides[c.id]?.steps?.length ? (
+                        {credGuides[c.id]?.steps?.length? (
                           <Fragment>
                             <ol className="list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
                               {credGuides[c.id].steps.map((s: any) => (
@@ -251,8 +251,8 @@ export default function components_settings_SettingsCredentialsPanel(
                               ))}
                             </ol>
                           </Fragment>
-                        ) : null}
-                        {credGuides[c.id]?.docUrl && (
+                        ):null}
+                        {credGuides[c.id]?.docUrl&&(
                           <Fragment>
                             <a
                               href={credGuides[c.id].docUrl}
@@ -261,14 +261,14 @@ export default function components_settings_SettingsCredentialsPanel(
                               className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                             >
                               <i className="ti ti-external-link text-sm"></i>{" "}
-                              {credGuides[c.id].docLabel || credHelp.openLink}
+                              {credGuides[c.id].docLabel||credHelp.openLink}
                             </a>
                           </Fragment>
                         )}
                         {/* Segundo enlace opcional: hay proveedores (Tolqia) donde
                 "dónde se crea el token" y "la documentación" son páginas
                 distintas y ambas hacen falta. */}
-                        {credGuides[c.id]?.docUrl2 && (
+                        {credGuides[c.id]?.docUrl2&&(
                           <Fragment>
                             <a
                               href={credGuides[c.id].docUrl2}
@@ -277,13 +277,13 @@ export default function components_settings_SettingsCredentialsPanel(
                               className="ml-4 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                             >
                               <i className="ti ti-book text-sm"></i>{" "}
-                              {credGuides[c.id].docLabel2 || credHelp.openLink}
+                              {credGuides[c.id].docLabel2||credHelp.openLink}
                             </a>
                           </Fragment>
                         )}
                       </div>
                     </div>
-                    {c.id === "repository-store" && <GitCredentialFields t={t} />}
+                    {c.id==="repository-store"&&<GitCredentialFields t={t} />}
                   </div>
                 </Fragment>
               ))}
@@ -350,12 +350,12 @@ export default function components_settings_SettingsCredentialsPanel(
                         data-pane="config"
                       >
                         <p className="text-xs text-muted-foreground">
-                          {c.provider === "r2"
+                          {c.provider==="r2"
                             ? t.settings.credentials.storage.r2Hint
-                            : t.settings.credentials.storage.s3Hint}
+                            :t.settings.credentials.storage.s3Hint}
                         </p>
                         <div className="grid grid-cols-2 gap-3">
-                          {c.provider === "r2" && (
+                          {c.provider==="r2"&&(
                             <Fragment>
                               <div>
                                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -402,7 +402,7 @@ export default function components_settings_SettingsCredentialsPanel(
                               </button>
                             </div>
                           </div>
-                          {c.provider === "s3" && (
+                          {c.provider==="s3"&&(
                             <Fragment>
                               <div>
                                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -418,7 +418,7 @@ export default function components_settings_SettingsCredentialsPanel(
                               </div>
                             </Fragment>
                           )}
-                          {c.provider === "s3" && (
+                          {c.provider==="s3"&&(
                             <Fragment>
                               <div>
                                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -450,7 +450,7 @@ export default function components_settings_SettingsCredentialsPanel(
                         className="cred-pane hidden space-y-3 p-5"
                         data-pane="help"
                       >
-                        {credGuides[c.provider]?.steps?.length ? (
+                        {credGuides[c.provider]?.steps?.length? (
                           <Fragment>
                             <ol className="list-decimal space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
                               {credGuides[c.provider].steps.map((s: any) => (
@@ -460,8 +460,8 @@ export default function components_settings_SettingsCredentialsPanel(
                               ))}
                             </ol>
                           </Fragment>
-                        ) : null}
-                        {credGuides[c.provider]?.docUrl && (
+                        ):null}
+                        {credGuides[c.provider]?.docUrl&&(
                           <Fragment>
                             <a
                               href={credGuides[c.provider].docUrl}
@@ -470,7 +470,7 @@ export default function components_settings_SettingsCredentialsPanel(
                               className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                             >
                               <i className="ti ti-external-link text-sm"></i>{" "}
-                              {credGuides[c.provider].docLabel ||
+                              {credGuides[c.provider].docLabel||
                                 credHelp.openLink}
                             </a>
                           </Fragment>
@@ -607,321 +607,323 @@ export default function components_settings_SettingsCredentialsPanel(
               ))}
             </div>
 
-            {isAdmin && <>
-            {/** ── hCaptcha (site key + secret; protege el login del panel) ── */}
-            <div
-              id="cred-card-hcaptcha"
-              className="rounded-xl border border-border bg-card overflow-hidden"
-              data-lxp-collapse
-            >
+            {isAdmin&&<>
+              {/** ── hCaptcha (site key + secret; protege el login del panel) ── */}
               <div
-                className="cred-collapse-head group flex cursor-pointer select-none items-center gap-x-4 px-5 py-4 transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
-                data-lxp-collapse-toggle
-                role="button"
-                tabIndex={0}
-                aria-expanded="false"
+                id="cred-card-hcaptcha"
+                className="rounded-xl border border-border bg-card overflow-hidden"
+                data-lxp-collapse
               >
-                <div className="flex size-11 flex-none items-center justify-center rounded-lg bg-muted/60 transition-colors group-hover:bg-muted">
-                  <i className="ti ti-shield-lock text-base text-foreground"></i>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-semibold">
-                    {t.settings.credentials.hcaptcha.title}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {t.settings.credentials.hcaptcha.desc}
-                  </p>
-                </div>
-                <span
-                  id="cred-hcaptcha-status"
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                <div
+                  className="cred-collapse-head group flex cursor-pointer select-none items-center gap-x-4 px-5 py-4 transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
+                  data-lxp-collapse-toggle
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded="false"
                 >
-                  <i className="ti ti-circle-x text-xs"></i>{" "}
-                  {t.settings.credentials.hcaptcha.statusMissing}
-                </span>
-                <i
-                  className="ti ti-chevron-down shrink-0 text-base text-muted-foreground transition-transform duration-200"
-                  data-lxp-collapse-chevron
-                ></i>
-              </div>
-              <div className="m-4 overflow-hidden rounded-xl bg-muted/30">
-                <div className="space-y-4 p-5">
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="cred-hcaptcha-sitekey"
-                      className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                    >
-                      {t.settings.credentials.hcaptcha.sitekeyLabel}
-                    </label>
-                    <input
-                      id="cred-hcaptcha-sitekey"
-                      type="text"
-                      autoComplete="off"
-                      spellCheck="false"
-                      placeholder={
-                        t.settings.credentials.hcaptcha.sitekeyPlaceholder
-                      }
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
+                  <div className="flex size-11 flex-none items-center justify-center rounded-lg bg-muted/60 transition-colors group-hover:bg-muted">
+                    <i className="ti ti-shield-lock text-base text-foreground"></i>
                   </div>
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="cred-hcaptcha-secret"
-                      className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                    >
-                      {t.settings.credentials.hcaptcha.secretLabel}
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="cred-hcaptcha-secret"
-                        type="password"
-                        autoComplete="new-password"
-                        spellCheck="false"
-                        placeholder={
-                          t.settings.credentials.hcaptcha.secretPlaceholder
-                        }
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      <button
-                        type="button"
-                        id="cred-hcaptcha-secret-toggle"
-                        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
-                        aria-label={t.settings.credentials.show}
-                      >
-                        <i className="ti ti-eye text-base"></i>
-                      </button>
-                    </div>
-                    <p
-                      id="cred-hcaptcha-secret-hint"
-                      className="hidden text-[11px] text-muted-foreground"
-                    >
-                      {t.settings.credentials.hcaptcha.secretConfigured}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-semibold">
+                      {t.settings.credentials.hcaptcha.title}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {t.settings.credentials.hcaptcha.desc}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                    <button
-                      id="cred-hcaptcha-save"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      <i className="ti ti-device-floppy text-base"></i>{" "}
-                      {t.settings.credentials.save}
-                    </button>
+                  <span
+                    id="cred-hcaptcha-status"
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                  >
+                    <i className="ti ti-circle-x text-xs"></i>{" "}
+                    {t.settings.credentials.hcaptcha.statusMissing}
+                  </span>
+                  <i
+                    className="ti ti-chevron-down shrink-0 text-base text-muted-foreground transition-transform duration-200"
+                    data-lxp-collapse-chevron
+                  ></i>
+                </div>
+                <div className="m-4 overflow-hidden rounded-xl bg-muted/30">
+                  <div className="space-y-4 p-5">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="cred-hcaptcha-sitekey"
+                        className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        {t.settings.credentials.hcaptcha.sitekeyLabel}
+                      </label>
+                      <input
+                        id="cred-hcaptcha-sitekey"
+                        type="text"
+                        autoComplete="off"
+                        spellCheck="false"
+                        placeholder={
+                          t.settings.credentials.hcaptcha.sitekeyPlaceholder
+                        }
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="cred-hcaptcha-secret"
+                        className="block text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        {t.settings.credentials.hcaptcha.secretLabel}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="cred-hcaptcha-secret"
+                          type="password"
+                          autoComplete="new-password"
+                          spellCheck="false"
+                          placeholder={
+                            t.settings.credentials.hcaptcha.secretPlaceholder
+                          }
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
+                        <button
+                          type="button"
+                          id="cred-hcaptcha-secret-toggle"
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                          aria-label={t.settings.credentials.show}
+                        >
+                          <i className="ti ti-eye text-base"></i>
+                        </button>
+                      </div>
+                      <p
+                        id="cred-hcaptcha-secret-hint"
+                        className="hidden text-[11px] text-muted-foreground"
+                      >
+                        {t.settings.credentials.hcaptcha.secretConfigured}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                      <button
+                        id="cred-hcaptcha-save"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        <i className="ti ti-device-floppy text-base"></i>{" "}
+                        {t.settings.credentials.save}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/** ── Credenciales Git (gestión movida desde el módulo Files) ── */}
-            
-            {/** GitHub · SSH manager (migrado desde el módulo repository-store) */}
-            <dialog
-              id="dlg-git-creds"
-              className={`fixed inset-auto top-1/2 left-1/2 m-0 h-fit max-h-[calc(100dvh-2rem)] w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto ${DIALOG_CHROME}`}
-            >
-              <ModalNavbar
-                title="GitHub · SSH"
-                description={t.repositoryStore.sshDialog.subtitle}
-                icon="ti-brand-github"
-                closeId="git-creds-close"
-                closeLabel={t.repositoryStore.sshDialog.cerrarAriaLabel}
+              {/** ── Credenciales Git (gestión movida desde el módulo Files) ── */}
+
+              {/** GitHub · SSH manager (migrado desde el módulo repository-store) */}
+              <dialog data-aux-drawer
+                id="dlg-git-creds"
+                className={`fixed inset-auto top-1/2 left-1/2 m-0 h-fit max-h-[calc(100dvh-2rem)] w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto ${DIALOG_CHROME}`}
               >
-                <Fragment slot="actions">
-                  <select
-                    id="git-ssh-user"
-                    title={t.repositoryStore.sshDialog.usuarioLinuxTitle}
-                    className="h-9 max-w-[11rem] rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="">
-                      {t.repositoryStore.sshDialog.usuarioActual}
-                    </option>
-                  </select>
-                  <button
-                    id="git-ssh-refresh"
-                    type="button"
-                    title={t.repositoryStore.sshDialog.refrescarTitle}
-                    className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <i className="ti ti-refresh text-sm"></i>
-                  </button>
-                </Fragment>
-              </ModalNavbar>
-
-              <div className="max-h-[calc(100dvh-8rem)] space-y-5 overflow-y-auto px-6 py-5">
-                {/** 1. Environment */}
-                <section className="space-y-2">
-                  <h4 className="flex items-center gap-1.5 text-sm font-medium">
-                    <i className="ti ti-folder-search text-base text-primary"></i>{" "}
-                    {t.repositoryStore.sshDialog.envSection}
-                  </h4>
-                  <div
-                    id="git-ssh-env"
-                    className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs"
-                  >
-                    <div className="text-muted-foreground">
-                      {t.repositoryStore.sshDialog.cargando}
-                    </div>
-                  </div>
-                  <pre
-                    id="git-ssh-ls"
-                    className="hidden max-h-44 overflow-auto rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] leading-relaxed"
-                  ></pre>
-                </section>
-
-                {/** 2. Test connection */}
-                <section className="space-y-2">
-                  <h4 className="flex items-center gap-1.5 text-sm font-medium">
-                    <i className="ti ti-plug-connected text-base text-primary"></i>{" "}
-                    {t.repositoryStore.sshDialog.testSection}
-                  </h4>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      id="git-ssh-host"
-                      type="text"
-                      defaultValue="github.com"
-                      className="h-9 w-40 rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
+                <ModalNavbar
+                  title="GitHub · SSH"
+                  description={t.repositoryStore.sshDialog.subtitle}
+                  icon="ti-brand-github"
+                  closeId="git-creds-close"
+                  closeLabel={t.repositoryStore.sshDialog.cerrarAriaLabel}
+                >
+                  <Fragment slot="actions">
                     <select
-                      id="git-ssh-test-key"
-                      title={t.repositoryStore.sshDialog.keySelectTitle}
-                      className="h-9 min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      id="git-ssh-user"
+                      title={t.repositoryStore.sshDialog.usuarioLinuxTitle}
+                      className="h-9 max-w-[11rem] rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="">
-                        {t.repositoryStore.sshDialog.keyAutoOption}
+                        {t.repositoryStore.sshDialog.usuarioActual}
                       </option>
                     </select>
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <input
-                        id="git-ssh-verbose"
-                        type="checkbox"
-                        className="rounded border-input"
-                      />{" "}
-                      {t.repositoryStore.sshDialog.verboso}
-                    </label>
                     <button
-                      id="git-ssh-test-btn"
+                      id="git-ssh-refresh"
                       type="button"
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                      title={t.repositoryStore.sshDialog.refrescarTitle}
+                      className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
                     >
-                      <i className="ti ti-radar text-sm"></i>{" "}
-                      {t.repositoryStore.sshDialog.probar}
+                      <i className="ti ti-refresh text-sm"></i>
                     </button>
-                  </div>
-                  <div
-                    id="git-ssh-test-result"
-                    className="hidden rounded-lg border border-border text-sm"
-                  ></div>
-                </section>
+                  </Fragment>
+                </ModalNavbar>
+                <div data-aux-body>
+                  <div className="max-h-[calc(100dvh-8rem)] space-y-5 overflow-y-auto px-6 py-5">
+                    {/** 1. Environment */}
+                    <section className="space-y-2">
+                      <h4 className="flex items-center gap-1.5 text-sm font-medium">
+                        <i className="ti ti-folder-search text-base text-primary"></i>{" "}
+                        {t.repositoryStore.sshDialog.envSection}
+                      </h4>
+                      <div
+                        id="git-ssh-env"
+                        className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs"
+                      >
+                        <div className="text-muted-foreground">
+                          {t.repositoryStore.sshDialog.cargando}
+                        </div>
+                      </div>
+                      <pre
+                        id="git-ssh-ls"
+                        className="hidden max-h-44 overflow-auto rounded-lg border border-border bg-background px-3 py-2 font-mono text-[11px] leading-relaxed"
+                      ></pre>
+                    </section>
 
-                {/** 3. ~/.ssh/config */}
-                <section className="space-y-2">
-                  <h4 className="flex items-center gap-1.5 text-sm font-medium">
-                    <i className="ti ti-settings text-base text-primary"></i>{" "}
-                    {t.repositoryStore.sshDialog.configSection} (
-                    <code className="text-xs">~/.ssh/config</code>)
-                  </h4>
-                  <div
-                    id="git-ssh-config-current"
-                    className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground"
-                  >
-                    —
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      id="git-ssh-config-hostname"
-                      type="text"
-                      defaultValue="github.com"
-                      title="HostName"
-                      className="h-9 w-40 rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <select
-                      id="git-ssh-config-key"
-                      title="IdentityFile"
-                      className="h-9 min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    ></select>
-                    <button
-                      id="git-ssh-config-save"
-                      type="button"
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                      <i className="ti ti-device-floppy text-sm"></i>{" "}
-                      {t.repositoryStore.sshDialog.guardar}
-                    </button>
-                    <button
-                      id="git-ssh-fixperms"
-                      type="button"
-                      title={t.repositoryStore.sshDialog.permisosTitle}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm hover:bg-accent"
-                    >
-                      <i className="ti ti-lock-cog text-sm"></i>{" "}
-                      {t.repositoryStore.sshDialog.permisos}
-                    </button>
-                  </div>
-                  <div
-                    id="git-ssh-config-status"
-                    className="hidden text-xs"
-                  ></div>
-                </section>
+                    {/** 2. Test connection */}
+                    <section className="space-y-2">
+                      <h4 className="flex items-center gap-1.5 text-sm font-medium">
+                        <i className="ti ti-plug-connected text-base text-primary"></i>{" "}
+                        {t.repositoryStore.sshDialog.testSection}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          id="git-ssh-host"
+                          type="text"
+                          defaultValue="github.com"
+                          className="h-9 w-40 rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <select
+                          id="git-ssh-test-key"
+                          title={t.repositoryStore.sshDialog.keySelectTitle}
+                          className="h-9 min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="">
+                            {t.repositoryStore.sshDialog.keyAutoOption}
+                          </option>
+                        </select>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input
+                            id="git-ssh-verbose"
+                            type="checkbox"
+                            className="rounded border-input"
+                          />{" "}
+                          {t.repositoryStore.sshDialog.verboso}
+                        </label>
+                        <button
+                          id="git-ssh-test-btn"
+                          type="button"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        >
+                          <i className="ti ti-radar text-sm"></i>{" "}
+                          {t.repositoryStore.sshDialog.probar}
+                        </button>
+                      </div>
+                      <div
+                        id="git-ssh-test-result"
+                        className="hidden rounded-lg border border-border text-sm"
+                      ></div>
+                    </section>
 
-                {/** 4. Per-repo override */}
-                <section className="space-y-2">
-                  <h4 className="flex items-center gap-1.5 text-sm font-medium">
-                    <i className="ti ti-git-branch text-base text-primary"></i>{" "}
-                    {t.repositoryStore.sshDialog.perRepoSection} (
-                    <code className="text-xs">core.sshCommand</code>)
-                  </h4>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      id="git-ssh-repo-path"
-                      type="text"
-                      placeholder={
-                        t.repositoryStore.sshDialog.repoPathPlaceholder
-                      }
-                      className="h-9 min-w-[14rem] flex-1 rounded-lg border border-input bg-background px-3 font-mono text-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <button
-                      id="git-ssh-repo-read"
-                      type="button"
-                      title={t.repositoryStore.sshDialog.verTitle}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm hover:bg-accent"
-                    >
-                      <i className="ti ti-eye text-sm"></i>{" "}
-                      {t.repositoryStore.sshDialog.ver}
-                    </button>
+                    {/** 3. ~/.ssh/config */}
+                    <section className="space-y-2">
+                      <h4 className="flex items-center gap-1.5 text-sm font-medium">
+                        <i className="ti ti-settings text-base text-primary"></i>{" "}
+                        {t.repositoryStore.sshDialog.configSection} (
+                        <code className="text-xs">~/.ssh/config</code>)
+                      </h4>
+                      <div
+                        id="git-ssh-config-current"
+                        className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground"
+                      >
+                        —
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          id="git-ssh-config-hostname"
+                          type="text"
+                          defaultValue="github.com"
+                          title="HostName"
+                          className="h-9 w-40 rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <select
+                          id="git-ssh-config-key"
+                          title="IdentityFile"
+                          className="h-9 min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        ></select>
+                        <button
+                          id="git-ssh-config-save"
+                          type="button"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        >
+                          <i className="ti ti-device-floppy text-sm"></i>{" "}
+                          {t.repositoryStore.sshDialog.guardar}
+                        </button>
+                        <button
+                          id="git-ssh-fixperms"
+                          type="button"
+                          title={t.repositoryStore.sshDialog.permisosTitle}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm hover:bg-accent"
+                        >
+                          <i className="ti ti-lock-cog text-sm"></i>{" "}
+                          {t.repositoryStore.sshDialog.permisos}
+                        </button>
+                      </div>
+                      <div
+                        id="git-ssh-config-status"
+                        className="hidden text-xs"
+                      ></div>
+                    </section>
+
+                    {/** 4. Per-repo override */}
+                    <section className="space-y-2">
+                      <h4 className="flex items-center gap-1.5 text-sm font-medium">
+                        <i className="ti ti-git-branch text-base text-primary"></i>{" "}
+                        {t.repositoryStore.sshDialog.perRepoSection} (
+                        <code className="text-xs">core.sshCommand</code>)
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          id="git-ssh-repo-path"
+                          type="text"
+                          placeholder={
+                            t.repositoryStore.sshDialog.repoPathPlaceholder
+                          }
+                          className="h-9 min-w-[14rem] flex-1 rounded-lg border border-input bg-background px-3 font-mono text-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <button
+                          id="git-ssh-repo-read"
+                          type="button"
+                          title={t.repositoryStore.sshDialog.verTitle}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm hover:bg-accent"
+                        >
+                          <i className="ti ti-eye text-sm"></i>{" "}
+                          {t.repositoryStore.sshDialog.ver}
+                        </button>
+                      </div>
+                      <div
+                        id="git-ssh-repo-current"
+                        className="hidden rounded-lg border border-border bg-muted/30 px-4 py-2 font-mono text-[11px]"
+                      ></div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          id="git-ssh-repo-key"
+                          title={t.repositoryStore.sshDialog.llaveParaRepoTitle}
+                          className="h-9 min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        ></select>
+                        <button
+                          id="git-ssh-repo-apply"
+                          type="button"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        >
+                          <i className="ti ti-check text-sm"></i>{" "}
+                          {t.repositoryStore.sshDialog.aplicar}
+                        </button>
+                        <button
+                          id="git-ssh-repo-unset"
+                          type="button"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm hover:bg-accent hover:text-destructive"
+                        >
+                          <i className="ti ti-x text-sm"></i>{" "}
+                          {t.repositoryStore.sshDialog.quitar}
+                        </button>
+                      </div>
+                      <div
+                        id="git-ssh-repo-status"
+                        className="hidden text-xs"
+                      ></div>
+                    </section>
                   </div>
-                  <div
-                    id="git-ssh-repo-current"
-                    className="hidden rounded-lg border border-border bg-muted/30 px-4 py-2 font-mono text-[11px]"
-                  ></div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      id="git-ssh-repo-key"
-                      title={t.repositoryStore.sshDialog.llaveParaRepoTitle}
-                      className="h-9 min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    ></select>
-                    <button
-                      id="git-ssh-repo-apply"
-                      type="button"
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                      <i className="ti ti-check text-sm"></i>{" "}
-                      {t.repositoryStore.sshDialog.aplicar}
-                    </button>
-                    <button
-                      id="git-ssh-repo-unset"
-                      type="button"
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm hover:bg-accent hover:text-destructive"
-                    >
-                      <i className="ti ti-x text-sm"></i>{" "}
-                      {t.repositoryStore.sshDialog.quitar}
-                    </button>
-                  </div>
-                  <div
-                    id="git-ssh-repo-status"
-                    className="hidden text-xs"
-                  ></div>
-                </section>
-              </div>
-            </dialog>
+                </div>
+
+              </dialog>
             </>}
           </div>
         </Fragment>
