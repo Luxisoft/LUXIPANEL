@@ -212,3 +212,9 @@ Los jobs encolados refrescan las referencias de artefactos al adquirir el candad
 de compilación, por lo que dos previews de la misma versión no reconstruyen su
 frontend. Ante fallo de transferencia se descarta solo el candidato nuevo; el
 preview previo no se finaliza hasta confirmar la entrega remota.
+
+Las publicaciones privadas estáticas Luxisoft añaden chrome de suscripción servido
+por FRONTEND (:3100). Metadata conserva ticket firmado y ámbito fijo desde nginx;
+los recursos del cliente siguen con auth_request y el archivo publicado permanece
+inmutable. El helper de publicación debe instalarse desde la revisión publicada;
+no agrega un servidor frontend ni vhosts de proyectos en BACKEND.

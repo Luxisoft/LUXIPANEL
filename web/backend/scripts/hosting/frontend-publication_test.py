@@ -67,6 +67,10 @@ class PublicationTests(unittest.TestCase):
             generated=m.config(preview,preview['hosts'][0],Path('/public'))
         self.assertIn('auth_request /__lxp_frontend_auth;',generated)
         self.assertIn('internal;',generated)
+        self.assertIn('subscription-preview.js',generated)
+        self.assertIn('location = /__luxisoft/subscription-notice',generated)
+        self.assertIn('/api/v1/deployment-frontend/subscription-notice',generated)
+        self.assertIn('sub_filter_once on',generated)
         self.assertIn('proxy_set_header X-Version-ID '+self.request['versionId'],generated)
         with self.assertRaises(ValueError):
             m.validate({**preview,'hosts':['public.example.com']})

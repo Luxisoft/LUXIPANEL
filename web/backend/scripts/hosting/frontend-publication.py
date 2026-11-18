@@ -171,7 +171,28 @@ def config(request, host, public):
         main_location = declarations + '    location = / { return 302 /$lxp_locale/; }\n' + exact + '    location / {\n        if ($uri !~ "\\.[^/]+$") { return 301 /$lxp_locale/; }\n        try_files $uri =404;\n    }'
     preview_auth = ''
     if request.get('environment') == 'preview':
-        preview_auth = f'''    auth_request /__lxp_frontend_auth;
+        notice_url = request['previewAuthorizationUrl'].removesuffix('/authorize') + '/subscription-notice'
+        preview_auth = f'''    gzip off;
+    sub_filter_once on;
+    sub_filter '</head>' '<link rel="stylesheet" href="/__luxisoft/subscription-preview.css"><script defer src="/__luxisoft/subscription-preview.js"></script></head>';
+    error_page 403 /__luxisoft/subscription-suspended.html;
+    location ~ ^/__luxisoft/(subscription-preview\\.(js|css)|subscription-suspended\\.html)$ {{
+        auth_request off;
+        proxy_pass http://127.0.0.1:3100;
+        proxy_set_header Host $host;
+    }}
+    location = /__luxisoft/subscription-notice {{
+        auth_request off;
+        proxy_pass {notice_url};
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-Host $host;
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header X-Project-ID {request['projectId']};
+        proxy_set_header X-Version-ID {request['versionId']};
+        proxy_set_header X-Component {request['component']};
+    }}
+    auth_request /__lxp_frontend_auth;
     auth_request_set $lxp_preview_cookie $upstream_http_set_cookie;
     add_header Set-Cookie $lxp_preview_cookie always;
     add_header Cache-Control no-store always;
