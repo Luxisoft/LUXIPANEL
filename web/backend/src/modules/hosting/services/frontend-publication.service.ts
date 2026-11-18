@@ -106,7 +106,9 @@ export const frontendPublicationService = {
     if (!current) throw new ConflictError("Publicación frontend ausente");
     const executor = await providerService.frontendExecutor(provider, current.targetId);
     const version = uuid.parse(current.versionId), digest = z.string().regex(/^[a-f0-9]{64}$/).parse(current.sha256);
-    const bytes = await executor.readFile(`/var/www/luxisoft/published/${id}/${version}-${digest}/artifact.zip`);
+    const encoded = await executor.readFile(`/var/www/luxisoft/published/${id}/${version}-${digest}/artifact.zip`, "base64");
+    if (typeof encoded !== "string") throw new ConflictError("Artefacto frontend ausente");
+    const bytes = Buffer.from(encoded, "base64");
     if (!Buffer.isBuffer(bytes)) throw new ConflictError("Artefacto frontend ausente");
     return this.publish(provider, account, project, {
       versionId: current.versionId, versionNumber: current.versionNumber, sha256: current.sha256, hosts,
