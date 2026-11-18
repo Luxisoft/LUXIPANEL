@@ -1,4 +1,5 @@
 const components = {
+  "moduleTopbar": { "search": "খুঁজুন ও ফিল্টার করুন", "filters": "ফিল্টার", "context": "প্রসঙ্গ", "tools": "টুল"},
   "setupWizardFooter": {
     "rights": "সর্বস্বত্ব সংরক্ষিত।",
     "madeBy": "LUXISOFT দ্বারা নির্মিত",

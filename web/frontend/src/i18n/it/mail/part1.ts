@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "Richiede chiavi valide per tutti i destinatari e il mittente."
   },
   "inbox": {
+    "readerLoading": "Caricamento messaggio…",
+    "retryMessage": "Riprova",
+    "readerTimeout": "Il caricamento ha richiesto troppo tempo. Riprova.",
+
+    "toolsLabel": "Strumenti",
+    "filtersLabel": "Filtri",
     "pageTitle": "Posta in arrivo",
     "loadingAccount": "Caricamento account…",
     "allAccounts": "Tutti gli account",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "Sposta",
     "msgIframeTitle": "Contenuto messaggio",
     "attachmentsLabel": "File allegati",
+    "moveUi": {
+      "search": "Cerca cartella…",
+      "destination": "Cartella di destinazione",
+      "cancel": "Annulla",
+      "confirm": "Sposta qui",
+      "moving": "Spostamento…",
+      "empty": "Nessuna cartella disponibile",
+      "error": "Impossibile spostare il messaggio. Riprova.",
+      "origin": "Origine"
+},
     "moveDlgTitle": "Sposta messaggio",
     "foldersDlgTitle": "Gestisci cartelle",
     "foldersExistingHeader": "Cartelle esistenti",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "Account n. {id}",
-    "cleanupPrompt": "Pulisci la cartella INBOX di {account} (accountId: {id}). Esamina tutti i messaggi pagina per pagina. Leggi quelli sospetti e controlla SPF, DKIM, DMARC, Return-Path e allegati. Individua spam, phishing e malware. Non modificare posta legittima, contatti noti, risposte o fatture. Sposta i messaggi sospetti in Revisar-IA; non eliminare nulla. Riassumi quanti messaggi hai spostato e perché."
+    "cleanupPrompt": "Pulisci la cartella INBOX di {account} (accountId: {id}). Esamina tutti i messaggi pagina per pagina. Leggi quelli sospetti e controlla SPF, DKIM, DMARC, Return-Path e allegati. Individua spam, phishing e malware. Non modificare posta legittima, contatti noti, risposte o fatture. Sposta i messaggi sospetti in Cuarentena; non eliminare nulla. Riassumi quanti messaggi hai spostato e perché."
   }
 } as const;
 

@@ -91,7 +91,7 @@ function renderManagerFolderNodes(nodes: FolderTreeNode[], depth = 0): string {
     const hasChildren = node.children.length > 0;
     const collapsed = hasChildren && collapsedManagerFolders.has(node.path);
     const folder = node.folder;
-    const protectedFolder = folder ? isProtectedFolder(folder) : false;
+    const protectedFolder = folder ? isProtectedFolder(folder,S.folders) : false;
     const paddingLeft = depth * 14;
     const label = escapeHtml(folder?.name || node.label);
     const path = escapeHtml(node.path);
@@ -177,7 +177,7 @@ const closeFoldersManagerDialog = () => {
     return;
   }
 
-  if (isProtectedFolder(folder)) {
+  if (isProtectedFolder(folder,S.folders)) {
     setFoldersManagerFeedback(fallback("inbox.error.folderProtected", "Esta carpeta está protegida y no se puede renombrar."), false);
     return;
   }
@@ -193,7 +193,7 @@ const closeFoldersManagerDialog = () => {
     setFoldersManagerFeedback(fallback("inbox.error.folderNotFound", "No se encontró la carpeta seleccionada."), false);
     return;
   }
-  if (isProtectedFolder(folder)) {
+  if (isProtectedFolder(folder,S.folders)) {
     setFoldersManagerFeedback(fallback("inbox.error.folderProtected", "Esta carpeta está protegida y no se puede eliminar."), false);
     return;
   }
@@ -242,6 +242,7 @@ document.getElementById("folders-manager-form")?.addEventListener("submit", asyn
 
   setFoldersManagerError(null);
 
+  if(editPath){const folder=S.folders.find(f=>f.path===editPath);if(!folder||isProtectedFolder(folder,S.folders)){setFoldersManagerError(fallback("inbox.error.folderProtected","Carpeta protegida"));return;}}
   const res = editPath
     ? await api.put(`/api/mail/${accountId}/folders`, { path: editPath, name })
     : await api.post(`/api/mail/${accountId}/folders`, { name, parentPath: parentPath || undefined });

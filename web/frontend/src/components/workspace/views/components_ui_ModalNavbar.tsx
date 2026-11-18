@@ -57,7 +57,8 @@ export default function components_ui_ModalNavbar(props: any) {
   const document = context.scope.document;
   const window = context.scope.window;
   interface Props {
-    title: string;
+    title: any;
+    onClose?: () => void;
     titleId?: string;
     description?: string;
     icon?: string;
@@ -81,6 +82,7 @@ export default function components_ui_ModalNavbar(props: any) {
     backHref,
     backLabel = nav.back,
     closeId,
+    onClose,
     closeLabel = nav.close,
   } = Astro.props;
   const hasActions = Astro.slots.has("actions");
@@ -88,7 +90,7 @@ export default function components_ui_ModalNavbar(props: any) {
 
   return (
     <Fragment>
-      <div className="flex h-14 items-center gap-3 border-b border-border px-4">
+      <div data-aux-header className="flex h-14 items-center gap-3 border-b border-border px-4">
         {showBack &&
           (backHref ? (
             <Fragment>
@@ -139,6 +141,7 @@ export default function components_ui_ModalNavbar(props: any) {
           {hasActions && <Fragment>{slots["actions"]}</Fragment>}
           <button
             id={closeId}
+            onClick={onClose}
             type="button"
             className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
             aria-label={closeLabel}

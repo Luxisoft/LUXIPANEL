@@ -10,7 +10,7 @@ import {
   rememberCredentialFailure,
   renderMailboxCredentialBlockedState,
 } from "./status-render";
-import { loadMessages } from "./messages";
+import { loadMessages, invalidateMessageLoads } from "./messages";
 
 const collapsedSidebarFolders = new Set<string>();
 
@@ -27,7 +27,9 @@ export async function loadAccountInfo() {
 
 // ── Folders ────────────────────────────────────────────────
 export async function loadFolders() {
-  const res = await api.get<any>(`/api/mail/${accountId}/folders`);
+  const folderAtStart=S.currentFolder;
+  const res = await api.get<any>(`/api/mail/${accountId}/folders`,{fresh:true});
+  if(document.hidden||folderAtStart!==S.currentFolder)return;
   if (!res.ok || !Array.isArray(res.data)) {
     if (isMailboxCredentialError(res)) {
       rememberCredentialFailure(res);
@@ -139,6 +141,8 @@ function renderFolders() {
 (window as any).selectFolder = function(encodedPath: string) {
   const path = decodeURIComponent(encodedPath);
   const folder = S.folders.find((item) => item.path === path);
+  const layout=document.querySelector<HTMLElement>("[data-inbox-layout]");if(layout)layout.dataset.inboxPane="list";
+  invalidateMessageLoads();
   S.currentFolder = path;
   S.currentPage = 1;
   S.currentUid = null;

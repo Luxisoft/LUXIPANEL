@@ -54,6 +54,7 @@ const repositoryStore = {
     "catalogoNote": "GitHub की सार्वजनिक API द्वारा सीमित कैटलॉग"
   },
   "filters": {
+    "allCategories": "सभी श्रेणियाँ",
     "stackLabel": "स्टैक",
     "categoriaLabel": "श्रेणी",
     "estadoLabel": "स्थिति",

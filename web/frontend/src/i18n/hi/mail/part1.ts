@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "सभी प्राप्तकर्ताओं और प्रेषक की वैध कुंजियाँ आवश्यक हैं।"
   },
   "inbox": {
+    "readerLoading": "संदेश लोड हो रहा है…",
+    "retryMessage": "पुनः प्रयास करें",
+    "readerTimeout": "लोड होने में बहुत समय लगा। फिर से प्रयास करें।",
+
+    "toolsLabel": "उपकरण",
+    "filtersLabel": "फ़िल्टर",
     "pageTitle": "इनबॉक्स",
     "loadingAccount": "खाता लोड हो रहा है...",
     "allAccounts": "सभी खाते",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "स्थानांतरित करें",
     "msgIframeTitle": "संदेश सामग्री",
     "attachmentsLabel": "अनुलग्नक",
+    "moveUi": {
+      "search": "फ़ोल्डर खोजें…",
+      "destination": "गंतव्य फ़ोल्डर",
+      "cancel": "रद्द करें",
+      "confirm": "यहाँ ले जाएँ",
+      "moving": "ले जाया जा रहा है…",
+      "empty": "कोई फ़ोल्डर उपलब्ध नहीं",
+      "error": "संदेश नहीं ले जाया जा सका। फिर से कोशिश करें।",
+      "origin": "स्रोत"
+},
     "moveDlgTitle": "संदेश स्थानांतरित करें",
     "foldersDlgTitle": "फ़ोल्डर प्रबंधित करें",
     "foldersExistingHeader": "मौजूदा फ़ोल्डर",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "खाता #{id}",
-    "cleanupPrompt": "{account} (accountId: {id}) का INBOX साफ़ करें। सभी संदेश पन्ने दर पन्ने देखें। संदिग्ध संदेश पढ़कर SPF, DKIM, DMARC, Return-Path और संलग्नक जाँचें। स्पैम, फ़िशिंग और मैलवेयर पहचानें। वैध मेल, परिचित संपर्क, उत्तर और चालान न बदलें। संदिग्ध संदेश Revisar-IA में ले जाएँ; कुछ भी न हटाएँ। कितने संदेश ले गए और क्यों, इसका सार दें।"
+    "cleanupPrompt": "{account} (accountId: {id}) का INBOX साफ़ करें। सभी संदेश पन्ने दर पन्ने देखें। संदिग्ध संदेश पढ़कर SPF, DKIM, DMARC, Return-Path और संलग्नक जाँचें। स्पैम, फ़िशिंग और मैलवेयर पहचानें। वैध मेल, परिचित संपर्क, उत्तर और चालान न बदलें। संदिग्ध संदेश Cuarentena में ले जाएँ; कुछ भी न हटाएँ। कितने संदेश ले गए और क्यों, इसका सार दें।"
   }
 } as const;
 

@@ -350,7 +350,7 @@ const panelLayout = {
     },
     "dns": {
       "overview": "概要",
-      "sites": "サイトと HTTPS",
+      "sites": "サイト",
       "proxy": "トラフィック",
       "perf": "パフォーマンス",
       "logs": "ログ",
@@ -358,7 +358,7 @@ const panelLayout = {
     },
     "nginx": {
       "overview": "概要",
-      "sites": "サイトと HTTPS",
+      "sites": "サイト",
       "proxy": "トラフィック",
       "perf": "パフォーマンス",
       "logs": "ログ",

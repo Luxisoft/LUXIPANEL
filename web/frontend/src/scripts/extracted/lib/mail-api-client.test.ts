@@ -44,3 +44,16 @@ it("discards a response if the mail selection changed while it was loading", asy
   expect(mocks.request.mock.calls.length).toBe(count);
   expect(scopeHeaders()["X-Mail-Target-Id"]).toBe("mail-b");
 });
+
+it("restores the user's saved server before the first mailbox request after logout", async()=>{
+  window.dispatchEvent(new Event("luxipanel:logout"));sessionStorage.clear();
+  mocks.request.mockImplementation(async(path:string)=>path==="/api/mail/server-settings"?{ok:true,data:{selectedTargetId:"saved-mail"}}:{ok:true,data:[]});
+  await api.get("/api/accounts");
+  expect(mocks.request.mock.calls[0][0]).toBe("/api/mail/server-settings");
+  expect(new Headers(mocks.request.mock.calls[1][1].headers).get("X-Mail-Target-Id")).toBe("saved-mail");
+});
+it("does not fall back to the primary mailbox when restoring fails",async()=>{
+  window.dispatchEvent(new Event("luxipanel:logout"));sessionStorage.clear();mocks.request.mockResolvedValue({ok:false,error:"offline"});
+  expect(await api.get("/api/accounts")).toMatchObject({ok:false,error:"offline"});
+  expect(mocks.request).toHaveBeenCalledTimes(1);
+});

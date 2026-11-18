@@ -6,7 +6,7 @@ import mailPart2 from "./mail/part2";
 
 const mail = { ...mailPart1, ...mailPart2, serverConnection: {
   "title": "SMTP / IMAP サーバー",
-  "intro": "保存済みの別のサーバーのメールボックスを使用します。この選択はこのタブのメールに適用され、他のモジュールの使用中のサーバーは維持されます。",
+  "intro": "保存済みの別サーバーのメールボックスを使います。選択はこのパネルのユーザー設定に保存され、他のモジュールの接続先は変わりません。",
   "serverLabel": "メールサーバー",
   "hint": "サーバーには互換性のある Postfix/Dovecot とアクセス可能なメールポートが必要です。選択したサーバーのメールボックスと認証情報を使用します。",
   "apply": "サーバーを適用",

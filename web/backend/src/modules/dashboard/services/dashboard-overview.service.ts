@@ -138,7 +138,12 @@ function collectDisk(executor: Executor): Promise<DashboardOverview["disk"]> {
 
     if (!cached) {
       // Cold cache: compute folders synchronously this once and seed the cache.
-      const folders = await collectTopFolders(executor);
+      let pending = diskInFlightByScope.get(scope);
+      if (!pending) {
+        pending = collectTopFolders(executor).finally(() => diskInFlightByScope.delete(scope));
+        diskInFlightByScope.set(scope, pending);
+      }
+      const folders = await pending;
       const data: DiskInfo = { totalBytes, usedBytes, availableBytes, usagePercent, mountpoint, topFolders: folders };
       diskCacheByScope.set(scope, { ts: now, data });
       return data;
@@ -158,6 +163,7 @@ function collectDisk(executor: Executor): Promise<DashboardOverview["disk"]> {
           });
           return fresh;
         })
+        .catch(() => cached.data.topFolders)
         .finally(() => diskInFlightByScope.delete(scope));
       diskInFlightByScope.set(scope, task);
     }
@@ -191,7 +197,8 @@ async function collectTopFolders(executor: Executor): Promise<DiskFolder[]> {
     // render something instead of erroring.
     const cmd = "sudo du -xb -d1 / 2>/dev/null";
     const body = await injectSudoIntoShellScript(executor, cmd);
-    const out = await safeExec(executor, quoteCmd("sh", ["-lc", body]), 30_000);
+    const result = await executor.exec(quoteCmd("sh", ["-lc", body]), { timeoutMs: 30_000 });
+    const out = result.stdout ?? "";
     const folders: DiskFolder[] = [];
     for (const line of out.split("\n")) {
       const trimmed = line.trim();
@@ -205,6 +212,7 @@ async function collectTopFolders(executor: Executor): Promise<DiskFolder[]> {
       if (!path || path === "/" || bytes <= 0) continue;
       folders.push({ path, bytes });
     }
+    if (!folders.length && result.exitCode !== 0) throw new Error("Folder measurement failed");
     folders.sort((a, b) => b.bytes - a.bytes);
     return folders.slice(0, TOP_FOLDER_LIMIT);
   } catch (err) {
@@ -212,7 +220,7 @@ async function collectTopFolders(executor: Executor): Promise<DiskFolder[]> {
       { err: redactSudoSecrets(errMessage(err)), target: executor.target.id },
       "top-folder du failed",
     );
-    return [];
+    throw err;
   }
 }
 

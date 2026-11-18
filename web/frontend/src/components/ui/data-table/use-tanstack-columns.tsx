@@ -8,46 +8,34 @@ import type {
   DataTableI18n,
   DataTableProps,
   DataTableQuickActionConfig,
-  DataTableRowActionConfig,
   DataTableValueBadgeConfig,
   RowData,
 } from "./types";
 
-type OpenActions = { rowId: string; trigger: HTMLElement; rect: DOMRect; container: HTMLElement } | null;
-
 type Params = {
   columns: DataTableColumnConfig[];
-  rowActions: DataTableRowActionConfig[];
   tableId: string;
-  openActionsRowId: string | null;
   valueBadgesMap: Map<string, DataTableValueBadgeConfig>;
-  renderRowActions: DataTableProps["renderRowActions"];
   renderCell: DataTableProps["renderCell"];
   selectable: boolean;
   resolvedQuickActions: DataTableQuickActionConfig[];
   tt: DataTableI18n;
-  setOpenActions: React.Dispatch<React.SetStateAction<OpenActions>>;
 };
 
 /**
  * Construye las `ColumnDef` de TanStack a partir de la config de columnas del
  * panel: la columna centinela de selección (sólo si hay acciones masivas), las
  * columnas de datos (con header ordenable + sorting numérico opcional y celda
- * con override `renderCell`) y la columna centinela de acciones (menú ⋯ o
- * `renderRowActions` inline). `useMemo` con dependencias idénticas al original.
+ * con override `renderCell`) Las acciones pertenecen al menú contextual de la fila.
  */
 export function useTanstackColumns({
   columns,
-  rowActions,
   tableId,
-  openActionsRowId,
   valueBadgesMap,
-  renderRowActions,
   renderCell,
   selectable,
   resolvedQuickActions,
   tt,
-  setOpenActions,
 }: Params): ColumnDef<RowData>[] {
   return React.useMemo<ColumnDef<RowData>[]>(() => {
     // La selección múltiple sólo sirve para disparar acciones masivas
@@ -149,59 +137,6 @@ export function useTanstackColumns({
       });
     }
 
-    // Sin acciones (ni `renderRowActions` ni `rowActions`) la columna
-    // "Acciones" no aporta nada → se omite por completo.
-    const hasActions = Boolean(renderRowActions) || rowActions.length > 0;
-    if (hasActions) defs.push({
-      id: "_actions",
-      header: () => <span className="block text-right font-medium text-muted-foreground">{tt.actions}</span>,
-      enableSorting: false,
-      enableHiding: false,
-      cell: ({ row }) => {
-        if (renderRowActions) {
-          return (
-            <div className="flex items-center justify-end gap-1" data-data-table-actions-root="true">
-              {renderRowActions(row.original)}
-            </div>
-          );
-        }
-        const isOpen = openActionsRowId === row.id;
-        return (
-          <div className="flex items-center justify-end" data-data-table-actions-root="true">
-            <button
-              type="button"
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title={tt.actions}
-              aria-haspopup="menu"
-              aria-expanded={isOpen}
-              onClick={(event) => {
-                event.stopPropagation();
-                const trigger = event.currentTarget;
-                // Capture the trigger's rect NOW: opening the menu changes
-                // `openActionsRowId`, which rebuilds the columns and can detach
-                // this button from the DOM → a later getBoundingClientRect() on
-                // it returns zeros and the menu is positioned off-screen. The
-                // snapshot is the reliable anchor (see RowActionsMenu).
-                const rect = trigger.getBoundingClientRect();
-                setOpenActions((prev) =>
-                  prev?.rowId === row.id ? null : {
-                    rowId: row.id,
-                    trigger,
-                    rect,
-                    container: trigger.closest<HTMLDialogElement>("dialog[open]")
-                      ?? trigger.closest<HTMLElement>(".lxp-workspace-quick-drawer")
-                      ?? document.body,
-                  },
-                );
-              }}
-            >
-              <i className="ti ti-dots text-base" />
-            </button>
-          </div>
-        );
-      },
-    });
-
     return defs;
-  }, [columns, rowActions, tableId, openActionsRowId, valueBadgesMap, renderRowActions, renderCell, selectable, resolvedQuickActions, tt]);
+  }, [columns, tableId, valueBadgesMap, renderCell, selectable, resolvedQuickActions, tt]);
 }

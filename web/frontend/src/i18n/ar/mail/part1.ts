@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "يتطلب مفاتيح صالحة لجميع المستلمين والمرسل."
   },
   "inbox": {
+    "readerLoading": "جارٍ تحميل الرسالة…",
+    "retryMessage": "إعادة المحاولة",
+    "readerTimeout": "استغرق التحميل وقتًا طويلًا. حاول مرة أخرى.",
+
+    "toolsLabel": "أدوات",
+    "filtersLabel": "عوامل التصفية",
     "pageTitle": "صندوق الوارد",
     "loadingAccount": "جارٍ تحميل الحساب...",
     "allAccounts": "جميع الحسابات",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "نقل",
     "msgIframeTitle": "محتوى الرسالة",
     "attachmentsLabel": "المرفقات",
+    "moveUi": {
+      "search": "البحث عن مجلد…",
+      "destination": "مجلد الوجهة",
+      "cancel": "إلغاء",
+      "confirm": "نقل إلى هنا",
+      "moving": "جارٍ النقل…",
+      "empty": "لا توجد مجلدات متاحة",
+      "error": "تعذر نقل الرسالة. حاول مرة أخرى.",
+      "origin": "المصدر"
+},
     "moveDlgTitle": "نقل الرسالة",
     "foldersDlgTitle": "إدارة المجلدات",
     "foldersExistingHeader": "المجلدات الحالية",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "الحساب #{id}",
-    "cleanupPrompt": "نظّف مجلد INBOX للحساب {account} (accountId: {id}). راجع كل الرسائل صفحةً صفحة. اقرأ الرسائل المريبة وتحقق من SPF وDKIM وDMARC وReturn-Path والمرفقات. حدّد الرسائل المزعجة والتصيد والبرمجيات الخبيثة. لا تمس الرسائل السليمة أو جهات الاتصال المعروفة أو الردود أو الفواتير. انقل الرسائل المريبة إلى Revisar-IA ولا تحذف شيئاً. لخّص عدد الرسائل المنقولة وسبب نقلها."
+    "cleanupPrompt": "نظّف مجلد INBOX للحساب {account} (accountId: {id}). راجع كل الرسائل صفحةً صفحة. اقرأ الرسائل المريبة وتحقق من SPF وDKIM وDMARC وReturn-Path والمرفقات. حدّد الرسائل المزعجة والتصيد والبرمجيات الخبيثة. لا تمس الرسائل السليمة أو جهات الاتصال المعروفة أو الردود أو الفواتير. انقل الرسائل المريبة إلى Cuarentena ولا تحذف شيئاً. لخّص عدد الرسائل المنقولة وسبب نقلها."
   }
 } as const;
 

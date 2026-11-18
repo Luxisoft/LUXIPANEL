@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "সব প্রাপক ও প্রেরকের বৈধ কী প্রয়োজন।"
   },
   "inbox": {
+    "readerLoading": "বার্তা লোড হচ্ছে…",
+    "retryMessage": "আবার চেষ্টা করুন",
+    "readerTimeout": "লোড হতে বেশি সময় লেগেছে। আবার চেষ্টা করুন।",
+
+    "toolsLabel": "সরঞ্জাম",
+    "filtersLabel": "ফিল্টার",
     "pageTitle": "ইনবক্স",
     "loadingAccount": "অ্যাকাউন্ট লোড হচ্ছে...",
     "allAccounts": "সব অ্যাকাউন্ট",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "সরান",
     "msgIframeTitle": "বার্তার বিষয়বস্তু",
     "attachmentsLabel": "সংযুক্তি",
+    "moveUi": {
+      "search": "ফোল্ডার খুঁজুন…",
+      "destination": "গন্তব্য ফোল্ডার",
+      "cancel": "বাতিল",
+      "confirm": "এখানে সরান",
+      "moving": "সরানো হচ্ছে…",
+      "empty": "কোনো ফোল্ডার নেই",
+      "error": "বার্তা সরানো যায়নি। আবার চেষ্টা করুন।",
+      "origin": "উৎস"
+},
     "moveDlgTitle": "বার্তা সরান",
     "foldersDlgTitle": "ফোল্ডার পরিচালনা",
     "foldersExistingHeader": "বিদ্যমান ফোল্ডার",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "অ্যাকাউন্ট #{id}",
-    "cleanupPrompt": "{account} (accountId: {id})-এর INBOX পরিষ্কার করুন। সব বার্তা পৃষ্ঠা ধরে দেখুন। সন্দেহজনক বার্তা পড়ে SPF, DKIM, DMARC, Return-Path ও সংযুক্তি পরীক্ষা করুন। স্প্যাম, ফিশিং ও ম্যালওয়্যার শনাক্ত করুন। বৈধ মেইল, পরিচিত পরিচিতি, উত্তর ও চালান অপরিবর্তিত রাখুন। সন্দেহজনক বার্তা Revisar-IA ফোল্ডারে সরান; কিছু মুছবেন না। কতটি সরিয়েছেন এবং কেন, তার সারাংশ দিন।"
+    "cleanupPrompt": "{account} (accountId: {id})-এর INBOX পরিষ্কার করুন। সব বার্তা পৃষ্ঠা ধরে দেখুন। সন্দেহজনক বার্তা পড়ে SPF, DKIM, DMARC, Return-Path ও সংযুক্তি পরীক্ষা করুন। স্প্যাম, ফিশিং ও ম্যালওয়্যার শনাক্ত করুন। বৈধ মেইল, পরিচিত পরিচিতি, উত্তর ও চালান অপরিবর্তিত রাখুন। সন্দেহজনক বার্তা Cuarentena ফোল্ডারে সরান; কিছু মুছবেন না। কতটি সরিয়েছেন এবং কেন, তার সারাংশ দিন।"
   }
 } as const;
 

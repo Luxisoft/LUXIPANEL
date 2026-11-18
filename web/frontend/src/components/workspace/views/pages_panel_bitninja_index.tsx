@@ -125,14 +125,7 @@ export default function pages_panel_bitninja_index(props: any) {
         <div id="bitninja-root" className="space-y-6">
           {/** Header */}
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <i className="ti ti-shield-check text-primary"></i>BitNinja
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t.bitninja.header.description}
-              </p>
-            </div>
+
             <div
               id="bn-status-badge"
               className="shrink-0 rounded-full border px-3 py-1 text-xs font-medium border-border text-muted-foreground"

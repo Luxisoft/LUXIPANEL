@@ -70,3 +70,10 @@ it("keeps a covered drawer inert and lets Escape close only the upper drawer",as
  expect(parentClose).not.toHaveBeenCalled();
  expect(childClose).toHaveBeenCalledTimes(1);
 });
+
+it("keeps module configuration spacing owned by its consumer",async()=>{
+ await act(async()=>root.render(createElement(ModalShell,{onClose:vi.fn(),title:"Settings",moduleSettings:true,bodyClassName:"overflow-hidden p-0",children:"Navigation"})));
+ expect(document.querySelector('[role="dialog"]')?.hasAttribute('data-lxp-module-settings')).toBe(true);
+ const body=document.querySelector('[data-aux-body]')!;
+ expect(body.classList.contains('p-0')).toBe(true);expect(body.classList.contains('sm:p-6')).toBe(false);
+});

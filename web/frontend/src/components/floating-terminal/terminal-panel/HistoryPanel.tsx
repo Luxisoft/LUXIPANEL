@@ -96,34 +96,6 @@ const HISTORY_COMMANDS_RENDER_CELL = {
   ),
 };
 
-function StarBtn({
-  active,
-  onToggle,
-  messages,
-}: {
-  active: boolean;
-  onToggle: () => void;
-  messages: TerminalMessages["history"];
-}) {
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle();
-      }}
-      className={`rounded-md p-1 transition-colors ${
-        active ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground"
-      }`}
-      title={active ? messages.star.removeFavoriteTitle : messages.star.addFavoriteTitle}
-      aria-label={active ? messages.star.removeFavoriteAria : messages.star.addFavoriteAria}
-      aria-pressed={active}
-    >
-      <i className={`ti ${active ? "ti-star-filled" : "ti-star"} text-sm`} />
-    </button>
-  );
-}
-
 export function HistoryPanel({ messages, settingsButtonContainer }: { messages: TerminalMessages["history"]; settingsButtonContainer?: HTMLElement | null }) {
   // Columnas estables — memoizadas por etiqueta para no re-disparar el
   // `useEffect [columns]` interno del DataTable salvo que cambie el idioma.
@@ -185,30 +157,16 @@ export function HistoryPanel({ messages, settingsButtonContainer }: { messages: 
     return [...fav, ...rest];
   }, [payload, favs]);
 
-  const commandsRenderRowActions = useCallback(
-    (row: Record<string, unknown>) => (
-      <>
-        <StarBtn
-          active={favs.has(String(row.id))}
-          onToggle={() => toggleFavorite("commands", String(row.id))}
-          messages={messages}
-        />
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            dispatchHistoryAction({ action: "run-command", rawIndex: row.rawIndex });
-          }}
-          title={messages.run}
-          aria-label={messages.run}
-          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <i className="ti ti-player-play text-sm" />
-        </button>
-      </>
-    ),
-    [favs, toggleFavorite, messages],
-  );
+  const favoriteActions = [
+    {id:"favorite",label:messages.star.addFavoriteTitle,icon:"ti-star",visibleWhen:{field:"favorite",equals:false}},
+    {id:"favorite",label:messages.star.removeFavoriteTitle,icon:"ti-star-filled",visibleWhen:{field:"favorite",equals:true}},
+  ];
+  const historyRowAction = (actionId: string, row: Record<string, unknown>) => {
+    if(actionId === "favorite") toggleFavorite(activeMode,String(row.id));
+    else if(actionId === "run-command") dispatchHistoryAction({action:"run-command",rawIndex:row.rawIndex});
+    else if(actionId === "copy") dispatchHistoryAction({action:"copy",mode:activeMode,copyCommand:row.copyCommand});
+    else if(actionId === "delete") dispatchHistoryAction({action:"delete",mode:activeMode,sessionId:row.sessionId,title:row.title});
+  };
 
   const conversationsRenderCell = useMemo(
     () => ({
@@ -242,57 +200,10 @@ export function HistoryPanel({ messages, settingsButtonContainer }: { messages: 
     [activeMode],
   );
 
-  const conversationsRenderRowActions = useCallback(
-    (row: Record<string, unknown>) => (
-      <>
-        <StarBtn
-          active={favs.has(String(row.id))}
-          onToggle={() => toggleFavorite(activeMode, String(row.id))}
-          messages={messages}
-        />
-        {activeMode === "codex" ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              dispatchHistoryAction({
-                action: "copy",
-                mode: activeMode,
-                copyCommand: row.copyCommand,
-              });
-            }}
-            title={messages.copyCodexCommand}
-            aria-label={messages.copyCodexCommand}
-            className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <i className="ti ti-copy text-sm" />
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            dispatchHistoryAction({
-              action: "delete",
-              mode: activeMode,
-              sessionId: row.sessionId,
-              title: row.title,
-            });
-          }}
-          title={messages.deleteConversation}
-          aria-label={messages.delete}
-          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-        >
-          <i className="ti ti-trash text-sm" />
-        </button>
-      </>
-    ),
-    [activeMode, favs, toggleFavorite, messages],
-  );
 
   if (!payload) {
     return (
-      <div className="py-8 text-center text-xs text-muted-foreground">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-xs text-muted-foreground">
         <i className="ti ti-loader-2 animate-spin text-2xl block mb-2 opacity-40 mx-auto"></i>
         {messages.loading}
       </div>
@@ -301,7 +212,7 @@ export function HistoryPanel({ messages, settingsButtonContainer }: { messages: 
 
   if (payload.error && payload.items.length === 0) {
     return (
-      <div className="py-8 text-center text-xs text-destructive/80">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-xs text-destructive/80">
         <i className="ti ti-alert-triangle text-2xl block mb-2 opacity-40 mx-auto"></i>
         {payload.error}
       </div>
@@ -310,7 +221,7 @@ export function HistoryPanel({ messages, settingsButtonContainer }: { messages: 
 
   if (payload.items.length === 0) {
     return (
-      <div className="py-8 text-center text-xs text-muted-foreground">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-xs text-muted-foreground">
         <i
           className={`ti ${activeMode === "commands" ? "ti-terminal-2" : "ti-message-2"} text-2xl block mb-2 opacity-30 mx-auto`}
         ></i>
@@ -325,14 +236,16 @@ export function HistoryPanel({ messages, settingsButtonContainer }: { messages: 
 
   if (activeMode === "commands") {
     return (
-      <div className="p-2">
+      <div className="terminal-history-table flex min-h-0 min-w-0 flex-1 flex-col">
         <DataTable
+          layout="fill"
           tableId="terminal-history-commands"
           title={messages.titleCommands}
           columns={HISTORY_COMMANDS_COLUMNS}
           data={sortedRows}
           renderCell={HISTORY_COMMANDS_RENDER_CELL}
-          renderRowActions={commandsRenderRowActions}
+          rowActions={[...favoriteActions,{id:"run-command",label:messages.run,icon:"ti-player-play"}]}
+          onRowAction={historyRowAction}
           pageSizeOptions={HISTORY_PAGE_SIZE_OPTIONS}
           settingsButtonContainer={settingsButtonContainer}
           pageWindowSource={{ total: payload.total, hasMore: payload.hasMore, loading: payload.loading, error: payload.error,
@@ -343,14 +256,16 @@ export function HistoryPanel({ messages, settingsButtonContainer }: { messages: 
   }
 
   return (
-    <div className="p-2">
+    <div className="terminal-history-table flex min-h-0 min-w-0 flex-1 flex-col">
       <DataTable
+        layout="fill"
         tableId={`terminal-history-${activeMode}`}
         title={activeMode === "codex" ? messages.titleCodex : messages.titleClaude}
         columns={HISTORY_CONVERSATIONS_COLUMNS}
         data={sortedRows}
         renderCell={conversationsRenderCell}
-        renderRowActions={conversationsRenderRowActions}
+        rowActions={[...favoriteActions,...(activeMode === "codex" ? [{id:"copy",label:messages.copyCodexCommand,icon:"ti-copy"}] : []),{id:"delete",label:messages.deleteConversation,icon:"ti-trash",variant:"danger"}]}
+        onRowAction={historyRowAction}
         pageSizeOptions={HISTORY_PAGE_SIZE_OPTIONS}
         settingsButtonContainer={settingsButtonContainer}
         pageWindowSource={{ total: payload.total, hasMore: payload.hasMore, loading: payload.loading, error: payload.error,

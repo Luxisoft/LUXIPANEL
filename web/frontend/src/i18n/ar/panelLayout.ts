@@ -350,7 +350,7 @@ const panelLayout = {
     },
     "dns": {
       "overview": "نظرة عامة",
-      "sites": "المواقع و HTTPS",
+      "sites": "المواقع",
       "proxy": "المرور",
       "perf": "الأداء",
       "logs": "السجلات",
@@ -358,7 +358,7 @@ const panelLayout = {
     },
     "nginx": {
       "overview": "نظرة عامة",
-      "sites": "المواقع و HTTPS",
+      "sites": "المواقع",
       "proxy": "المرور",
       "perf": "الأداء",
       "logs": "السجلات",

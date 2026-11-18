@@ -15,7 +15,7 @@ import {
  */
 import PanelLayout from "../module-frame";
 import ModuleDepsBanner from "./components_ModuleDepsBanner";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import { getPageMessages } from "../view-context";
 import {
   buildMailAccountsColumns,
@@ -150,15 +150,7 @@ export default function pages_panel_mail_index(props: any) {
           <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
             {isolatedMailView ? (
               <Fragment>
-                <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
-                  {mailView === "emails"
-                    ? t.mail.tabs.emails
-                    : mailView === "spam-filters"
-                      ? t.mail.tabs.spamFilters
-                      : mailView === "track-delivery"
-                        ? t.mail.tabs.trackDelivery
-                        : t.mail.tabs.globalFilters}
-                </h2>
+
               </Fragment>
             ) : (
               <Fragment>
@@ -234,36 +226,24 @@ export default function pages_panel_mail_index(props: any) {
           {showMailView("emails") && (
             <Fragment>
               <section data-mail-main-panel="emails">
-                {/** Storage usage summary */}
-                <div
-                  id="mail-usage-summary"
-                  className="mb-4 hidden rounded-xl border border-border bg-card px-4 py-3"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-foreground">
-                      {t.mail.emailsPanel.usageTotal}
-                    </p>
-                    <p
-                      id="mail-usage-summary-text"
-                      className="text-xs text-muted-foreground"
-                    ></p>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
-                    <div
-                      id="mail-usage-summary-bar"
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                    ></div>
-                  </div>
-                  <p
-                    id="mail-usage-summary-percent"
-                    className="mt-1.5 text-right text-[11px] text-muted-foreground"
-                  ></p>
-                </div>
-
                 {/** Accounts table */}
                 <DataTable
                   i18n={dataTableI18n}
                   tableId="mail-accounts-table"
+                  paginationCenter={
+                    <div id="mail-usage-summary" className="hidden lxp-mail-pagination-usage">
+                      <p className="truncate text-[10px] font-medium text-muted-foreground" title={t.mail.emailsPanel.usageTotal}>
+                        {t.mail.emailsPanel.usageTotal}
+                      </p>
+                      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted/50" aria-hidden="true">
+                        <div id="mail-usage-summary-bar" className="h-full rounded-full bg-emerald-500 transition-all"></div>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                        <span id="mail-usage-summary-text"></span>
+                        <span id="mail-usage-summary-percent"></span>
+                      </div>
+                    </div>
+                  }
                   externalPagination={true}
                   serverQuery={true}
                   title={t.mail.dataTableTitles.accounts}

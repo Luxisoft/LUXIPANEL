@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "Последние 5 минут · в реальном времени",
+    "collecting": "Сбор измерений",
+    "received": "Приём",
+    "sent": "Отправка",
+    "available": "Доступно",
+    "emptyProcesses": "Нет записанных процессов"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "Завершить"
   },
   "history": {
+    "gapLegend": "Красный: нет данных",
+    "gapLabel": "Нет данных",
+    "gapDuration": "Длительность: {duration}",
+
     "workspaceLabel": "Монитор",
     "coverageLabel": "Охват истории",
     "availableSince": "Данные доступны с",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "Не удалось установить {name}."
   },
   "topFolders": {
+    "retry": "Повторить",
+    "loading": "Измерение папок…",
     "measureError": "Не удалось измерить использование по папкам.",
     "empty": "Нет папок с зарегистрированным потреблением."
   },

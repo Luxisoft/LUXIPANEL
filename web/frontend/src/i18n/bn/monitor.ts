@@ -1,4 +1,12 @@
 const monitor = {
+  "overview": {
+    "recent": "গত ৫ মিনিট · সরাসরি",
+    "collecting": "নমুনা সংগ্রহ করা হচ্ছে",
+    "received": "গৃহীত",
+    "sent": "প্রেরিত",
+    "available": "উপলব্ধ",
+    "emptyProcesses": "কোনো প্রক্রিয়া রেকর্ড করা হয়নি"
+},
   "assistantAdmission": {
     "title": "AI agent admission",
     "hint": "Allow multiple agents while server RAM stays below the limit. Builds and deployments remain serial.",
@@ -111,6 +119,10 @@ const monitor = {
     "confirmButton": "বন্ধ করুন"
   },
   "history": {
+    "gapLegend": "লাল: তথ্য নেই",
+    "gapLabel": "তথ্য নেই",
+    "gapDuration": "সময়কাল: {duration}",
+
     "workspaceLabel": "মনিটর",
     "coverageLabel": "ইতিহাসের পরিসর",
     "availableSince": "তথ্য পাওয়া যায়",
@@ -284,6 +296,8 @@ const monitor = {
     "installError": "{name} ইনস্টল করা যায়নি।"
   },
   "topFolders": {
+    "retry": "আবার চেষ্টা করুন",
+    "loading": "ফোল্ডার পরিমাপ করা হচ্ছে…",
     "measureError": "ফোল্ডার অনুযায়ী ব্যবহার পরিমাপ করা যায়নি।",
     "empty": "কোনো ফোল্ডারে রেকর্ড করা ব্যবহার নেই।"
   },

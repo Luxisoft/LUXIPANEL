@@ -141,3 +141,39 @@ describe("dashboardOverviewService.collect — disk cache (cold path)", () => {
     expect(duCallsAfterSecond).toBe(1);
   });
 });
+
+describe("top-folder measurement failures", () => {
+  it("does not cache a failed scan as an empty success", async () => {
+    let failed = true;
+    const ex = makeExecutor((cmd) => cmd.includes("du -xb")
+      ? failed ? {stdout:"",stderr:"permission denied",exitCode:1} : {stdout:DU_OUT}
+      : defaultHandler(cmd), "folder-failure-retry");
+    expect((await dashboardOverviewService.collect(ex)).disk.ok).toBe(false);
+    failed = false;
+    expect((await dashboardOverviewService.collect(ex)).disk.data?.topFolders).toHaveLength(3);
+  });
+  it("uses valid partial output even when du exits nonzero", async () => {
+    const ex = makeExecutor(cmd => cmd.includes("du -xb") ? {stdout:DU_OUT,exitCode:1} : defaultHandler(cmd), "folder-partial");
+    expect((await dashboardOverviewService.collect(ex)).disk.data?.topFolders).toHaveLength(3);
+  });
+  it("shares a cold measurement between simultaneous readers", async () => {
+    const ex = makeExecutor(defaultHandler,"folder-shared-cold");
+    await Promise.all([dashboardOverviewService.collect(ex),dashboardOverviewService.collect(ex)]);
+    expect(ex.exec.mock.calls.filter((call:unknown[]) => String(call[0]).includes("du -xb"))).toHaveLength(1);
+  });
+});
+
+it("retains the last successful folders when background refresh fails", async () => {
+  let failed = false;
+  const ex = makeExecutor(cmd => cmd.includes("du -xb") && failed ? {stdout:"",exitCode:1} : defaultHandler(cmd), "folder-warm-failure");
+  const first = await dashboardOverviewService.collect(ex);
+  failed = true;
+  const clock = vi.spyOn(Date,"now").mockReturnValue(Date.now()+120_000);
+  try {
+    const next = await dashboardOverviewService.collect(ex);
+    expect(next.disk.ok).toBe(true);
+    expect(next.disk.data?.topFolders).toEqual(first.disk.data?.topFolders);
+    await Promise.resolve();
+    expect((await dashboardOverviewService.collect(ex)).disk.data?.topFolders).toEqual(first.disk.data?.topFolders);
+  } finally { clock.mockRestore(); }
+});

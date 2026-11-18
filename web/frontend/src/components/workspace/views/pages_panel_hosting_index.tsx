@@ -16,7 +16,7 @@ import {
  */
 import PanelLayout from "../module-frame";
 import { adminRedirect } from "../view-context";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import { getPageMessages } from "../view-context";
 import {
   buildHostingTableColumns,
@@ -303,18 +303,12 @@ export default function pages_panel_hosting_index(props: any) {
 
         <div className="space-y-6">
           {/** Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">
-                {t.hosting.pageTitle}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {t.hosting.pageSubtitle}
-              </p>
-            </div>
+          <div className="contents">
+
             <div className="flex flex-wrap items-center gap-2">
               <a
                 href="/panel/docs/hosting-api"
+                data-module-topbar-region="tools"
                 className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <i className="ti ti-book-2" aria-hidden="true"></i>

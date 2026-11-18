@@ -23,7 +23,9 @@ import {
   type ControllerScope,
 } from "./controller-scope";
 import { createViewContext, InternalViewContext } from "./view-context";
+import { mountInboxTopbar } from "./inbox-topbar";
 import { mountModuleTopbar } from "./module-topbar";
+import ModuleTopbar from "./ModuleTopbar";
 
 type Entry = {
   mounted?: boolean;
@@ -499,12 +501,17 @@ export default function InternalModuleHost({
     const scope = scopes.current.get(activeKey);
     if (scope) return mountModuleAiFooter(footer.current, scope.document);
   }, [activeKey, entries]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!activeKey || !drawer.current) return;
     const scope = scopes.current.get(activeKey);
-    if (scope) return mountModuleTopbar(scope.root, drawer.current);
+    const entry=entries.get(activeKey);
+    if (!scope || !entry?.View) return;
+    return entry.descriptor.id === "mail/[id]/inbox"
+      ? mountInboxTopbar(scope, entry.messages?.mail?.inbox)
+      : mountModuleTopbar(scope.root, drawer.current);
   }, [activeKey, entries]);
   const active = activeKey ? entries.get(activeKey) : null;
+  const topbarLabels = active?.messages?.components?.moduleTopbar;
   return (
     <div
       ref={drawer}
@@ -528,13 +535,11 @@ export default function InternalModuleHost({
         aria-modal="true"
         aria-labelledby="workspace-quick-title"
       >
-        <header className="lxp-workspace-quick-header">
-          <h2 id="workspace-quick-title" className="sr-only">{title}</h2>
-          <div data-module-header-tabs-slot className="lxp-workspace-header-tabs" />
-          <div data-module-header-controls-slot className="lxp-workspace-header-controls" />
-          {active?.descriptor.id === "mail/[id]/inbox" &&
+        <ModuleTopbar title={title} moduleKey={activeKey} settingsAvailable={settingsAvailable} onSettings={settings} onClose={() => close()}
+          labels={{ search: topbarLabels?.search, filters: topbarLabels?.filters ?? "Filters", actions: active?.messages?.components?.dataTable?.actions ?? "Actions", context: topbarLabels?.context ?? "Context", tools: topbarLabels?.tools ?? "Tools", settings: labels.settings, close: labels.close }}
+          context={active?.descriptor.id === "mail/[id]/inbox" &&
             mailAccounts.length > 1 && (
-              <select
+              <select data-inbox-account-picker
                 aria-label={title}
                 value={active.descriptor.params.id}
                 onChange={(event) => {
@@ -554,29 +559,7 @@ export default function InternalModuleHost({
                 ))}
               </select>
             )}
-          <div className="ml-auto flex items-center gap-2">
-            <div data-module-header-actions-slot className="lxp-workspace-header-actions" />
-            <div data-module-header-status-slot className="lxp-workspace-header-status" />
-            <button
-              id="workspace-quick-settings"
-              type="button"
-              hidden={!settingsAvailable}
-              className="lxp-workspace-header-settings"
-              onClick={settings}
-            >
-              <i className="ti ti-settings text-sm" />
-              {labels.settings}
-            </button>
-            <button
-              className="lxp-workspace-quick-close"
-              data-close-drawer
-              onClick={() => close()}
-              aria-label={labels.close}
-            >
-              <i className="ti ti-x text-lg" />
-            </button>
-          </div>
-        </header>
+        />
         <div className="lxp-workspace-quick-body">
           {active && !active.View && !active.error && (
             <div className="lxp-workspace-quick-loading" role="status">

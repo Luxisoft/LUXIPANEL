@@ -1,3 +1,4 @@
+import { ModuleSection } from "../ModuleSections";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Internal component migrated from src/pages/panel/expo/index.astro.
 import { SlotFragment as Fragment } from "../view-context";
@@ -18,7 +19,7 @@ import {
  * (Google service-account JSON, Apple ASC .p8) live on the client server.
  */
 import PanelLayout from "../module-frame";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import ModalNavbar from "./components_ui_ModalNavbar";
 import {
@@ -32,18 +33,18 @@ import {
 } from "@/config/tables/expo-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_expo_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["expo", "settings", "components"]);
-  const ex: any = t.expo;
-  const dataTableI18n = (t.components as any).dataTable;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["expo","settings","components"]);
+  const ex: any=t.expo;
+  const dataTableI18n=(t.components as any).dataTable;
 
   return (
     <Fragment>
-      <PanelLayout title={t.expo.pageTitle} activeModule="expo">
+      <PanelLayout title={t.expo.pageTitle} activeModule="expo" sections={[{ id: "account",label: t.expo.account.title },{ id: "projects",label: t.expo.projects.title },{ id: "builds",label: t.expo.history.title },{ id: "store",label: t.expo.storeAccounts.title },{ id: "environment",label: t.expo.env.title }]}>
         <div slot="title-actions">
           <ViewSettingsModal
             id="expo-settings-modal"
@@ -73,7 +74,7 @@ export default function pages_panel_expo_index(props: any) {
                 {/* Builds */}
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold">
-                    {t.expo.builds?.title ?? "Builds"}
+                    {t.expo.builds?.title??"Builds"}
                   </h3>
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">
@@ -83,7 +84,7 @@ export default function pages_panel_expo_index(props: any) {
                       className="inline-flex overflow-hidden rounded-lg border border-border"
                       data-expo-pagesize-group="expo-builds-table"
                     >
-                      {[10, 25, 50, 100].map((n: any) => (
+                      {[10,25,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -113,7 +114,7 @@ export default function pages_panel_expo_index(props: any) {
                               defaultChecked
                             />
                             <i
-                              className={`ti ${a.icon ?? "ti-dots"} text-sm text-muted-foreground`}
+                              className={`ti ${a.icon??"ti-dots"} text-sm text-muted-foreground`}
                             ></i>
                             <span>{a.label}</span>
                           </label>
@@ -150,7 +151,7 @@ export default function pages_panel_expo_index(props: any) {
                 {/* Store (sin acciones) */}
                 <section className="space-y-3 border-t border-border pt-5">
                   <h3 className="text-sm font-semibold">
-                    {t.expo.storeAccounts?.title ?? "Store"}
+                    {t.expo.storeAccounts?.title??"Store"}
                   </h3>
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">
@@ -160,7 +161,7 @@ export default function pages_panel_expo_index(props: any) {
                       className="inline-flex overflow-hidden rounded-lg border border-border"
                       data-expo-pagesize-group="expo-store-table"
                     >
-                      {[10, 25, 50, 100].map((n: any) => (
+                      {[10,25,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -178,12 +179,6 @@ export default function pages_panel_expo_index(props: any) {
               </div>
             </div>
           </ViewSettingsModal>
-        </div>
-        <div className="mb-5 flex flex-col gap-1">
-          <h2 className="text-xl font-semibold">{t.expo.header.heading}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t.expo.header.subheading}
-          </p>
         </div>
 
         {/** No-token notice (visible only while no access token is configured) */}
@@ -204,13 +199,10 @@ export default function pages_panel_expo_index(props: any) {
         </div>
 
         {/** Top cards: account / quota / token */}
-        <div id="expo-root" className="mb-6 grid gap-4 lg:grid-cols-3">
+        <ModuleSection id="account"><div id="expo-root" className="mb-6 grid gap-4 lg:grid-cols-3">
           {/** Account card */}
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <i className="ti ti-brand-expo text-lg"></i>
-              <h3 className="text-sm font-semibold">{t.expo.account.title}</h3>
-            </div>
+
             <p
               id="expo-account-state"
               className="text-sm text-muted-foreground"
@@ -232,7 +224,7 @@ export default function pages_panel_expo_index(props: any) {
                 <i className="ti ti-plug-connected text-sm"></i>{" "}
                 {t.expo.config.test}
               </button>
-              
+
             </div>
             <a
               href="/panel/settings#cred-expo"
@@ -298,12 +290,12 @@ export default function pages_panel_expo_index(props: any) {
               <i className="ti ti-plus text-base"></i> {t.expo.projects.create}
             </button>
           </div>
-        </div>
+        </div></ModuleSection>
 
         {/** Projects */}
-        <section className="mb-6 min-w-0 rounded-xl border border-border bg-card overflow-hidden">
+        <ModuleSection id="projects"><section className="mb-6 min-w-0 rounded-xl border border-border bg-card overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">{t.expo.projects.title}</h3>
+
             <div className="flex items-center gap-2">
               <button
                 id="expo-projects-link"
@@ -331,12 +323,11 @@ export default function pages_panel_expo_index(props: any) {
           >
             {ex.settingsUi.selectProjectPrep}
           </div>
-        </section>
+        </section></ModuleSection>
 
         {/** Build history */}
-        <section className="mb-6 min-w-0 rounded-xl border border-border bg-card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">{t.expo.history.title}</h3>
+        <ModuleSection id="builds"><section className="mb-6 min-w-0 rounded-xl border border-border bg-card overflow-hidden">
+          <div className="contents">
             <button
               id="expo-history-refresh"
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-accent"
@@ -399,15 +390,12 @@ export default function pages_panel_expo_index(props: any) {
               selectable={false}
             />
           </div>
-        </section>
+        </section></ModuleSection>
 
         {/** Store accounts + Env mini-managers */}
         <div className="grid min-w-0 gap-4 lg:grid-cols-2">
           {/** Store accounts */}
-          <section className="min-w-0 rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-4 text-sm font-semibold">
-              {t.expo.storeAccounts.title}
-            </h3>
+          <ModuleSection id="store"><section className="min-w-0 rounded-xl border border-border bg-card p-5">
 
             {/** Unified credential table: EAS-managed, project (eas.json) and panel-staged */}
             <div className="mb-5">
@@ -516,12 +504,12 @@ export default function pages_panel_expo_index(props: any) {
                 </button>
               </div>
             </div>
-          </section>
+          </section></ModuleSection>
 
           {/** Env / secrets mini-manager */}
-          <section className="min-w-0 rounded-xl border border-border bg-card p-5">
+          <ModuleSection id="environment"><section className="min-w-0 rounded-xl border border-border bg-card p-5">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">{t.expo.env.title}</h3>
+
               <button
                 id="expo-env-add"
                 className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
@@ -570,12 +558,12 @@ export default function pages_panel_expo_index(props: any) {
                 selectable={false}
               />
             </div>
-          </section>
+          </section></ModuleSection>
         </div>
       </PanelLayout>
 
       {/** Build dialog */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-expo-build"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -584,27 +572,29 @@ export default function pages_panel_expo_index(props: any) {
           titleId="expo-build-title"
           closeId="expo-build-x"
         />
-        <div className="space-y-4 px-6 py-4">
-          <p id="expo-build-app" className="text-xs text-muted-foreground"></p>
-          <div>
-            <label
-              htmlFor="expo-build-platform"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.build.platform}
-            </label>
-            <select
-              id="expo-build-platform"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="android">{t.expo.build.android}</option>
-              <option value="ios">{t.expo.build.ios}</option>
-              <option value="all">{t.expo.build.all}</option>
-            </select>
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-4">
+            <p id="expo-build-app" className="text-xs text-muted-foreground"></p>
+            <div>
+              <label
+                htmlFor="expo-build-platform"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.build.platform}
+              </label>
+              <select
+                id="expo-build-platform"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="android">{t.expo.build.android}</option>
+                <option value="ios">{t.expo.build.ios}</option>
+                <option value="all">{t.expo.build.all}</option>
+              </select>
+            </div>
+            <p id="expo-build-status" className="hidden text-xs"></p>
           </div>
-          <p id="expo-build-status" className="hidden text-xs"></p>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="expo-build-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -621,7 +611,7 @@ export default function pages_panel_expo_index(props: any) {
       </dialog>
 
       {/** Dev-client QR dialog */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-expo-qr"
         className="w-full max-w-sm rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -630,32 +620,34 @@ export default function pages_panel_expo_index(props: any) {
           titleId="expo-qr-title"
           closeId="expo-qr-x"
         />
-        <div className="flex flex-col items-center gap-4 px-6 py-5 text-center">
-          <p
-            id="expo-qr-hint"
-            className="mx-auto max-w-md text-xs text-muted-foreground"
-          >
-            {t.expo.devClient.hint}
-          </p>
-          <div
-            id="expo-qr-box"
-            className="mx-auto flex min-h-[12rem] flex-col items-center justify-center"
-          >
-            <span className="text-sm text-muted-foreground">
-              {t.expo.devClient.starting}
-            </span>
-          </div>
-          <div className="mx-auto w-full max-w-md">
-            <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
-              {t.expo.devClient.url}
-            </span>
+        <div data-aux-body>
+          <div className="flex flex-col items-center gap-4 px-6 py-5 text-center">
             <p
-              id="expo-qr-url"
-              className="select-all break-all rounded-md border border-border bg-muted/30 px-3 py-2 text-left font-mono text-xs"
-            ></p>
+              id="expo-qr-hint"
+              className="mx-auto max-w-md text-xs text-muted-foreground"
+            >
+              {t.expo.devClient.hint}
+            </p>
+            <div
+              id="expo-qr-box"
+              className="mx-auto flex min-h-[12rem] flex-col items-center justify-center"
+            >
+              <span className="text-sm text-muted-foreground">
+                {t.expo.devClient.starting}
+              </span>
+            </div>
+            <div className="mx-auto w-full max-w-md">
+              <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                {t.expo.devClient.url}
+              </span>
+              <p
+                id="expo-qr-url"
+                className="select-all break-all rounded-md border border-border bg-muted/30 px-3 py-2 text-left font-mono text-xs"
+              ></p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="expo-qr-stop"
             className="hidden inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-background px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
@@ -673,54 +665,45 @@ export default function pages_panel_expo_index(props: any) {
       </dialog>
 
       {/** Build logs dialog */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-expo-logs"
         className="w-full max-w-3xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div className="min-w-0">
-            <h3 className="text-base font-semibold">{t.expo.logs.title}</h3>
-            <p
+        <ModalNavbar title={<>{t.expo.logs.title}</>}  closeId="expo-logs-x" onClose={() => (document.getElementById("dlg-expo-logs") as HTMLDialogElement | null)?.close()} ></ModalNavbar>
+        <div data-aux-body><p
               id="expo-logs-sub"
               className="truncate text-xs text-muted-foreground"
             ></p>
-          </div>
-          <button
-            id="expo-logs-x"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <i className="ti ti-x text-lg"></i>
-          </button>
-        </div>
-        <div className="space-y-3 px-6 py-4">
-          <div
-            id="expo-logs-error"
-            className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm"
-          ></div>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              id="expo-logs-search"
-              type="text"
-              autoComplete="off"
-              spellCheck="false"
-              placeholder={t.expo.logs.filterPlaceholder}
-              className="min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="space-y-3 px-6 py-4">
+            <div
+              id="expo-logs-error"
+              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm"
+            ></div>
+            <div className="flex flex-wrap items-center gap-3">
               <input
-                id="expo-logs-errors-only"
-                type="checkbox"
-                className="rounded border-input"
-              />{" "}
-              {t.expo.logs.errorsOnly}
-            </label>
+                id="expo-logs-search"
+                type="text"
+                autoComplete="off"
+                spellCheck="false"
+                placeholder={t.expo.logs.filterPlaceholder}
+                className="min-w-[12rem] flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <input
+                  id="expo-logs-errors-only"
+                  type="checkbox"
+                  className="rounded border-input"
+                />{" "}
+                {t.expo.logs.errorsOnly}
+              </label>
+            </div>
+            <div
+              id="expo-logs-box"
+              className="max-h-[55vh] overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-[11px] leading-relaxed"
+            ></div>
           </div>
-          <div
-            id="expo-logs-box"
-            className="max-h-[55vh] overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-[11px] leading-relaxed"
-          ></div>
         </div>
-        <div className="flex items-center justify-between gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-between gap-2 border-t border-border px-6 py-4">
           <a
             id="expo-logs-open"
             href="#"
@@ -755,45 +738,47 @@ export default function pages_panel_expo_index(props: any) {
       </dialog>
 
       {/** OTA update dialog */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-expo-ota"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <ModalNavbar title={t.expo.ota.title} closeId="expo-ota-x" />
-        <div className="space-y-4 px-6 py-4">
-          <p id="expo-ota-app" className="text-xs text-muted-foreground"></p>
-          <div>
-            <label
-              htmlFor="expo-ota-branch"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.ota.branch}
-            </label>
-            <input
-              id="expo-ota-branch"
-              type="text"
-              spellCheck="false"
-              autoComplete="off"
-              defaultValue="production"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="expo-ota-message"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.ota.message}
-            </label>
-            <input
-              id="expo-ota-message"
-              type="text"
-              autoComplete="off"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-4">
+            <p id="expo-ota-app" className="text-xs text-muted-foreground"></p>
+            <div>
+              <label
+                htmlFor="expo-ota-branch"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.ota.branch}
+              </label>
+              <input
+                id="expo-ota-branch"
+                type="text"
+                spellCheck="false"
+                autoComplete="off"
+                defaultValue="production"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="expo-ota-message"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.ota.message}
+              </label>
+              <input
+                id="expo-ota-message"
+                type="text"
+                autoComplete="off"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="expo-ota-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -811,47 +796,49 @@ export default function pages_panel_expo_index(props: any) {
       </dialog>
 
       {/** Create app wizard dialog */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-expo-create"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <ModalNavbar title={t.expo.create.title} closeId="expo-create-x" />
-        <div className="space-y-4 px-6 py-4">
-          <div>
-            <label
-              htmlFor="expo-create-name"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.create.nameLabel}
-            </label>
-            <input
-              id="expo-create-name"
-              type="text"
-              spellCheck="false"
-              autoComplete="off"
-              placeholder={t.expo.create.namePlaceholder}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              id="expo-create-github"
-              type="checkbox"
-              defaultChecked
-              className="mt-0.5 h-4 w-4 rounded border-input text-primary"
-            />
-            <span className="flex flex-col">
-              <span className="font-medium">{t.expo.create.githubBackup}</span>
-              <span className="text-[11px] text-muted-foreground">
-                {t.expo.create.githubBackupHint}
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-4">
+            <div>
+              <label
+                htmlFor="expo-create-name"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.create.nameLabel}
+              </label>
+              <input
+                id="expo-create-name"
+                type="text"
+                spellCheck="false"
+                autoComplete="off"
+                placeholder={t.expo.create.namePlaceholder}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                id="expo-create-github"
+                type="checkbox"
+                defaultChecked
+                className="mt-0.5 h-4 w-4 rounded border-input text-primary"
+              />
+              <span className="flex flex-col">
+                <span className="font-medium">{t.expo.create.githubBackup}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {t.expo.create.githubBackupHint}
+                </span>
               </span>
-            </span>
-          </label>
-          <p className="text-[11px] text-muted-foreground">
-            {t.expo.create.hint}
-          </p>
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              {t.expo.create.hint}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="expo-create-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -868,7 +855,7 @@ export default function pages_panel_expo_index(props: any) {
       </dialog>
 
       {/** Env variable dialog */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-expo-env"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -877,87 +864,89 @@ export default function pages_panel_expo_index(props: any) {
           titleId="expo-env-dialog-title"
           closeId="expo-env-x"
         />
-        <div className="space-y-4 px-6 py-4">
-          <div>
-            <label
-              htmlFor="expo-env-name"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.env.name}
-            </label>
-            <input
-              id="expo-env-name"
-              type="text"
-              spellCheck="false"
-              autoComplete="off"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="expo-env-value"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.env.value}
-            </label>
-            <input
-              id="expo-env-value"
-              type="text"
-              spellCheck="false"
-              autoComplete="off"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="expo-env-visibility"
-              className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-            >
-              {t.expo.env.visibility}
-            </label>
-            <select
-              id="expo-env-visibility"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="plaintext">{t.expo.env.visPlaintext}</option>
-              <option value="sensitive">{t.expo.env.visSensitive}</option>
-              <option value="secret">{t.expo.env.visSecret}</option>
-            </select>
-          </div>
-          <div>
-            <span className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t.expo.env.environments}
-            </span>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <label className="inline-flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  className="expo-env-env-cb accent-primary"
-                  defaultValue="production"
-                  defaultChecked
-                />{" "}
-                {t.expo.env.envProduction}
+        <div data-aux-body>
+          <div className="space-y-4 px-6 py-4">
+            <div>
+              <label
+                htmlFor="expo-env-name"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.env.name}
               </label>
-              <label className="inline-flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  className="expo-env-env-cb accent-primary"
-                  defaultValue="preview"
-                />{" "}
-                {t.expo.env.envPreview}
+              <input
+                id="expo-env-name"
+                type="text"
+                spellCheck="false"
+                autoComplete="off"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="expo-env-value"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.env.value}
               </label>
-              <label className="inline-flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  className="expo-env-env-cb accent-primary"
-                  defaultValue="development"
-                />{" "}
-                {t.expo.env.envDevelopment}
+              <input
+                id="expo-env-value"
+                type="text"
+                spellCheck="false"
+                autoComplete="off"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="expo-env-visibility"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+              >
+                {t.expo.env.visibility}
               </label>
+              <select
+                id="expo-env-visibility"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="plaintext">{t.expo.env.visPlaintext}</option>
+                <option value="sensitive">{t.expo.env.visSensitive}</option>
+                <option value="secret">{t.expo.env.visSecret}</option>
+              </select>
+            </div>
+            <div>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t.expo.env.environments}
+              </span>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <label className="inline-flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    className="expo-env-env-cb accent-primary"
+                    defaultValue="production"
+                    defaultChecked
+                  />{" "}
+                  {t.expo.env.envProduction}
+                </label>
+                <label className="inline-flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    className="expo-env-env-cb accent-primary"
+                    defaultValue="preview"
+                  />{" "}
+                  {t.expo.env.envPreview}
+                </label>
+                <label className="inline-flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    className="expo-env-env-cb accent-primary"
+                    defaultValue="development"
+                  />{" "}
+                  {t.expo.env.envDevelopment}
+                </label>
+              </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="expo-env-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"

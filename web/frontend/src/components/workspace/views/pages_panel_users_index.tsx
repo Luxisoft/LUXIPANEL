@@ -16,7 +16,7 @@ import {
 import HostingTemplates from "./components_users_HostingTemplates";
 import PanelLayout from "../module-frame";
 import ModalNavbar from "./components_ui_ModalNavbar";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import {
   buildRoleTableColumns,
@@ -32,32 +32,32 @@ import {
 } from "@/config/tables/users-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_users_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["users", "components", "permissions"]);
-  const tu = t.users;
-  const us = tu.settingsUi;
-  const dataTableI18n = t.components.dataTable;
-  const USER_TABLE_COLUMNS = buildUserTableColumns(tu);
-  const USER_TABLE_FILTERS = buildUserTableFilters(tu);
-  const USER_TABLE_ROW_ACTIONS = buildUserTableRowActions(tu);
-  const USER_TABLE_QUICK_ACTIONS = buildUserTableQuickActions(tu);
-  const USER_TABLE_VALUE_BADGES = buildUserTableValueBadges(tu);
-  const ROLE_TABLE_COLUMNS = buildRoleTableColumns(tu);
-  const ROLE_TABLE_FILTERS = buildRoleTableFilters(tu);
-  const ROLE_TABLE_ROW_ACTIONS = buildRoleTableRowActions(tu);
-  const ROLE_TABLE_QUICK_ACTIONS = buildRoleTableQuickActions(tu);
-  const ROLE_TABLE_VALUE_BADGES = buildRoleTableValueBadges(tu);
-  const usersView = Astro.url.searchParams.get("workspaceView");
-  const isolatedUsersView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    !Astro.url.searchParams.has("settingsOverlay") &&
-    ["users", "roles"].includes(usersView ?? "");
-  const showUsersView = (view: string) =>
-    !isolatedUsersView || usersView === view;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["users","components","permissions"]);
+  const tu=t.users;
+  const us=tu.settingsUi;
+  const dataTableI18n=t.components.dataTable;
+  const USER_TABLE_COLUMNS=buildUserTableColumns(tu);
+  const USER_TABLE_FILTERS=buildUserTableFilters(tu);
+  const USER_TABLE_ROW_ACTIONS=buildUserTableRowActions(tu);
+  const USER_TABLE_QUICK_ACTIONS=buildUserTableQuickActions(tu);
+  const USER_TABLE_VALUE_BADGES=buildUserTableValueBadges(tu);
+  const ROLE_TABLE_COLUMNS=buildRoleTableColumns(tu);
+  const ROLE_TABLE_FILTERS=buildRoleTableFilters(tu);
+  const ROLE_TABLE_ROW_ACTIONS=buildRoleTableRowActions(tu);
+  const ROLE_TABLE_QUICK_ACTIONS=buildRoleTableQuickActions(tu);
+  const ROLE_TABLE_VALUE_BADGES=buildRoleTableValueBadges(tu);
+  const usersView=Astro.url.searchParams.get("workspaceView");
+  const isolatedUsersView=
+    Astro.url.searchParams.get("embed")==="1"&&
+    !Astro.url.searchParams.has("settingsOverlay")&&
+    ["users","roles"].includes(usersView??"");
+  const showUsersView=(view: string) =>
+    !isolatedUsersView||usersView===view;
 
   return (
     <Fragment>
@@ -152,7 +152,7 @@ export default function pages_panel_users_index(props: any) {
                       {t.components.tableSettings.rowsPerPage}
                     </p>
                     <div className="mt-2 inline-flex overflow-hidden rounded-lg border border-border">
-                      {[10, 25, 50, 100].map((n: any) => (
+                      {[10,25,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -182,7 +182,7 @@ export default function pages_panel_users_index(props: any) {
                               defaultChecked
                               className="h-4 w-4 rounded border-border"
                             />
-                            {a.icon && (
+                            {a.icon&&(
                               <Fragment>
                                 <i
                                   className={`ti ${a.icon} text-base text-muted-foreground`}
@@ -211,7 +211,7 @@ export default function pages_panel_users_index(props: any) {
                       {t.components.tableSettings.rowsPerPage}
                     </p>
                     <div className="mt-2 inline-flex overflow-hidden rounded-lg border border-border">
-                      {[10, 25, 50, 100].map((n: any) => (
+                      {[10,25,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -241,7 +241,7 @@ export default function pages_panel_users_index(props: any) {
                               defaultChecked
                               className="h-4 w-4 rounded border-border"
                             />
-                            {a.icon && (
+                            {a.icon&&(
                               <Fragment>
                                 <i
                                   className={`ti ${a.icon} text-base text-muted-foreground`}
@@ -391,23 +391,19 @@ export default function pages_panel_users_index(props: any) {
           </ViewSettingsModal>
         </div>
 
-        <div className="space-y-6 pt-5">
+        <div className="space-y-6">
           {/** Tabs (estilo modules: underline + count badge) */}
           <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
-            {isolatedUsersView && (
+            {isolatedUsersView&&(
               <Fragment>
-                <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
-                  {usersView === "roles"
-                    ? t.users.tabs.groups
-                    : t.users.tabs.users}
-                </h2>
+
               </Fragment>
             )}
             <div
               className={
                 isolatedUsersView
                   ? "sr-only"
-                  : "flex min-w-0 flex-1 gap-1 overflow-x-auto"
+                  :"flex min-w-0 flex-1 gap-1 overflow-x-auto"
               }
             >
               <button
@@ -446,7 +442,7 @@ export default function pages_panel_users_index(props: any) {
                 <i className="ti ti-user-plus text-base"></i>
                 {t.users.buttons.newUser}
               </button>
-              {Astro.locals.user?.kind === "admin" && (
+              {Astro.locals.user?.kind==="admin"&&(
                 <Fragment>
                   <button
                     id="btn-hosting-plans"
@@ -470,8 +466,8 @@ export default function pages_panel_users_index(props: any) {
           </div>
 
           {/** ── Users panel ─────────────────────────────────────────── */}
-          <div id="panel-users">
-            {showUsersView("users") && (
+          <div id="panel-users" role="tabpanel">
+            {showUsersView("users")&&(
               <Fragment>
                 <DataTable
                   tableId="users-main-table"
@@ -489,8 +485,8 @@ export default function pages_panel_users_index(props: any) {
           </div>
 
           {/** ── Roles panel ─────────────────────────────────────────── */}
-          <div id="panel-roles" className="hidden">
-            {showUsersView("roles") && (
+          <div id="panel-roles" role="tabpanel" className="hidden">
+            {showUsersView("roles")&&(
               <Fragment>
                 <DataTable
                   tableId="roles-main-table"
@@ -510,9 +506,9 @@ export default function pages_panel_users_index(props: any) {
       </PanelLayout>
 
       {/** ── User Dialog ────────────────────────────────────────────── */}
-      {showUsersView("users") && (
+      {showUsersView("users")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-user"
             className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -521,130 +517,134 @@ export default function pages_panel_users_index(props: any) {
               titleId="user-dialog-title"
               closeId="user-dialog-close"
             />
-            <form
+            <form data-aux-form
               id="form-user"
               className="flex flex-col gap-4 px-6 py-5 max-h-[80vh] overflow-y-auto"
             >
-              <div
-                id="user-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-              ></div>
+              <div data-aux-body>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+                <div
+                  id="user-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+                ></div>
+
+                <div className="grid gap-4 @sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="user-username"
+                    >
+                      {t.users.userDialog.labelUsername}
+                    </label>
+                    <input
+                      id="user-username"
+                      type="text"
+                      required
+                      autoComplete="username"
+                      placeholder={t.users.userDialog.placeholderUsername}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="user-display">
+                      {t.users.userDialog.labelDisplayName}
+                    </label>
+                    <input
+                      id="user-display"
+                      type="text"
+                      placeholder={t.users.userDialog.placeholderDisplayName}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="user-username"
-                  >
-                    {t.users.userDialog.labelUsername}
+                  <label className="text-sm font-medium" htmlFor="user-email">
+                    {t.users.userDialog.labelEmail}
                   </label>
                   <input
-                    id="user-username"
-                    type="text"
-                    required
-                    autoComplete="username"
-                    placeholder={t.users.userDialog.placeholderUsername}
+                    id="user-email"
+                    type="email"
+                    placeholder={t.users.userDialog.placeholderEmail}
                     className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="user-display">
-                    {t.users.userDialog.labelDisplayName}
+                  <label className="text-sm font-medium" htmlFor="user-password">
+                    {t.users.userDialog.labelPassword}{" "}
+                    <span
+                      id="pass-hint"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t.users.userDialog.passwordHint}
+                    </span>
                   </label>
-                  <input
-                    id="user-display"
-                    type="text"
-                    placeholder={t.users.userDialog.placeholderDisplayName}
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
+                  <div className="relative">
+                    <input
+                      id="user-password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      id="user-password-toggle"
+                      tabIndex={-1}
+                      aria-label={t.users.userDialog.ariaTogglePassword}
+                      aria-pressed="false"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <i
+                        id="user-password-toggle-icon"
+                        className="ti ti-eye text-base"
+                      ></i>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="user-email">
-                  {t.users.userDialog.labelEmail}
-                </label>
-                <input
-                  id="user-email"
-                  type="email"
-                  placeholder={t.users.userDialog.placeholderEmail}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="user-password">
-                  {t.users.userDialog.labelPassword}{" "}
-                  <span
-                    id="pass-hint"
-                    className="text-xs text-muted-foreground"
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t.users.userDialog.labelGroups}
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {t.users.userDialog.groupsHelp}
+                  </p>
+                  <div className="relative">
+                    <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i>
+                    <input
+                      id="user-groups-search"
+                      type="text"
+                      placeholder={t.users.userDialog.placeholderFilterGroups}
+                      className="h-9 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div
+                    id="user-groups-grid"
+                    className="grid grid-cols-2 gap-2 @sm:grid-cols-3 max-h-48 overflow-y-auto"
                   >
-                    {t.users.userDialog.passwordHint}
+                    <p className="col-span-full text-xs text-muted-foreground">
+                      {t.users.userDialog.noGroupsAvailable}
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    id="user-enabled"
+                    type="checkbox"
+                    defaultChecked
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                  />
+                  <span className="text-sm">
+                    {t.users.userDialog.labelUserActive}
                   </span>
                 </label>
-                <div className="relative">
-                  <input
-                    id="user-password"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button
-                    type="button"
-                    id="user-password-toggle"
-                    tabIndex={-1}
-                    aria-label={t.users.userDialog.ariaTogglePassword}
-                    aria-pressed="false"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
-                  >
-                    <i
-                      id="user-password-toggle-icon"
-                      className="ti ti-eye text-base"
-                    ></i>
-                  </button>
-                </div>
+
+
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {t.users.userDialog.labelGroups}
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  {t.users.userDialog.groupsHelp}
-                </p>
-                <div className="relative">
-                  <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"></i>
-                  <input
-                    id="user-groups-search"
-                    type="text"
-                    placeholder={t.users.userDialog.placeholderFilterGroups}
-                    className="h-9 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <div
-                  id="user-groups-grid"
-                  className="grid grid-cols-2 gap-2 sm:grid-cols-3 max-h-48 overflow-y-auto"
-                >
-                  <p className="col-span-full text-xs text-muted-foreground">
-                    {t.users.userDialog.noGroupsAvailable}
-                  </p>
-                </div>
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  id="user-enabled"
-                  type="checkbox"
-                  defaultChecked
-                  className="h-4 w-4 accent-primary cursor-pointer"
-                />
-                <span className="text-sm">
-                  {t.users.userDialog.labelUserActive}
-                </span>
-              </label>
-
-              <div className="flex gap-3 pt-1">
+              <div data-aux-footer className="flex gap-3 pt-1">
                 <button
                   type="button"
                   id="user-ai-help"
@@ -674,9 +674,9 @@ export default function pages_panel_users_index(props: any) {
       )}
 
       {/** ── Generate login key (ask passphrase) ─────────────────────── */}
-      {showUsersView("users") && (
+      {showUsersView("users")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-gen-key"
             className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -685,76 +685,84 @@ export default function pages_panel_users_index(props: any) {
               titleId="gen-key-title"
               closeId="gen-key-close"
             />
-            <form id="form-gen-key" className="flex flex-col gap-4 px-6 py-5">
-              <input
-                id="gen-key-username"
-                type="text"
-                autoComplete="username"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden="true"
-                defaultValue=""
-                readOnly
-              />
-              <div
-                id="gen-key-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-              ></div>
-              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground space-y-1">
-                <div className="flex items-start gap-2">
-                  <i className="ti ti-key text-sm text-emerald-600 dark:text-emerald-400 mt-0.5"></i>
-                  <span>
-                    {t.users.genKeyDialog.infoPublicKey}{" "}
-                    <strong>{t.users.genKeyDialog.infoPublicKeyBold}</strong>
-                    {t.users.genKeyDialog.infoPublicKeyInstall}{" "}
-                    <code className="rounded bg-muted px-1 py-0.5 font-mono">
-                      ~/.ssh/authorized_keys
-                    </code>{" "}
-                    {t.users.genKeyDialog.infoPublicKeySuffix}
-                  </span>
+            <form data-aux-form id="form-gen-key" className="flex flex-col gap-4 px-6 py-5">
+              <div data-aux-body>
+
+                <input
+                  id="gen-key-username"
+                  type="text"
+                  autoComplete="username"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  defaultValue=""
+                  readOnly
+                />
+
+                <div
+                  id="gen-key-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+                ></div>
+
+                <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-start gap-2">
+                    <i className="ti ti-key text-sm text-emerald-600 dark:text-emerald-400 mt-0.5"></i>
+                    <span>
+                      {t.users.genKeyDialog.infoPublicKey}{" "}
+                      <strong>{t.users.genKeyDialog.infoPublicKeyBold}</strong>
+                      {t.users.genKeyDialog.infoPublicKeyInstall}{" "}
+                      <code className="rounded bg-muted px-1 py-0.5 font-mono">
+                        ~/.ssh/authorized_keys
+                      </code>{" "}
+                      {t.users.genKeyDialog.infoPublicKeySuffix}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <i className="ti ti-lock text-sm text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                    <span>
+                      {t.users.genKeyDialog.infoPrivateKey}{" "}
+                      <strong>{t.users.genKeyDialog.infoPrivateKeyBold}</strong>{" "}
+                      {t.users.genKeyDialog.infoPrivateKeyEncrypted}{" "}
+                      <strong>{t.users.genKeyDialog.infoPrivateKeyOnce}</strong>{" "}
+                      {t.users.genKeyDialog.infoPrivateKeyNoSave}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <i className="ti ti-lock text-sm text-amber-600 dark:text-amber-400 mt-0.5"></i>
-                  <span>
-                    {t.users.genKeyDialog.infoPrivateKey}{" "}
-                    <strong>{t.users.genKeyDialog.infoPrivateKeyBold}</strong>{" "}
-                    {t.users.genKeyDialog.infoPrivateKeyEncrypted}{" "}
-                    <strong>{t.users.genKeyDialog.infoPrivateKeyOnce}</strong>{" "}
-                    {t.users.genKeyDialog.infoPrivateKeyNoSave}
-                  </span>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="gen-key-pass">
+                    {t.users.genKeyDialog.labelPassword}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="gen-key-pass"
+                      type="password"
+                      required
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      id="gen-key-pass-toggle"
+                      tabIndex={-1}
+                      aria-label={t.users.genKeyDialog.ariaTogglePassword}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+                    >
+                      <i
+                        id="gen-key-pass-toggle-icon"
+                        className="ti ti-eye text-base"
+                      ></i>
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t.users.genKeyDialog.passwordHelp}
+                  </p>
                 </div>
+
+
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="gen-key-pass">
-                  {t.users.genKeyDialog.labelPassword}
-                </label>
-                <div className="relative">
-                  <input
-                    id="gen-key-pass"
-                    type="password"
-                    required
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button
-                    type="button"
-                    id="gen-key-pass-toggle"
-                    tabIndex={-1}
-                    aria-label={t.users.genKeyDialog.ariaTogglePassword}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
-                  >
-                    <i
-                      id="gen-key-pass-toggle-icon"
-                      className="ti ti-eye text-base"
-                    ></i>
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t.users.genKeyDialog.passwordHelp}
-                </p>
-              </div>
-              <div className="flex gap-3 pt-1">
+              <div data-aux-footer className="flex gap-3 pt-1">
                 <button
                   type="button"
                   id="gen-key-cancel"
@@ -776,9 +784,9 @@ export default function pages_panel_users_index(props: any) {
       )}
 
       {/** ── Change password (ADMIN only · gated by admin's own 2FA) ──── */}
-      {showUsersView("users") && (
+      {showUsersView("users")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-change-pw"
             className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -787,94 +795,102 @@ export default function pages_panel_users_index(props: any) {
               titleId="change-pw-title"
               closeId="change-pw-close"
             />
-            <form id="form-change-pw" className="flex flex-col gap-4 px-6 py-5">
-              <input
-                id="change-pw-username"
-                type="text"
-                autoComplete="username"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden="true"
-                defaultValue=""
-                readOnly
-              />
-              <div
-                id="change-pw-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-              ></div>
-              <div
-                id="change-pw-2fa-hint"
-                className="hidden rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
-              >
-                <p className="font-medium">
-                  <i className="ti ti-shield-lock mr-1"></i>
-                  {t.users.changePwDialog.twoFaHintTitle}
-                </p>
-                <p className="mt-1">{t.users.changePwDialog.twoFaHintBody}</p>
-                <a
-                  href="/panel/settings#seguridad"
-                  className="mt-2 inline-flex items-center gap-1 font-medium underline"
+            <form data-aux-form id="form-change-pw" className="flex flex-col gap-4 px-6 py-5">
+              <div data-aux-body>
+
+                <input
+                  id="change-pw-username"
+                  type="text"
+                  autoComplete="username"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  defaultValue=""
+                  readOnly
+                />
+
+                <div
+                  id="change-pw-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+                ></div>
+
+                <div
+                  id="change-pw-2fa-hint"
+                  className="hidden rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
                 >
-                  <i className="ti ti-arrow-right"></i>{" "}
-                  {t.users.changePwDialog.twoFaHintLink}
-                </a>
-              </div>
-              <div id="change-pw-fields" className="flex flex-col gap-4">
-                <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-                  <i className="ti ti-info-circle mr-1"></i>
-                  {t.users.changePwDialog.infoText}
-                </div>
-                <div className="space-y-1.5">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="change-pw-password"
-                  >
-                    {t.users.changePwDialog.labelNewPassword}
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="change-pw-password"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="••••••••"
-                      className="h-10 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <button
-                      type="button"
-                      id="change-pw-pass-toggle"
-                      tabIndex={-1}
-                      aria-label={t.users.changePwDialog.ariaTogglePassword}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
-                    >
-                      <i
-                        id="change-pw-pass-toggle-icon"
-                        className="ti ti-eye text-base"
-                      ></i>
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t.users.changePwDialog.passwordStrengthHint}
+                  <p className="font-medium">
+                    <i className="ti ti-shield-lock mr-1"></i>
+                    {t.users.changePwDialog.twoFaHintTitle}
                   </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="change-pw-totp"
+                  <p className="mt-1">{t.users.changePwDialog.twoFaHintBody}</p>
+                  <a
+                    href="/panel/settings#seguridad"
+                    className="mt-2 inline-flex items-center gap-1 font-medium underline"
                   >
-                    {t.users.changePwDialog.labelTotp}
-                  </label>
-                  <input
-                    id="change-pw-totp"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={10}
-                    placeholder="000000"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm tracking-widest placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
+                    <i className="ti ti-arrow-right"></i>{" "}
+                    {t.users.changePwDialog.twoFaHintLink}
+                  </a>
                 </div>
+
+                <div id="change-pw-fields" className="flex flex-col gap-4">
+                  <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+                    <i className="ti ti-info-circle mr-1"></i>
+                    {t.users.changePwDialog.infoText}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="change-pw-password"
+                    >
+                      {t.users.changePwDialog.labelNewPassword}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="change-pw-password"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="••••••••"
+                        className="h-10 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <button
+                        type="button"
+                        id="change-pw-pass-toggle"
+                        tabIndex={-1}
+                        aria-label={t.users.changePwDialog.ariaTogglePassword}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+                      >
+                        <i
+                          id="change-pw-pass-toggle-icon"
+                          className="ti ti-eye text-base"
+                        ></i>
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t.users.changePwDialog.passwordStrengthHint}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="change-pw-totp"
+                    >
+                      {t.users.changePwDialog.labelTotp}
+                    </label>
+                    <input
+                      id="change-pw-totp"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={10}
+                      placeholder="000000"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm tracking-widest placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
+
               </div>
-              <div className="flex gap-3 pt-1">
+              <div data-aux-footer className="flex gap-3 pt-1">
                 <button
                   type="button"
                   id="change-pw-cancel"
@@ -896,9 +912,9 @@ export default function pages_panel_users_index(props: any) {
       )}
 
       {/** ── Login key result (shown ONCE) ───────────────────────────── */}
-      {showUsersView("users") && (
+      {showUsersView("users")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-user-key"
             className="w-full max-w-xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -906,88 +922,91 @@ export default function pages_panel_users_index(props: any) {
               title={t.users.keyResultDialog.title}
               closeId="user-key-close"
             />
-            <div className="flex flex-col gap-4 px-6 py-5 max-h-[80vh] overflow-y-auto">
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
-                <i className="ti ti-alert-triangle mr-1"></i>
-                {t.users.keyResultDialog.warningCopyNow}{" "}
-                <strong>{t.users.keyResultDialog.warningCopyNowBold}</strong>{" "}
-                {t.users.keyResultDialog.warningBothKeys}{" "}
-                <strong>{t.users.keyResultDialog.warningOnce}</strong>{" "}
-                {t.users.keyResultDialog.warningNoSave}
-                {t.users.keyResultDialog.warningPublicInstalled}{" "}
-                <code className="rounded bg-amber-500/15 px-1 py-0.5 font-mono text-xs">
-                  ~/.ssh/authorized_keys
-                </code>
-                .
-              </div>
+            <div data-aux-body>
+              <div className="flex flex-col gap-4 px-6 py-5 max-h-[80vh] overflow-y-auto">
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+                  <i className="ti ti-alert-triangle mr-1"></i>
+                  {t.users.keyResultDialog.warningCopyNow}{" "}
+                  <strong>{t.users.keyResultDialog.warningCopyNowBold}</strong>{" "}
+                  {t.users.keyResultDialog.warningBothKeys}{" "}
+                  <strong>{t.users.keyResultDialog.warningOnce}</strong>{" "}
+                  {t.users.keyResultDialog.warningNoSave}
+                  {t.users.keyResultDialog.warningPublicInstalled}{" "}
+                  <code className="rounded bg-amber-500/15 px-1 py-0.5 font-mono text-xs">
+                    ~/.ssh/authorized_keys
+                  </code>
+                  .
+                </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">
-                    {t.users.keyResultDialog.labelPrivateKey}
-                  </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      {t.users.keyResultDialog.labelPrivateKey}
+                    </label>
+                    <button
+                      type="button"
+                      id="user-key-copy-priv"
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
+                    >
+                      <i className="ti ti-copy"></i>{" "}
+                      {t.users.keyResultDialog.btnCopyPrivate}
+                    </button>
+                  </div>
+                  <textarea
+                    id="user-key-private"
+                    readOnly
+                    rows={8}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  ></textarea>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      {t.users.keyResultDialog.labelPublicKey}
+                    </label>
+                    <button
+                      type="button"
+                      id="user-key-copy-pub"
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
+                    >
+                      <i className="ti ti-copy"></i>{" "}
+                      {t.users.keyResultDialog.btnCopyPublic}
+                    </button>
+                  </div>
+                  <textarea
+                    id="user-key-public"
+                    readOnly
+                    rows={3}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  ></textarea>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {t.users.keyResultDialog.fingerprintLabel}{" "}
+                  <span id="user-key-fp" className="font-mono"></span>
+                </p>
+
+                <div className="pt-1">
                   <button
                     type="button"
-                    id="user-key-copy-priv"
-                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
+                    id="user-key-done"
+                    className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   >
-                    <i className="ti ti-copy"></i>{" "}
-                    {t.users.keyResultDialog.btnCopyPrivate}
+                    {t.users.keyResultDialog.btnDone}
                   </button>
                 </div>
-                <textarea
-                  id="user-key-private"
-                  readOnly
-                  rows={8}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                ></textarea>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">
-                    {t.users.keyResultDialog.labelPublicKey}
-                  </label>
-                  <button
-                    type="button"
-                    id="user-key-copy-pub"
-                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
-                  >
-                    <i className="ti ti-copy"></i>{" "}
-                    {t.users.keyResultDialog.btnCopyPublic}
-                  </button>
-                </div>
-                <textarea
-                  id="user-key-public"
-                  readOnly
-                  rows={3}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                ></textarea>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {t.users.keyResultDialog.fingerprintLabel}{" "}
-                <span id="user-key-fp" className="font-mono"></span>
-              </p>
-
-              <div className="pt-1">
-                <button
-                  type="button"
-                  id="user-key-done"
-                  className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  {t.users.keyResultDialog.btnDone}
-                </button>
               </div>
             </div>
+
           </dialog>
         </Fragment>
       )}
 
       {/** ── SSH Keys Dialog ────────────────────────────────────────── */}
-      {showUsersView("users") && (
+      {showUsersView("users")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-ssh-keys"
             className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -996,61 +1015,64 @@ export default function pages_panel_users_index(props: any) {
               titleId="ssh-keys-title"
               closeId="ssh-keys-close"
             />
-            <div className="flex flex-col gap-4 px-6 py-5 max-h-[80vh] overflow-y-auto">
-              <div
-                id="ssh-keys-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-              ></div>
+            <div data-aux-body>
+              <div className="flex flex-col gap-4 px-6 py-5 max-h-[80vh] overflow-y-auto">
+                <div
+                  id="ssh-keys-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+                ></div>
 
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  {t.users.sshKeysDialog.keysRegisteredInfo}{" "}
-                  <code>~/.ssh/authorized_keys</code>{" "}
-                  {t.users.sshKeysDialog.keysRegisteredSuffix}
-                </p>
-                <ul
-                  id="ssh-keys-list"
-                  className="divide-y divide-border rounded-lg border border-border text-sm"
-                >
-                  <li className="px-4 py-3 text-xs text-muted-foreground">
-                    {t.users.sshKeysDialog.loadingKeys}
-                  </li>
-                </ul>
-              </div>
-
-              <form
-                id="form-ssh-key"
-                className="space-y-2 border-t border-border pt-4"
-              >
-                <label className="text-sm font-medium" htmlFor="ssh-key-input">
-                  {t.users.sshKeysDialog.labelAddKey}
-                </label>
-                <textarea
-                  id="ssh-key-input"
-                  rows={3}
-                  placeholder={t.users.sshKeysDialog.placeholderKey}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                ></textarea>
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    id="ssh-key-add"
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {t.users.sshKeysDialog.keysRegisteredInfo}{" "}
+                    <code>~/.ssh/authorized_keys</code>{" "}
+                    {t.users.sshKeysDialog.keysRegisteredSuffix}
+                  </p>
+                  <ul
+                    id="ssh-keys-list"
+                    className="divide-y divide-border rounded-lg border border-border text-sm"
                   >
-                    <i className="ti ti-plus text-base"></i>{" "}
-                    {t.users.sshKeysDialog.btnAddKey}
-                  </button>
+                    <li className="px-4 py-3 text-xs text-muted-foreground">
+                      {t.users.sshKeysDialog.loadingKeys}
+                    </li>
+                  </ul>
                 </div>
-              </form>
+
+                <form
+                  id="form-ssh-key"
+                  className="space-y-2 border-t border-border pt-4"
+                >
+                  <label className="text-sm font-medium" htmlFor="ssh-key-input">
+                    {t.users.sshKeysDialog.labelAddKey}
+                  </label>
+                  <textarea
+                    id="ssh-key-input"
+                    rows={3}
+                    placeholder={t.users.sshKeysDialog.placeholderKey}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  ></textarea>
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      id="ssh-key-add"
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      <i className="ti ti-plus text-base"></i>{" "}
+                      {t.users.sshKeysDialog.btnAddKey}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
+
           </dialog>
         </Fragment>
       )}
 
       {/** ── Role Dialog ────────────────────────────────────────────── */}
-      {showUsersView("roles") && (
+      {showUsersView("roles")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-role"
             className="w-full max-w-3xl rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -1059,269 +1081,272 @@ export default function pages_panel_users_index(props: any) {
               titleId="role-dialog-title"
               closeId="role-dialog-close"
             />
-            <p
-              id="role-plan-hint"
-              hidden
-              className="px-6 pt-3 text-xs font-mono text-muted-foreground"
-            ></p>
-            <form
-              id="form-role"
-              className="flex flex-col gap-4 px-6 py-5 max-h-[82vh] overflow-y-auto"
-            >
-              <div
-                id="role-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-              ></div>
-              <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1 w-fit">
-                <button
-                  type="button"
-                  data-role-tab="general"
-                  className="role-tab-btn rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-all bg-card text-foreground shadow-sm"
-                >
-                  {t.users.roleDialog.tabGeneral}
-                </button>
-                <button
-                  type="button"
-                  data-role-tab="panel"
-                  className="role-tab-btn rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
-                >
-                  {t.users.roleDialog.tabPanel}
-                </button>
-                <button
-                  type="button"
-                  data-role-tab="server"
-                  className="role-tab-btn rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
-                >
-                  {t.users.roleDialog.tabServer}
-                </button>
-              </div>
-
-              <div
-                id="role-pane-general"
-                data-role-pane="general"
-                className="space-y-4"
+            <div data-aux-body>
+              <p
+                id="role-plan-hint"
+                hidden
+                className="px-6 pt-3 text-xs font-mono text-muted-foreground"
+              ></p>
+              <form
+                id="form-role"
+                className="flex flex-col gap-4 px-6 py-5 max-h-[82vh] overflow-y-auto"
               >
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="role-name">
-                    {t.users.roleDialog.labelGroupName}
-                  </label>
-                  <input
-                    id="role-name"
-                    type="text"
-                    required
-                    placeholder={t.users.roleDialog.placeholderGroupName}
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <p
-                    id="role-name-hint"
-                    className="hidden text-xs text-amber-600 dark:text-amber-400"
-                  >
-                    {t.users.roleDialog.groupNameHint}
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="role-desc">
-                    {t.users.roleDialog.labelDescription}
-                  </label>
-                  <input
-                    id="role-desc"
-                    type="text"
-                    placeholder={t.users.roleDialog.placeholderDescription}
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  {t.users.roleDialog.generalInfo}{" "}
-                  <strong>{t.users.roleDialog.generalInfoPanelTab}</strong>.
-                </p>
-              </div>
-
-              <div
-                id="role-pane-panel"
-                data-role-pane="panel"
-                className="hidden space-y-3"
-              >
-                <p className="text-xs text-muted-foreground">
-                  {t.users.roleDialog.panelPermsInfo}
-                </p>
-                {/** Sub-pestañas por módulo (se renderizan desde el catálogo en JS) */}
                 <div
-                  id="role-module-tabs"
-                  className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/30 p-1"
+                  id="role-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
                 ></div>
-                <div id="role-module-panes"></div>
-              </div>
+                <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1 w-fit">
+                  <button
+                    type="button"
+                    data-role-tab="general"
+                    className="role-tab-btn rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-all bg-card text-foreground shadow-sm"
+                  >
+                    {t.users.roleDialog.tabGeneral}
+                  </button>
+                  <button
+                    type="button"
+                    data-role-tab="panel"
+                    className="role-tab-btn rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
+                  >
+                    {t.users.roleDialog.tabPanel}
+                  </button>
+                  <button
+                    type="button"
+                    data-role-tab="server"
+                    className="role-tab-btn rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-all text-muted-foreground hover:text-foreground"
+                  >
+                    {t.users.roleDialog.tabServer}
+                  </button>
+                </div>
 
-              <div
-                id="role-pane-server"
-                data-role-pane="server"
-                className="hidden space-y-4"
-              >
-                <div className="space-y-2 rounded-lg border border-border p-3">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <input
-                      id="perm-file-allow-all"
-                      type="checkbox"
-                      className="h-3.5 w-3.5 rounded border-input text-primary"
-                    />
-                    {t.users.roleDialog.labelFileAllowAll}
-                  </label>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <div className="mb-1 flex items-center justify-between">
-                        <label className="text-xs text-muted-foreground">
-                          {t.users.roleDialog.labelAllowedPaths}
-                        </label>
-                        <button
-                          type="button"
-                          data-path-add="perm-file-allow-paths"
-                          className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-accent"
-                        >
-                          <i className="ti ti-folder-plus"></i>{" "}
-                          {t.users.roleDialog.btnAddPath}
-                        </button>
-                      </div>
-                      <div
-                        id="chips-perm-file-allow-paths"
-                        className="flex flex-wrap gap-1 min-h-[2rem] rounded-lg border border-input bg-background p-2"
-                      ></div>
-                      <textarea
-                        id="perm-file-allow-paths"
-                        className="hidden"
-                      ></textarea>
-                    </div>
-                    <div>
-                      <div className="mb-1 flex items-center justify-between">
-                        <label className="text-xs text-muted-foreground">
-                          {t.users.roleDialog.labelReadonlyPaths}
-                        </label>
-                        <button
-                          type="button"
-                          data-path-add="perm-file-readonly-paths"
-                          className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-accent"
-                        >
-                          <i className="ti ti-folder-plus"></i>{" "}
-                          {t.users.roleDialog.btnAddPath}
-                        </button>
-                      </div>
-                      <div
-                        id="chips-perm-file-readonly-paths"
-                        className="flex flex-wrap gap-1 min-h-[2rem] rounded-lg border border-input bg-background p-2"
-                      ></div>
-                      <textarea
-                        id="perm-file-readonly-paths"
-                        className="hidden"
-                      ></textarea>
-                    </div>
-                    <div>
-                      <div className="mb-1 flex items-center justify-between">
-                        <label className="text-xs text-muted-foreground">
-                          {t.users.roleDialog.labelDeniedPaths}
-                        </label>
-                        <button
-                          type="button"
-                          data-path-add="perm-file-deny-paths"
-                          className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-accent"
-                        >
-                          <i className="ti ti-folder-plus"></i>{" "}
-                          {t.users.roleDialog.btnAddPath}
-                        </button>
-                      </div>
-                      <div
-                        id="chips-perm-file-deny-paths"
-                        className="flex flex-wrap gap-1 min-h-[2rem] rounded-lg border border-input bg-background p-2"
-                      ></div>
-                      <textarea
-                        id="perm-file-deny-paths"
-                        className="hidden"
-                      ></textarea>
-                    </div>
-                  </div>
-                  <div className="border-t border-border pt-3">
-                    <label
-                      className="text-xs text-muted-foreground"
-                      htmlFor="perm-file-default-path"
-                    >
-                      {t.users.roleDialog.labelDefaultPath}
+                <div
+                  id="role-pane-general"
+                  data-role-pane="general"
+                  className="space-y-4"
+                >
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="role-name">
+                      {t.users.roleDialog.labelGroupName}
                     </label>
                     <input
-                      id="perm-file-default-path"
+                      id="role-name"
                       type="text"
-                      placeholder={t.users.roleDialog.placeholderDefaultPath}
-                      className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      required
+                      placeholder={t.users.roleDialog.placeholderGroupName}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {t.users.roleDialog.defaultPathHelp}
+                    <p
+                      id="role-name-hint"
+                      className="hidden text-xs text-amber-600 dark:text-amber-400"
+                    >
+                      {t.users.roleDialog.groupNameHint}
                     </p>
                   </div>
-                </div>
-                <div className="space-y-2 rounded-lg border border-border p-3">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <input
-                      id="perm-cmd-allow-all"
-                      type="checkbox"
-                      className="h-3.5 w-3.5 rounded border-input text-primary"
-                    />
-                    {t.users.roleDialog.labelCmdAllowAll}
-                  </label>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">
-                      {t.users.roleDialog.labelCmdGroupsAllowed}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="role-desc">
+                      {t.users.roleDialog.labelDescription}
                     </label>
-                    <div
-                      id="perm-command-groups-grid"
-                      className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-                    ></div>
+                    <input
+                      id="role-desc"
+                      type="text"
+                      placeholder={t.users.roleDialog.placeholderDescription}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">
-                        {t.users.roleDialog.labelCmdAllowExtra}
-                      </label>
-                      <textarea
-                        id="perm-cmd-allow-list"
-                        rows={3}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs"
-                      ></textarea>
+                  <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    {t.users.roleDialog.generalInfo}{" "}
+                    <strong>{t.users.roleDialog.generalInfoPanelTab}</strong>.
+                  </p>
+                </div>
+
+                <div
+                  id="role-pane-panel"
+                  data-role-pane="panel"
+                  className="hidden space-y-3"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {t.users.roleDialog.panelPermsInfo}
+                  </p>
+                  {/** Sub-pestañas por módulo (se renderizan desde el catálogo en JS) */}
+                  <div
+                    id="role-module-tabs"
+                    className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/30 p-1"
+                  ></div>
+                  <div id="role-module-panes"></div>
+                </div>
+
+                <div
+                  id="role-pane-server"
+                  data-role-pane="server"
+                  className="hidden space-y-4"
+                >
+                  <div className="space-y-2 rounded-lg border border-border p-3">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <input
+                        id="perm-file-allow-all"
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-input text-primary"
+                      />
+                      {t.users.roleDialog.labelFileAllowAll}
+                    </label>
+                    <div className="grid gap-3 @sm:grid-cols-3">
+                      <div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <label className="text-xs text-muted-foreground">
+                            {t.users.roleDialog.labelAllowedPaths}
+                          </label>
+                          <button
+                            type="button"
+                            data-path-add="perm-file-allow-paths"
+                            className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-accent"
+                          >
+                            <i className="ti ti-folder-plus"></i>{" "}
+                            {t.users.roleDialog.btnAddPath}
+                          </button>
+                        </div>
+                        <div
+                          id="chips-perm-file-allow-paths"
+                          className="flex flex-wrap gap-1 min-h-[2rem] rounded-lg border border-input bg-background p-2"
+                        ></div>
+                        <textarea
+                          id="perm-file-allow-paths"
+                          className="hidden"
+                        ></textarea>
+                      </div>
+                      <div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <label className="text-xs text-muted-foreground">
+                            {t.users.roleDialog.labelReadonlyPaths}
+                          </label>
+                          <button
+                            type="button"
+                            data-path-add="perm-file-readonly-paths"
+                            className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-accent"
+                          >
+                            <i className="ti ti-folder-plus"></i>{" "}
+                            {t.users.roleDialog.btnAddPath}
+                          </button>
+                        </div>
+                        <div
+                          id="chips-perm-file-readonly-paths"
+                          className="flex flex-wrap gap-1 min-h-[2rem] rounded-lg border border-input bg-background p-2"
+                        ></div>
+                        <textarea
+                          id="perm-file-readonly-paths"
+                          className="hidden"
+                        ></textarea>
+                      </div>
+                      <div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <label className="text-xs text-muted-foreground">
+                            {t.users.roleDialog.labelDeniedPaths}
+                          </label>
+                          <button
+                            type="button"
+                            data-path-add="perm-file-deny-paths"
+                            className="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-accent"
+                          >
+                            <i className="ti ti-folder-plus"></i>{" "}
+                            {t.users.roleDialog.btnAddPath}
+                          </button>
+                        </div>
+                        <div
+                          id="chips-perm-file-deny-paths"
+                          className="flex flex-wrap gap-1 min-h-[2rem] rounded-lg border border-input bg-background p-2"
+                        ></div>
+                        <textarea
+                          id="perm-file-deny-paths"
+                          className="hidden"
+                        ></textarea>
+                      </div>
                     </div>
+                    <div className="border-t border-border pt-3">
+                      <label
+                        className="text-xs text-muted-foreground"
+                        htmlFor="perm-file-default-path"
+                      >
+                        {t.users.roleDialog.labelDefaultPath}
+                      </label>
+                      <input
+                        id="perm-file-default-path"
+                        type="text"
+                        placeholder={t.users.roleDialog.placeholderDefaultPath}
+                        className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {t.users.roleDialog.defaultPathHelp}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 rounded-lg border border-border p-3">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <input
+                        id="perm-cmd-allow-all"
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-input text-primary"
+                      />
+                      {t.users.roleDialog.labelCmdAllowAll}
+                    </label>
                     <div>
                       <label className="mb-1 block text-xs text-muted-foreground">
-                        {t.users.roleDialog.labelCmdDenyList}
+                        {t.users.roleDialog.labelCmdGroupsAllowed}
                       </label>
-                      <textarea
-                        id="perm-cmd-deny-list"
-                        rows={3}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs"
-                      ></textarea>
+                      <div
+                        id="perm-command-groups-grid"
+                        className="grid grid-cols-2 gap-2 @sm:grid-cols-3"
+                      ></div>
+                    </div>
+                    <div className="grid gap-3 @sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs text-muted-foreground">
+                          {t.users.roleDialog.labelCmdAllowExtra}
+                        </label>
+                        <textarea
+                          id="perm-cmd-allow-list"
+                          rows={3}
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs"
+                        ></textarea>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-muted-foreground">
+                          {t.users.roleDialog.labelCmdDenyList}
+                        </label>
+                        <textarea
+                          id="perm-cmd-deny-list"
+                          rows={3}
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs"
+                        ></textarea>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  id="role-cancel"
-                  className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
-                >
-                  {t.users.roleDialog.btnCancel}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  {t.users.roleDialog.btnSave}
-                </button>
-              </div>
-            </form>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    id="role-cancel"
+                    className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+                  >
+                    {t.users.roleDialog.btnCancel}
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    {t.users.roleDialog.btnSave}
+                  </button>
+                </div>
+              </form>
+            </div>
+
           </dialog>
         </Fragment>
       )}
 
       {/** ── Path browser ───────────────────────────────────────────── */}
-      {showUsersView("roles") && (
+      {showUsersView("roles")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-path-browser"
             className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -1329,7 +1354,10 @@ export default function pages_panel_users_index(props: any) {
               title={t.users.pathBrowserDialog.title}
               closeId="path-browser-close"
             />
-            <div className="px-5 py-3 space-y-2">
+            <div data-aux-body>
+
+            </div>
+            <div data-aux-footer className="px-5 py-3 space-y-2">
               <div className="flex items-center gap-2">
                 <button
                   id="path-browser-up"
@@ -1374,7 +1402,7 @@ export default function pages_panel_users_index(props: any) {
         </Fragment>
       )}
 
-      {Astro.locals.user?.kind === "admin" && (
+      {Astro.locals.user?.kind==="admin"&&(
         <Fragment>
           <HostingTemplates p={t.permissions} />
         </Fragment>

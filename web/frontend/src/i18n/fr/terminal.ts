@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "Fermer (les terminaux restent actifs)"
   },
   "sidebar": {
-    "tabSnippets": "Extraits",
+    "tabSnippets": "Commandes enregistrées",
     "tabHistory": "Historique",
     "tabConfig": "Configuration",
     "closePanel": "Fermer le panneau latéral",
     "closePanelTitle": "Fermer le panneau"
   },
   "snippets": {
-    "heading": "Extraits",
-    "newSnippet": "Nouvel extrait",
-    "searchPlaceholder": "Rechercher extrait…",
-    "searchAria": "Rechercher les extraits",
+    "heading": "Commandes enregistrées",
+    "newSnippet": "Nouvelle commande",
+    "searchPlaceholder": "Rechercher des commandes...",
+    "searchAria": "Rechercher des commandes enregistrées",
     "filterByCategoryAria": "Filtrer par catégorie",
     "allCategories": "Toutes les catégories"
   },

@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "すべての受信者と送信者に有効な鍵が必要です。"
   },
   "inbox": {
+    "readerLoading": "メッセージを読み込み中…",
+    "retryMessage": "再試行",
+    "readerTimeout": "読み込みに時間がかかりすぎました。再試行してください。",
+
+    "toolsLabel": "ツール",
+    "filtersLabel": "フィルター",
     "pageTitle": "受信トレイ",
     "loadingAccount": "アカウントを読み込み中...",
     "allAccounts": "すべてのアカウント",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "移動",
     "msgIframeTitle": "メッセージの内容",
     "attachmentsLabel": "添付ファイル",
+    "moveUi": {
+      "search": "フォルダーを検索…",
+      "destination": "移動先フォルダー",
+      "cancel": "キャンセル",
+      "confirm": "ここに移動",
+      "moving": "移動中…",
+      "empty": "利用できるフォルダーがありません",
+      "error": "メッセージを移動できませんでした。再試行してください。",
+      "origin": "移動元"
+},
     "moveDlgTitle": "メッセージを移動",
     "foldersDlgTitle": "フォルダ管理",
     "foldersExistingHeader": "既存のフォルダ",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "アカウント #{id}",
-    "cleanupPrompt": "{account}（accountId: {id}）の INBOX を整理してください。全メッセージをページごとに確認し、疑わしいものは本文を読んで SPF、DKIM、DMARC、Return-Path、添付ファイルを調べます。迷惑メール、フィッシング、マルウェアを判定してください。正当なメール、既知の連絡先、返信、請求書には触れないでください。疑わしいメールは Revisar-IA に移動し、削除しないでください。移動件数と理由を要約してください。"
+    "cleanupPrompt": "{account}（accountId: {id}）の INBOX を整理してください。全メッセージをページごとに確認し、疑わしいものは本文を読んで SPF、DKIM、DMARC、Return-Path、添付ファイルを調べます。迷惑メール、フィッシング、マルウェアを判定してください。正当なメール、既知の連絡先、返信、請求書には触れないでください。疑わしいメールは Cuarentena に移動し、削除しないでください。移動件数と理由を要約してください。"
   }
 } as const;
 

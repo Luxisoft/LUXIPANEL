@@ -88,8 +88,8 @@ import { LOCAL_TARGET_SCOPE, api, resolveTargetScope } from "/scripts/extracted/
     }
     navHistory.length = 0;
     updateBackButton();
-    // The "current path" shared with the floating terminal (cd-on-connect)
-    // belongs to the PREVIOUS server — drop it so nothing cds into a foreign dir.
+    // The cached Files path belongs to the previous server; never carry it
+    // over to a different target.
     (window as any).__filesCurrentPath = "";
     try { sessionStorage.removeItem(FILES_CURRENT_PATH_KEY); } catch { /* ignore */ }
 

@@ -6,7 +6,7 @@ import mailPart2 from "./mail/part2";
 
 const mail = { ...mailPart1, ...mailPart2, serverConnection: {
   "title": "SMTP- / IMAP-Server",
-  "intro": "Verwenden Sie Postfächer eines anderen gespeicherten Servers. Diese Auswahl gilt für E-Mail in diesem Tab; andere Module behalten ihren aktiven Server.",
+  "intro": "Verwende Postfächer eines anderen gespeicherten Servers. Die Auswahl wird für deinen Benutzer in diesem Panel gespeichert; andere Module behalten ihren aktiven Server.",
   "serverLabel": "Mailserver",
   "hint": "Der Server benötigt kompatibles Postfix/Dovecot und erreichbare Mailports. Postfächer und Zugangsdaten stammen vom ausgewählten Server.",
   "apply": "Server übernehmen",

@@ -1,3 +1,4 @@
+import { setTerminalLoading } from "@/lib/terminal-loading";
 // Floating terminal — xterm session lifecycle, createTerminal,
 // loading overlay, WS connect/reconnect, and the shared ResizeObserver.
 import { getModeInitialCommand } from "./startup";
@@ -7,14 +8,13 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import "./terminal-scroll.css";
 import { containTerminalScroll } from "./terminal-scroll";
-import { S, sessions, escapeHtml } from "./state";
+import { S, sessions } from "./state";
 import { I18N, tI18n } from "./i18n";
 import { getTerminalTheme } from "./theme";
 import { getTabAccentClass } from "./tabs";
 import { BRIDGE_SESSION_SESSION_KEY, TARGET_SCOPE_SESSION_KEY, SERVER_SWITCHER_ID, ATTR_CURRENT_BRIDGE_SESSION_ID } from "@/lib/api-client";
 import { TerminalWsMsg } from "@/lib/terminal-ws-protocol";
 import { DEFAULT_BACKEND_PORT } from "@/lib/server-env";
-import { FILES_CURRENT_PATH_KEY } from "../../pages/panel/files/state";
 import { MOUSE_TRACKING_OFF, terminalProcessEnded, trackAlternateScreenExit } from "./terminal-lifecycle";
 import {
   setStatus,
@@ -69,12 +69,12 @@ import {
     containTerminalScroll(container);
     fitAddon.fit();
 
-    // cd to current files path when this new tab connects
-    const filesPath = (window as any).__filesCurrentPath || sessionStorage.getItem(FILES_CURRENT_PATH_KEY) || null;
+    // Let the server choose the default directory unless explicitly requested.
   const resolvedInitialCommand = options.initialCommand === undefined ? getModeInitialCommand() : options.initialCommand;
   sessions.set(tabId, {
       term,
       ws: null,
+      connectionPending: true,
       fitAddon,
       container,
       label: tI18n(I18N.tabLabel, { n: tabId }),
@@ -82,7 +82,7 @@ import {
       accentClass: getTabAccentClass(tabId),
     lineBuffer: "",
     cursorPos: 0,
-    cwd: normalizePath(options.cdOnConnect ?? filesPath ?? "/"),
+    cwd: options.cdOnConnect ? normalizePath(options.cdOnConnect) : "",
       historyIdx: -1,
       reconnectAttempts: 0,
       // Solo ocultamos la consola tras un overlay cuando hay un comando inicial
@@ -93,7 +93,7 @@ import {
       pendingVisibility: !!resolvedInitialCommand && !/^codex(?: resume)? --no-alt-screen(?:\s|$)/.test(resolvedInitialCommand),
       bootstrapBuffer: "",
       reconnectTimer: null,
-      cdOnConnect: options.cdOnConnect ?? filesPath,
+      cdOnConnect: options.cdOnConnect ?? null,
       initialCommand: resolvedInitialCommand,
       startupCommand: resolvedInitialCommand,
       suppressConnectedBanner: options.suppressConnectedBanner ?? false,
@@ -126,35 +126,12 @@ import {
   // container xterm de la sesión y mostramos un overlay con spinner. Cuando
   // detectamos el marker `__LXP_TUI_READY__` o el escape del buffer alterno
   // (\x1b[?1049h) en la salida del WS, revelamos la sesión.
-  function getLoadingOverlay(): HTMLElement | null {
-    const host = document.getElementById("terminal-container");
-    if (!host) return null;
-    let overlay = document.getElementById("lxp-terminal-loading") as HTMLElement | null;
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.id = "lxp-terminal-loading";
-      overlay.className =
-        "absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/95 text-muted-foreground";
-      overlay.innerHTML =
-        '<div class="inline-block animate-spin"><i class="ti ti-loader text-3xl text-primary"></i></div>' +
-        `<p class="text-sm font-medium">${escapeHtml(I18N.loading.title)}</p>` +
-        `<p id="lxp-terminal-loading-detail" class="text-xs text-muted-foreground/80">${escapeHtml(I18N.loading.detail)}</p>`;
-      const parent = host.parentElement ?? host;
-      if (getComputedStyle(parent).position === "static") parent.style.position = "relative";
-      parent.appendChild(overlay);
-    }
-    return overlay;
-  }
-
   function syncLoadingOverlay(): void {
-    const overlay = getLoadingOverlay();
-    if (!overlay) return;
+    const host = document.getElementById("terminal-container");
+    if (!host) return;
     const active = sessions.get(S.activeTabId);
-    const shouldShow = !!active?.pendingVisibility;
-    overlay.style.display = shouldShow ? "flex" : "none";
-    // Cuando está oculto debe ser totalmente transparente al input para que
-    // los clicks lleguen al xterm de abajo y el usuario pueda escribir.
-    overlay.style.pointerEvents = shouldShow ? "auto" : "none";
+    const busy = active ? !!(active.connectionPending || active.pendingVisibility) : host.getAttribute("aria-busy") === "true";
+    setTerminalLoading(host, busy, I18N.loading.title);
   }
 
   function setLoadingDetail(text: string): void {
@@ -208,6 +185,8 @@ import {
     let session = sessions.get(tabId);
     if (!session || session.connecting) return;
     session.connecting = true;
+    session.connectionPending = true;
+    syncLoadingOverlay();
     // Nueva conexión (inicial o reconexión): la sesión vuelve a estar "deseada
     // conectada" y sin sondeo de liveness pendiente.
     session.endedNormally = false;
@@ -223,7 +202,16 @@ import {
     const directProto = location.protocol === "https:" ? "wss:" : "ws:";
     // Prefers the session cookie, falls back to /api/auth/ws-token (the cookie
     // is httpOnly, so the direct-path `getToken()` returned empty).
-    const token = await getWebsocketToken();
+    const failConnection = () => {
+      if (sessions.get(tabId) !== session) return;
+      session.connecting = false; session.connectionPending = false; session.pendingVisibility = false;
+      syncLoadingOverlay();
+      term.write(`\r\n${I18N.status.connectionError}\r\n`);
+      if (tabId === S.activeTabId) setStatus(I18N.status.connectionError, false);
+    };
+    let token: string;
+    try { token = await getWebsocketToken(); }
+    catch { failConnection(); return; }
     if (sessions.get(tabId) !== session) return;
     // Id estable por pestaña para reattach. Se conserva entre reconexiones del
     // mismo `session` Y se persiste en localStorage por `tabId`: así sobrevive a
@@ -260,7 +248,9 @@ import {
     const wsAuthority = isNginxMode ? location.host : `${location.hostname}:${wsPort}`;
     const wsUrl = `${directProto}//${wsAuthority}/api/terminal/ws${tokenParam}`;
 
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket;
+    try { ws = new WebSocket(wsUrl); }
+    catch { failConnection(); return; }
     session.ws = ws;
     session.connecting = false;
 
@@ -294,6 +284,8 @@ import {
         }
         if (msg.type === "connected") {
           const s = sessions.get(tabId);
+          if (s) s.connectionPending = false;
+          syncLoadingOverlay();
           // Re-adjunte de una sesión tmux existente: ya tiene su estado (cwd,
           // proceso/TUI en curso). NO re-hacer `cd` ni re-lanzar el comando de
           // modo (corromperían el TUI). Solo banner distinto + refit.
@@ -315,7 +307,7 @@ import {
             }
             return;
           }
-          // cd to files path on first connection of a new tab
+          // Only an explicit caller or this session can request a directory change.
         if (s?.cdOnConnect) {
           ws.send(JSON.stringify({ type: TerminalWsMsg.INPUT, data: `cd ${JSON.stringify(s.cdOnConnect)}\r` }));
           s.cwd = normalizePath(s.cdOnConnect);
@@ -348,12 +340,16 @@ import {
         if (msg.type === "exit") {
           if (!msg.reason || terminalProcessEnded(msg.reason)) {
             const current = sessions.get(tabId);
-            if (current) current.endedNormally = true;
+            if (current) { current.endedNormally = true; current.connectionPending = false; current.pendingVisibility = false; }
+            syncLoadingOverlay();
             term.write(`\r\n\x1b[33m${tI18n(I18N.banner.sessionExited, { code: msg.code })}\x1b[0m\r\n`);
             if (tabId === S.activeTabId) setStatus(I18N.status.sessionEnded, false);
           }
         }
         if (msg.type === "error") {
+          const failed = sessions.get(tabId);
+          if (failed) { failed.connectionPending = false; failed.pendingVisibility = false; }
+          syncLoadingOverlay();
           term.write(`\r\n\x1b[31m${tI18n(I18N.banner.errorPrefix, { message: msg.message })}\x1b[0m\r\n`);
           if (tabId === S.activeTabId) setStatus(I18N.status.error, false);
         }
@@ -364,6 +360,10 @@ import {
     };
 
     ws.onerror = () => {
+      const failed = sessions.get(tabId);
+      if (failed?.ws !== ws) return;
+      failed.connectionPending = false; failed.pendingVisibility = false;
+      syncLoadingOverlay();
       term.write(`\r\n\x1b[31m${tI18n(I18N.banner.wsError, { url: wsUrl })}\x1b[0m\r\n`);
       term.write(`\x1b[33m${I18N.banner.wsErrorHint}\x1b[0m\r\n`);
       if (tabId === S.activeTabId) setStatus(I18N.status.connectionError, false);
@@ -377,10 +377,13 @@ import {
       // transport. Only a real PTY process exit should end this terminal tab.
       const processEnded = s.endedNormally || terminalProcessEnded(ev.reason);
       const shouldReconnect = !processEnded && s.reconnectAttempts < 8;
+      s.connectionPending = shouldReconnect;
+      if (!shouldReconnect) s.pendingVisibility = false;
+      syncLoadingOverlay();
       if (shouldReconnect) {
         const delay = Math.min(1500 * (s.reconnectAttempts + 1), 15_000);
         s.reconnectAttempts++;
-        s.cdOnConnect = s.cwd || (window as any).__filesCurrentPath || sessionStorage.getItem(FILES_CURRENT_PATH_KEY) || "/";
+        s.cdOnConnect = s.cwd || null;
         s.initialCommand = s.initialCommand || s.startupCommand;
         if (s.reconnectAttempts === 1) {
           term.write(`\r\n\x1b[33m${I18N.banner.interrupted}\x1b[0m\r\n`);

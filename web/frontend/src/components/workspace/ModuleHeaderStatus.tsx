@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { TopbarItem } from "./topbar-items";
 import { useViewContext } from "./view-context";
 import { useModuleVisibility } from "./module-visibility";
 
@@ -12,5 +12,5 @@ export function ModuleHeaderStatus({ children }: { children: ReactNode }) {
     const drawer = scope.root.closest(".lxp-workspace-quick-drawer");
     setTarget(visible ? drawer?.querySelector<HTMLElement>("[data-module-header-status-slot]") ?? null : null);
   }, [scope, visible]);
-  return visible && target ? createPortal(children, target) : null;
+  return visible && target ? <TopbarItem target={target}>{children}</TopbarItem> : null;
 }

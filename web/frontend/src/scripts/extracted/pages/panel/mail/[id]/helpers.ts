@@ -3,21 +3,41 @@
 // types from state; no DOM side effects, no siblings.
 import type { MailFolder, FolderTreeNode } from "./state";
 
-const PROTECTED_FOLDER_NAMES = new Set(["inbox", "sent", "trash"]);
+const PROTECTED_FOLDER_NAMES = new Set([
+  "inbox",
+  "sent",
+  "trash",
+  "junk",
+  "spam",
+  "cuarentena",
+  "quarantine",
+  "revisar-ia",
+]);
 
 export function normalizeFolderValue(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase();
 }
 
-export function isProtectedFolder(folder: MailFolder): boolean {
+export function isProtectedFolder(folder: MailFolder, all: MailFolder[] = []): boolean {
   const name = normalizeFolderValue(folder.name);
   const path = normalizeFolderValue(folder.path);
   const specialUse = normalizeFolderValue(folder.specialUse);
-  return PROTECTED_FOLDER_NAMES.has(name)
-    || PROTECTED_FOLDER_NAMES.has(path)
-    || specialUse === "\\inbox"
-    || specialUse === "\\sent"
-    || specialUse === "\\trash";
+  return (
+    folder.protected === true ||
+    all.some(
+      (child) => child.path.startsWith(folder.path + (folder.delimiter || "/")) && isProtectedFolder(child),
+    ) ||
+    PROTECTED_FOLDER_NAMES.has(normalizeFolderValue(folder.path.split(folder.delimiter || "/").pop())) ||
+    (folder.flags || []).some((flag) =>
+      ["\\inbox", "\\sent", "\\trash", "\\junk"].includes(normalizeFolderValue(flag)),
+    ) ||
+    PROTECTED_FOLDER_NAMES.has(name) ||
+    PROTECTED_FOLDER_NAMES.has(path) ||
+    specialUse === "\\inbox" ||
+    specialUse === "\\sent" ||
+    specialUse === "\\trash" ||
+    specialUse === "\\junk"
+  );
 }
 
 export function escapeHtml(value: string): string {
@@ -41,12 +61,17 @@ export function getLastPathSegment(path: string, delimiter: string): string {
 }
 
 export function isDescendantPath(path: string, maybeAncestorPath: string): boolean {
-  return path === maybeAncestorPath
-    || path.startsWith(`${maybeAncestorPath}/`)
-    || path.startsWith(`${maybeAncestorPath}.`);
+  return (
+    path === maybeAncestorPath ||
+    path.startsWith(`${maybeAncestorPath}/`) ||
+    path.startsWith(`${maybeAncestorPath}.`)
+  );
 }
 
-export function buildFolderTree(list: MailFolder[]): { roots: FolderTreeNode[]; map: Map<string, FolderTreeNode> } {
+export function buildFolderTree(list: MailFolder[]): {
+  roots: FolderTreeNode[];
+  map: Map<string, FolderTreeNode>;
+} {
   const map = new Map<string, FolderTreeNode>();
   const roots: FolderTreeNode[] = [];
 
@@ -88,9 +113,22 @@ export function buildFolderTree(list: MailFolder[]): { roots: FolderTreeNode[]; 
 
   const sortNodes = (nodes: FolderTreeNode[]) => {
     nodes.sort((a, b) => {
-      const aProtected = a.folder ? isProtectedFolder(a.folder) : false;
-      const bProtected = b.folder ? isProtectedFolder(b.folder) : false;
-      if (aProtected !== bProtected) return aProtected ? -1 : 1;
+      const priority=(node:FolderTreeNode)=>{
+        const f=node.folder;
+        const special=normalizeFolderValue(f?.specialUse);
+        const leaf=normalizeFolderValue(f?.name||node.label);
+        const path=normalizeFolderValue(node.path.split(node.delimiter||"/").pop());
+        const matches=(names:string[],flag?:string)=>!!(flag&&(special===flag||(f?.flags||[]).some(v=>normalizeFolderValue(v)===flag)))||names.includes(leaf)||names.includes(path);
+        if(matches(['inbox'],'\\inbox'))return 0;
+        if(matches(['drafts','borradores'],'\\drafts'))return 1;
+        if(matches(['sent','enviados'],'\\sent'))return 2;
+        if(matches(['archive','archivo'],'\\archive'))return 3;
+        if(matches(['trash','papelera'],'\\trash'))return 5;
+        if(matches(['junk','spam'],'\\junk'))return 6;
+        if(matches(['cuarentena','quarantine','revisar-ia']))return 7;
+        return 4;
+      };
+      const rank=priority(a)-priority(b);if(rank)return rank;
       return a.label.localeCompare(b.label, "es", { sensitivity: "base" });
     });
     for (const node of nodes) {
