@@ -31,7 +31,7 @@ describe("frontend publication target ownership", () => {
     expect(mocks.frontendExecutor).not.toHaveBeenCalled();
   });
   it("does not accept paths, commands or migration adoption from the API", () => {
-    for (const key of ["adoptionHashes", "path", "command", "targetId"])
+    for (const key of ["adoptionHashes", "path", "command", "targetId", "backendOnlyComponents"])
       expect(frontendPublicationSchema.safeParse({ ...request, [key]: "injected" }).success).toBe(false);
   });
   it("publishes only on the configured frontend executor", async () => {
@@ -58,6 +58,16 @@ describe("frontend publication target ownership", () => {
     await service.remove(provider, account, project);
     expect(mocks.frontendExecutor).toHaveBeenCalledWith(provider, "previous-front");
     expect(mocks.localUnlink).toHaveBeenCalledOnce();
+  });
+  it('attests only an inactive matching split and retains it on retries', async () => {
+    mocks.record={...request,active:false,targetId:'front',apiRoutes:['/api']};
+    await service.confirmBackendSplit(provider,account,project,request.versionId,['app']);
+    expect(mocks.localWrite).toHaveBeenCalledWith(expect.stringContaining('.next'),expect.stringContaining('"backendOnlyComponents":["app"]'),expect.anything());
+    mocks.record={...mocks.record,backendOnlyComponents:['app']};
+    await service.stage(provider,account,project,request,bytes);
+    expect(mocks.localWrite.mock.calls.at(-1)?.[1]).toContain('"backendOnlyComponents":["app"]');
+    mocks.record={...mocks.record,active:true};
+    await expect(service.confirmBackendSplit(provider,account,project,request.versionId,['app'])).rejects.toThrow('pendiente');
   });
   it("rejects silently moving an existing publication", async () => {
     mocks.record = { ...request, targetId: "previous-front" };

@@ -41,6 +41,27 @@ export const frontendPublicationService = {
     await providerService.ownedAccount(provider, account);
     return readPublication(identity(provider, account, project));
   },
+  /** Operator-only attestation after the native split and its health checks.
+   * No HTTP route accepts this field or calls this method. */
+  async confirmBackendSplit(provider: HostingProvider, account: string, project: string, versionId: string, parts: string[]) {
+    await providerService.ownedAccount(provider, account);
+    uuid.parse(versionId);
+    const names = z.array(z.string().regex(/^[a-z][a-z0-9-]{0,29}$/)).min(1).max(10).parse(parts);
+    const id = identity(provider, account, project), redis = getRedis(), token = randomUUID(), key = `lxp:frontend:${id}`;
+    if (await redis.set(key, token, 'EX', 30, 'NX') !== 'OK') throw new ConflictError('Publicación en curso');
+    try {
+      const current = await readPublication(id);
+      if (!current || current.versionId !== versionId || current.active !== false || current.apiRoutes?.length !== 1)
+        throw new ConflictError('Migración backend pendiente de verificar');
+      const staged = registry(id) + '.next';
+      await localExecutor.writeFile(staged, JSON.stringify({...current, backendOnlyComponents:[...new Set(names)]}), {mode:0o600});
+      if ((await localExecutor.exec(`mv -f -- ${quoteArg(staged)} ${quoteArg(registry(id))}`, {timeoutMs:5000})).exitCode !== 0)
+        throw new ConflictError('Registro backend pendiente de reconciliar');
+      return {confirmed:true};
+    } finally {
+      await redis.eval("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end",1,key,token);
+    }
+  },
   async publish(provider: HostingProvider, account: string, project: string, raw: unknown, bytes: Buffer) {
     const owned=await providerService.ownedAccount(provider, account);
     if(owned.account.status !== 'active')throw new ForbiddenError('Cuenta suspendida');
@@ -131,7 +152,7 @@ export const frontendPublicationService = {
         await localExecutor.mkdir(`${panelConfigDir()}/hosting/frontend-publications`, { recursive: true });
         if (bytes) {
           const staged = registry(id) + ".next";
-          await localExecutor.writeFile(staged, JSON.stringify({ ...request, ...receipt, active:!stageOnly }), { mode: 0o600 });
+          await localExecutor.writeFile(staged, JSON.stringify({ ...request, ...receipt, active:!stageOnly, ...(previous?.versionId === input.versionId && previous.backendOnlyComponents ? {backendOnlyComponents:previous.backendOnlyComponents} : {}) }), { mode: 0o600 });
           const saved = await localExecutor.exec(`mv -f -- ${quoteArg(staged)} ${quoteArg(registry(id))}`, { timeoutMs: 5000 });
           if (saved.exitCode !== 0) throw new ConflictError("Registro frontend pendiente de reconciliar");
         } else if (previous && retain) await localExecutor.writeFile(registry(id),JSON.stringify({...previous,active:false}),{mode:0o600});

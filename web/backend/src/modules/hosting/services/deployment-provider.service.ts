@@ -522,6 +522,7 @@ export const deploymentProviderService = {
       }
       const redirects = Object.fromEntries(input.hosts.filter(host => host.redirectTo).map(host => [host.hostname,host.redirectTo!]));
       const relocated = await frontendPublicationService.get(provider, account, project);
+      const migratedBackend = new Set<string>(relocated?.versionId === input.versionId ? (relocated.backendOnlyComponents ?? []) : []);
       if (relocated?.versionId === input.versionId && !relocated.apiRoutes?.length && !relocated.proxyHosts?.length) {
         await frontendPublicationService.reconfigure(provider, account, project, input.hosts.map(host => host.hostname), redirects);
         return { revision: relocated.sha256, versionId: input.versionId, hosts: input.hosts.length, targetId: relocated.targetId };
@@ -539,7 +540,7 @@ export const deploymentProviderService = {
         if (surface === "http") {
           if (!Number.isInteger(result.port) || result.port < 1024 || result.port > 65535)
             throw new ConflictError("Puerto publicado inválido");
-          components.push({ name: manifest.name, surface, port: result.port, routePrefix: manifest.routePrefix ?? null, ...(manifest.role ? {role:manifest.role} : {}) });
+          components.push({ name: manifest.name, surface, port: result.port, routePrefix: migratedBackend.has(manifest.name) ? relocated.apiRoutes[0] : manifest.routePrefix ?? null, ...(migratedBackend.has(manifest.name) ? {role:'backend'} : manifest.role ? {role:manifest.role} : {}) });
           continue;
         }
         if (surface !== "static") continue;
@@ -586,6 +587,8 @@ export const deploymentProviderService = {
             throw new ConflictError("Separa la interfaz del backend antes de reactivar esta versión");
         }
       }
+      if (provider.frontendTargetId && migratedBackend.size && staticParts.length === 0)
+        await frontendPublicationService.reconfigure(provider, account, project, input.hosts.map(host => host.hostname), redirects);
       if (provider.frontendTargetId && staticParts.length === 1) {
         const part = staticParts[0] as { name: string; staticArchive: { archive: string; sha256: string } };
         const bytes = await c.executor.readFile(part.staticArchive.archive);

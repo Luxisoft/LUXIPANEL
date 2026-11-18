@@ -350,6 +350,13 @@ describe("durable production routes", () => {
     })).rejects.toThrow('Separa la interfaz');
     expect(m.write).not.toHaveBeenCalled();
   });
+  it('resumes a verified legacy split with frontend pages and only API routes', async () => {
+    m.frontendGet.mockResolvedValue({versionId:version,targetId:'front',apiRoutes:['/api'],backendOnlyComponents:['app']});
+    await service.replaceProductionRoutes({...provider,frontendTargetId:'front'} as never,account,project,{requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]});
+    expect(m.frontendReconfigure).toHaveBeenCalledWith(expect.anything(),account,project,['demo.luxisoft.com'],{});
+    const write=m.write.mock.calls.find(([file])=>String(file).endsWith('routes.json.next'));
+    expect(JSON.parse(String(write![1])).components).toEqual([{name:'app',surface:'http',port:18080,routePrefix:'/api',role:'backend'}]);
+  });
   it('retires only the legacy nginx bindings owned by this project',async()=>{
     m.sites.mockResolvedValue([{externalSiteId:`gh:${project}:app:hash`},{externalSiteId:'gh:another-project:app:hash'}]);
     await service.retire(provider,account,project);
