@@ -32,22 +32,22 @@ import {
 import ModalNavbar from "./components_ui_ModalNavbar";
 import { DIALOG_CHROME } from "@/lib/ui-classes";
 export default function components_InstallModal(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
   interface Props {
     id: string;
     title: string;
     description?: string;
     icon?: string;
   }
-  const { id, title, description, icon = "ti-download" } = Astro.props;
+  const { id,title,description,icon="ti-download" }=Astro.props;
 
   return (
     <Fragment>
-      <dialog
+      <dialog data-aux-drawer
         id={`dlg-${id}-install`}
         className={`w-full max-w-2xl ${DIALOG_CHROME}`}
       >
@@ -57,22 +57,24 @@ export default function components_InstallModal(props: any) {
           icon={icon}
           closeId={`${id}-install-close`}
         />
-
-        <div className="flex flex-col gap-3 px-6 py-5">
-          <div className="flex items-center gap-2 text-sm">
-            <span id={`${id}-install-spinner`} className="hidden">
-              <i className="ti ti-loader-2 animate-spin text-primary"></i>
-            </span>
-            <span
-              id={`${id}-install-status`}
-              className="text-muted-foreground"
-            ></span>
+        <div data-aux-body>
+          <div className="flex flex-col gap-3 px-6 py-5">
+            <div className="flex items-center gap-2 text-sm">
+              <span id={`${id}-install-spinner`} className="hidden">
+                <i className="ti ti-loader-2 animate-spin text-primary"></i>
+              </span>
+              <span
+                id={`${id}-install-status`}
+                className="text-muted-foreground"
+              ></span>
+            </div>
+            <pre
+              id={`${id}-install-output`}
+              className="hidden max-h-80 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3 text-[11px] font-mono leading-relaxed whitespace-pre-wrap"
+            ></pre>
           </div>
-          <pre
-            id={`${id}-install-output`}
-            className="hidden max-h-80 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3 text-[11px] font-mono leading-relaxed whitespace-pre-wrap"
-          ></pre>
         </div>
+
       </dialog>
     </Fragment>
   );

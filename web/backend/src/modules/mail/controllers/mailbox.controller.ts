@@ -5,6 +5,8 @@
  */
 
 import type { Request, Response } from "express";
+import { folderTreeProtected } from "../services/mail-folder-policy.js";
+import { normalizeQuarantine } from "../services/imap/imap-quarantine.js";
 import { z } from "zod";
 import { asyncHandler } from "../../../shared/types/index.js";
 import { errMessage } from "../../../shared/utils/err-message.js";
@@ -53,9 +55,6 @@ const folderDeleteSchema = z.object({
   path: z.string().min(1, "Folder path is required"),
 });
 
-const PROTECTED_SPECIAL_USE = new Set(["\\inbox", "\\sent", "\\trash"]);
-const PROTECTED_FOLDER_NAMES = new Set(["inbox", "sent", "trash"]);
-
 function parseDateOrThrow(raw: string, field: string): Date {
   const value = new Date(raw);
   if (Number.isNaN(value.getTime())) {
@@ -74,25 +73,6 @@ function assertDateRange(from: Date | undefined, to: Date | undefined): void {
   if (from && to && from > to) {
     throw new ConflictError("dateFrom must be earlier than dateTo");
   }
-}
-
-function normalizeFolderKey(value: string | null | undefined): string {
-  return (value || "").trim().toLowerCase();
-}
-
-function isProtectedFolder(folder: {
-  path: string;
-  name: string;
-  specialUse?: string | null;
-}): boolean {
-  const special = normalizeFolderKey(folder.specialUse);
-  if (PROTECTED_SPECIAL_USE.has(special)) return true;
-
-  const name = normalizeFolderKey(folder.name);
-  const path = normalizeFolderKey(folder.path);
-  if (PROTECTED_FOLDER_NAMES.has(name)) return true;
-  if (PROTECTED_FOLDER_NAMES.has(path)) return true;
-  return false;
 }
 
 function formatBytes(bytes: number): string {
@@ -131,13 +111,17 @@ async function requireUnprotectedFolder(
   const folders = await imapService.listFolders(account.address, account.passwordEncrypted);
   const folder = folders.find((item) => item.path === path);
   if (!folder) throw new NotFoundError("Folder");
-  if (isProtectedFolder(folder)) {
+  if (folderTreeProtected(folder,folders)) {
     throw new ForbiddenError(`Esta carpeta está protegida y no se puede ${action}`);
   }
   return folder;
 }
 
 export const mailboxController = {
+  normalizeQuarantine: asyncHandler(async(req:Request,res:Response)=>{
+    const account=await requireImapCapableAccount(Number(req.params.accountId));
+    res.json({ok:true,data:await normalizeQuarantine(account.address,account.passwordEncrypted)});
+  }),
   /**
    * POST /api/mail/:accountId/credential — register the account's CURRENT
    * mailbox password (verified via an IMAP login) WITHOUT changing it. Lets

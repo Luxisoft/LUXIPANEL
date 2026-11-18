@@ -1,4 +1,5 @@
 const components = {
+  "moduleTopbar": { "search": "検索と絞り込み", "filters": "フィルター", "context": "コンテキスト", "tools": "ツール"},
   "setupWizardFooter": {
     "rights": "全著作権所有。",
     "madeBy": "LUXISOFT 制作",

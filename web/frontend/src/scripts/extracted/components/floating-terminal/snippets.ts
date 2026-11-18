@@ -118,10 +118,12 @@ import { pushHistory } from "./history";
 
     if (!categoryId) {
       S.snippetFilterTagIds = [];
-      wrap.innerHTML = `<p class="text-[11px] text-muted-foreground">${escapeHtml(I18N.snippetList.selectCategoryToFilter)}</p>`;
+      wrap.replaceChildren();
+      wrap.hidden = true;
       return;
     }
 
+    wrap.hidden = false;
     const tags = tagsForCategory(categoryId);
     if (tags.length === 0) {
       S.snippetFilterTagIds = [];
@@ -248,15 +250,18 @@ import { pushHistory } from "./history";
             .filter((name): name is string => Boolean(name));
           return `
             <article class="group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-colors hover:border-muted-foreground/50 hover:bg-accent/40" data-snippet-card="${snippet.id}">
-              <button type="button" class="flex w-full flex-col gap-2 p-3 pr-16 text-left" data-lxp-handler-click="runSnippet(${snippet.id})" title="${escapeHtml(snippet.command)}">
-                <span class="break-words text-sm font-medium">${escapeHtml(snippet.name)}</span>
+              <div data-saved-command-heading class="flex items-start justify-between gap-2 px-3 pt-3">
+                <button type="button" class="min-w-0 flex-1 break-words text-left text-sm font-medium" data-lxp-handler-click="runSnippet(${snippet.id})" title="${escapeHtml(snippet.command)}">${escapeHtml(snippet.name)}</button>
+                <div data-saved-command-actions class="flex shrink-0 items-center gap-1">
+                <button type="button" data-lxp-handler-click="editSnippet(${snippet.id})" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" title="${escapeHtml(I18N.snippetList.editTitle)}" aria-label="${escapeHtml(I18N.snippetList.editAria)}"><i class="ti ti-pencil text-sm"></i></button>
+                <button type="button" data-lxp-handler-click="deleteSnippet(${snippet.id})" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-destructive" title="${escapeHtml(I18N.snippetList.deleteTitle)}" aria-label="${escapeHtml(I18N.snippetList.deleteAria)}"><i class="ti ti-trash text-sm"></i></button>
+                </div>
+              </div>
+              <button type="button" class="flex w-full flex-col gap-2 px-3 pb-3 pt-2 text-left" data-lxp-handler-click="runSnippet(${snippet.id})" title="${escapeHtml(snippet.command)}">
                 <code class="block w-full break-all font-mono text-xs text-muted-foreground" data-shell-highlight="${escapeHtml(snippet.command)}">${escapeHtml(snippet.command)}</code>
                 ${tagNames.length ? `<span class="flex flex-wrap gap-1">${tagNames.map((tag) => `<span class="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">${escapeHtml(tag)}</span>`).join("")}</span>` : ""}
               </button>
-              <div class="absolute right-2 top-2 flex gap-1">
-                <button type="button" data-lxp-handler-click="editSnippet(${snippet.id})" class="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" title="${escapeHtml(I18N.snippetList.editTitle)}" aria-label="${escapeHtml(I18N.snippetList.editAria)}"><i class="ti ti-pencil text-sm"></i></button>
-                <button type="button" data-lxp-handler-click="deleteSnippet(${snippet.id})" class="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive" title="${escapeHtml(I18N.snippetList.deleteTitle)}" aria-label="${escapeHtml(I18N.snippetList.deleteAria)}"><i class="ti ti-trash text-sm"></i></button>
-              </div>
+
             </article>
           `;
         }).join("")}

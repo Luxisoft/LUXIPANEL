@@ -1,3 +1,4 @@
+import { setTerminalLoading } from "@/lib/terminal-loading";
 // Floating terminal — ENTRY. Wires the submodules (importing them registers
 // their window.* globals + top-level bindings as a side effect) and owns the
 // lazy-init lifecycle, pocket persistence, global listeners, DOM listeners,
@@ -8,7 +9,6 @@ import { I18N, tI18n } from "./i18n";
 import { api, TARGET_SCOPE_SESSION_KEY } from "@/lib/api-client";
 import { openConfirm, openAlert } from "@/lib/confirm";
 import { TerminalWsMsg } from "@/lib/terminal-ws-protocol";
-import { FILES_CURRENT_PATH_KEY } from "../../pages/panel/files/state";
 import { MOUSE_TRACKING_OFF } from "./terminal-lifecycle";
 import { applyShellHighlight } from "./editor";
 import { syncTerminalTheme, ensureTerminalThemeSync } from "./theme";
@@ -16,7 +16,6 @@ import { createTerminal, getModeInitialCommand, syncLoadingOverlay, connectWs, r
 import { closeTab, renderTab, switchTab } from "./tabs";
 import {
   setStatus,
-  normalizePath,
   processTerminalInput,
   setMobileKeyPressed,
   clearMobileKeyModifiers,
@@ -121,18 +120,6 @@ import {
     if (globalListenersBound) return;
     globalListenersBound = true;
 
-    window.addEventListener("luxipanel:files-path-changed", ((event: CustomEvent<{ path?: string; source?: string }>) => {
-      const detail = event.detail || {};
-      if (detail.source === "terminal") return;
-      const path = typeof detail.path === "string" ? detail.path : "";
-      if (!path) return;
-      const session = sessions.get(S.activeTabId);
-      if (!session?.ws || session.ws.readyState !== WebSocket.OPEN) return;
-      const normalized = normalizePath(path);
-      if (session.cwd === normalized) return;
-      session.cwd = normalized;
-      session.ws.send(JSON.stringify({ type: TerminalWsMsg.INPUT, data: `cd ${JSON.stringify(normalized)}\r` }));
-    }) as EventListener);
 
     window.addEventListener("lxp-terminal:dispose-all", () => {
       disposeAllSessions();
@@ -320,8 +307,7 @@ import {
       const tabId = S.tabCount;
       const tabs = document.getElementById("tabs-container");
       if (tabs) tabs.appendChild(renderTab(tabId));
-      const filesPath = (window as any).__filesCurrentPath || sessionStorage.getItem(FILES_CURRENT_PATH_KEY) || "/";
-      createTerminal(tabId, { cdOnConnect: filesPath, initialCommand: getModeInitialCommand() });
+      createTerminal(tabId, { initialCommand: getModeInitialCommand() });
       switchTab(tabId);
     });
 
@@ -390,7 +376,7 @@ import {
       s.term.write(MOUSE_TRACKING_OFF);
       // tmux re-adjunta y re-pinta el scrollback; en modo legacy (sin tmux) se
       // restablece el cwd como hace el botón de reconectar manual.
-      s.cdOnConnect = s.cwd || (window as any).__filesCurrentPath || sessionStorage.getItem(FILES_CURRENT_PATH_KEY) || "/";
+      s.cdOnConnect = s.cwd || null;
       s.initialCommand = s.startupCommand;
       void connectWs(tabId);
     }
@@ -646,6 +632,7 @@ import {
       </div>
       <p id="lxp-tmux-gate-msg" class="min-h-[1rem] max-w-md text-xs text-destructive"></p>`;
     if (getComputedStyle(termContainer).position === "static") termContainer.style.position = "relative";
+    setTerminalLoading(termContainer, false, I18N.loading.title);
     termContainer.appendChild(card);
 
     const proceed = () => { card.remove(); createInitialTerminal(); };
@@ -758,6 +745,8 @@ import {
   }
   function startVisibleTerminal(): void {
     if (!terminalVisible()) return;
+    const host = document.getElementById("terminal-container");
+    if (host && !sessions.size) setTerminalLoading(host, true, I18N.loading.title);
     void runOneTimeInit()
       .then(async () => {
         if (!await refreshStartupCli() || !terminalVisible()) return;
@@ -765,6 +754,7 @@ import {
         if (terminalVisible()) selectStartupSession();
       })
       .catch((error) => {
+        if (host) setTerminalLoading(host, false, I18N.loading.title);
         console.error("[floating-terminal] init", error);
         oneTimeInitPromise = null;
         setStatus(I18N.status.disconnected, false);

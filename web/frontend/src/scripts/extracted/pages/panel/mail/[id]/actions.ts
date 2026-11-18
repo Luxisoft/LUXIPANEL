@@ -4,87 +4,165 @@
 import { api } from "/scripts/extracted/lib/mail-api-client.js?v=20260930a";
 import { openConfirm } from "/scripts/extracted/lib/confirm.js?v=3";
 import { accountId, fallback, PAGE_SIZE, S } from "./state";
-import { escapeHtml } from "./helpers";
+import { createMoveDialog } from "./move-dialog";
 import { loadFolders } from "./folders";
 import { loadMessages } from "./messages";
-import { openDialog } from "/scripts/extracted/lib/dom.js";
+import { showContextMenu } from "@/lib/context-menu";
 
-// ── Actions ────────────────────────────────────────────────
-document.getElementById("btn-delete-msg")?.addEventListener("click", async () => {
-  const uid = (window as any)._currentUid;
-  if (!uid || !await openConfirm(fallback("inbox.confirm.deleteMessage", "¿Eliminar este mensaje?"), { title: fallback("inbox.confirm.deleteMessageTitle", "Eliminar mensaje"), variant: "danger" })) return;
-  const res = await api.delete<any>(`/api/mail/${accountId}/messages/${uid}`, { params: { folder: S.currentFolder } });
-  if (res.ok) {
-    S.currentUid = null;
-    document.getElementById("viewer-empty")!.classList.remove("hidden");
-    document.getElementById("viewer-content")!.classList.add("hidden");
-    loadMessages();
+// Every action captures the row identity before any confirmation or request.
+const moveDialog = createMoveDialog(document, {
+  folders: () => S.folders,
+  currentFolder: () => S.currentFolder,
+  copy: key => fallback(`inbox.moveUi.${key}`, key),
+  move: (target, destination) => api.post(`/api/mail/${accountId}/messages/${target.uid}/move`, { folder: target.folder, destFolder: destination }),
+  success: target => {
+    if (target.folder !== S.currentFolder) return;
+    if (S.currentUid === target.uid) {
+      S.currentUid = null; (window as any)._currentUid = null;
+      document.getElementById("viewer-content")?.classList.add("hidden");
+      document.getElementById("viewer-empty")?.classList.remove("hidden");
+    }
+    void loadMessages({ autoOpenLatest: false }); void loadFolders();
+  },
+});
+export async function performMessageAction(action: string, uid: number, folder: string) {
+  if (!uid) return;
+  if (action === "open") {
+    (window as any).openMessage(uid);
+    return;
   }
-});
-
-document.getElementById("btn-reply")?.addEventListener("click", () => {
-  const uid = (window as any)._currentUid;
-  if (!uid) return;
-  window.location.href = `/panel/mail/compose?from=${accountId}&replyTo=${uid}&folder=${S.currentFolder}`;
-});
-
-document.getElementById("btn-edit-draft")?.addEventListener("click", () => {
-  const uid = (window as any)._currentUid;
-  if (!uid) return;
-  window.location.href = `/panel/mail/compose?from=${encodeURIComponent(accountId)}&draftUid=${uid}&folder=${encodeURIComponent(S.currentFolder)}`;
-});
-
-document.getElementById("btn-forward")?.addEventListener("click", () => {
-  const uid = (window as any)._currentUid;
-  if (!uid) return;
-  window.location.href = `/panel/mail/compose?from=${accountId}&forward=${uid}&folder=${S.currentFolder}`;
-});
-
-document.getElementById("btn-move")?.addEventListener("click", () => {
-  const moveList = document.getElementById("move-folders-list")!;
-  moveList.innerHTML = S.folders
-    .filter((f) => f.path !== S.currentFolder)
-    .map((f) => {
-      const fname = escapeHtml(String(f.name ?? ""));
-      return `
-      <button onclick="moveToFolder('${encodeURIComponent(f.path)}')"
-        class="w-full text-left flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors">
-        <i class="ti ti-folder text-muted-foreground text-sm"></i>${fname}
-      </button>`;
-    })
-    .join("");
-  openDialog("dlg-move");
-});
-
-(window as any).moveToFolder = async function(encodedTargetFolder: string) {
-  const targetFolder = decodeURIComponent(encodedTargetFolder);
-  (document.getElementById("dlg-move") as HTMLDialogElement).close();
-  const uid = (window as any)._currentUid;
-  if (!uid) return;
-  const res = await api.post<any>(`/api/mail/${accountId}/messages/${uid}/move`, {
-    folder: S.currentFolder,
-    destFolder: targetFolder,
-  });
-  if (res.ok) {
-    S.currentUid = null;
-    document.getElementById("viewer-empty")!.classList.remove("hidden");
-    document.getElementById("viewer-content")!.classList.add("hidden");
-    loadMessages();
-    loadFolders();
+  if (["reply", "forward", "edit-draft"].includes(action)) {
+    const query = new URLSearchParams({ from: accountId, folder });
+    query.set(action === "reply" ? "replyTo" : action === "forward" ? "forward" : "draftUid", String(uid));
+    window.location.href = "/panel/mail/compose?" + query;
+    return;
   }
-};
-
+  if (action === "move") {
+    const row = document.querySelector(`[data-mail-uid="${uid}"]`);
+    moveDialog.open({ uid, folder,
+      account: document.getElementById("account-email")?.textContent?.trim() || accountId,
+      subject: row?.querySelector("p")?.textContent || fallback("inbox.noSubject", "Sin asunto"),
+    });
+    return;
+  }
+  if (action === "delete") {
+    if (
+      !(await openConfirm(fallback("inbox.confirm.deleteMessage", "¿Eliminar este mensaje?"), {
+        title: fallback("inbox.confirm.deleteMessageTitle", "Eliminar mensaje"),
+        variant: "danger",
+      }))
+    )
+      return;
+    const result = await api.delete(`/api/mail/${accountId}/messages/${uid}`, { params: { folder } });
+    if (result.ok && folder === S.currentFolder) {
+      if (S.currentUid === uid) {
+        S.currentUid = null;
+        (window as any)._currentUid = null;
+        document.getElementById("viewer-empty")?.classList.remove("hidden");
+        document.getElementById("viewer-content")?.classList.add("hidden");
+      }
+      void loadMessages({ autoOpenLatest: false });
+      void loadFolders();
+    }
+  }
+}
+for (const [id, action] of Object.entries({
+  "btn-delete-msg": "delete",
+  "btn-reply": "reply",
+  "btn-forward": "forward",
+  "btn-edit-draft": "edit-draft",
+  "btn-move": "move",
+})) {
+  document
+    .getElementById(id)
+    ?.addEventListener("click", () =>
+      performMessageAction(action, (window as any)._currentUid, S.currentFolder),
+    );
+}
 document.getElementById("btn-refresh")?.addEventListener("click", () => {
-  loadFolders();
-  loadMessages();
+  void loadFolders();
+  void loadMessages({ showLoading: false, autoOpenLatest: false });
 });
-
 document.getElementById("btn-mark-all-read")?.addEventListener("click", async () => {
-  if (!await openConfirm(fallback("inbox.confirm.markAllRead", "¿Marcar todos como leídos en \"{folder}\"?").replace("{folder}", () => S.currentFolder), { title: fallback("inbox.confirm.markAllReadTitle", "Marcar como leídos"), confirmText: fallback("inbox.confirm.markAllReadBtn", "Sí, marcar todos") })) return;
-  await api.post<any>(`/api/mail/${accountId}/messages/mark-all-read`, { folder: S.currentFolder });
-  loadMessages();
+  const folder = S.currentFolder;
+  if (
+    !(await openConfirm(fallback("inbox.confirm.markAllRead", "¿Marcar todos como leídos?"), {
+      title: fallback("inbox.titleMarkAllRead", "Marcar como leídos"),
+    }))
+  )
+    return;
+  await api.post(`/api/mail/${accountId}/messages/mark-all-read`, { folder });
+  if (folder === S.currentFolder) {
+    void loadMessages({ autoOpenLatest: false });
+    void loadFolders();
+  }
 });
-
+const messageList = document.getElementById("messages-list");
+const menu = document.createElement("div");
+menu.className = "hidden lxp-row-context-menu";
+menu.setAttribute("popover", "manual");
+menu.setAttribute("role", "menu");
+messageList?.parentElement?.append(menu);
+let closeMenu: (() => void) | undefined;
+function openRowActions(event: MouseEvent | KeyboardEvent) {
+  const row = (event.target as Element).closest<HTMLElement>("[data-mail-uid]");
+  if (!row) return;
+  const uid = Number(row.dataset.mailUid),
+    folder = S.currentFolder;
+  if (!uid) return;
+  event.preventDefault();
+  event.stopPropagation();
+  closeMenu?.();
+  menu.replaceChildren();
+  const actions = [
+    ["open", "inbox.msgIframeTitle", "Abrir", "mail-opened"],
+    ["reply", "inbox.titleReply", "Responder", "arrow-back-up"],
+    ["forward", "inbox.titleForward", "Reenviar", "arrow-forward-up"],
+    ["move", "inbox.titleMove", "Mover", "folder"],
+    ["delete", "inbox.titleDelete", "Eliminar", "trash"],
+  ];
+  if (S.folders.some((f) => f.path === folder && (f.specialUse === "\\Drafts" || /^drafts$/i.test(f.path))))
+    actions.splice(1, 0, ["edit-draft", "inbox.editDraft", "Editar borrador", "pencil"]);
+  for (const [action, key, label, icon] of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ctx-item" + (action === "delete" ? " text-destructive" : "");
+    button.setAttribute("role", "menuitem");
+    const i = document.createElement("i");
+    i.className = "ti ti-" + icon;
+    button.append(i, document.createTextNode(fallback(key, label)));
+    button.onclick = () => {
+      closeMenu?.();
+      if (row.isConnected && folder === S.currentFolder) void performMessageAction(action, uid, folder);
+    };
+    menu.append(button);
+  }
+  const rect = row.getBoundingClientRect();
+  closeMenu = showContextMenu(
+    menu,
+    "clientX" in event ? event : { clientX: rect.left + 12, clientY: rect.top + 12 },
+  );
+  if (!("clientX" in event)) menu.querySelector("button")?.focus();
+}
+messageList?.addEventListener("contextmenu", openRowActions);
+messageList?.addEventListener("keydown", (event) => {
+  if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) openRowActions(event);
+  else if (event.key === "Enter" || event.key === " ") {
+    const row = (event.target as Element).closest<HTMLElement>("[data-mail-uid]");
+    if (row) {
+      event.preventDefault();
+      (window as any).openMessage(Number(row.dataset.mailUid));
+    }
+  }
+});
+const rowObserver = new MutationObserver(() => closeMenu?.());
+if (messageList) rowObserver.observe(messageList, { childList: true });
+for (const type of ["lxp:module:visibility", "lxp:module:dispose"])
+  document.addEventListener(type, () => closeMenu?.());
+document.getElementById("btn-show-folders")?.addEventListener("click", () => {
+  const root = document.querySelector("[data-inbox-layout]");
+  if (root) (root as HTMLElement).dataset.inboxPane = "folders";
+});
 // ── Pagination ─────────────────────────────────────────────
 document.getElementById("btn-prev-page")?.addEventListener("click", () => {
   if (S.currentPage > 1) {

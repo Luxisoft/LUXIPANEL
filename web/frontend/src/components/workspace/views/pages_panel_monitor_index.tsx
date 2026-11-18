@@ -1,3 +1,4 @@
+import { ModuleSection } from "../ModuleSections";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Internal component migrated from src/pages/panel/monitor/index.astro.
 import { SlotFragment as Fragment } from "../view-context";
@@ -16,7 +17,7 @@ import {
  */
 import PanelLayout from "../module-frame";
 import { ModuleHeaderStatus } from "../ModuleHeaderStatus";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import ModalNavbar from "./components_ui_ModalNavbar";
 import {
@@ -28,25 +29,25 @@ import {
 import { getPageMessages } from "../view-context";
 import { NO_CACHE_HEADER } from "@/lib/http-cache";
 export default function pages_panel_monitor_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["monitor", "components"]);
-  const dataTableI18n = t.components.dataTable;
-  const processTableStrings = t.monitor.processes.table;
-  const ms = t.monitor.settingsUi;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["monitor","components"]);
+  const dataTableI18n=t.components.dataTable;
+  const processTableStrings=t.monitor.processes.table;
+  const ms=t.monitor.settingsUi;
   // Prevent stale HTML — the inline script reference rotates with each deploy.
-  Astro.response.headers.set("Cache-Control", NO_CACHE_HEADER);
-  Astro.response.headers.set("Pragma", "no-cache");
-  const user = Astro.locals.user;
-  const userKind = user?.kind ?? "user";
-  const userName = user?.username ?? "";
+  Astro.response.headers.set("Cache-Control",NO_CACHE_HEADER);
+  Astro.response.headers.set("Pragma","no-cache");
+  const user=Astro.locals.user;
+  const userKind=user?.kind??"user";
+  const userName=user?.username??"";
 
   return (
     <Fragment>
-      <PanelLayout title={t.monitor.pageTitle} activeModule="monitor">
+      <PanelLayout title={t.monitor.pageTitle} activeModule="monitor" sections={[{ id: "overview",label: t.monitor.pageTitle },{ id: "history",sourceId: "monitor-tab-history",label: t.monitor.history.title,onActivate: () => document.getElementById("monitor-tab-history")?.click() },{ id: "processes",sourceId: "monitor-tab-processes",label: t.monitor.processes.title,onActivate: () => document.getElementById("monitor-tab-processes")?.click() },{ id: "services",label: t.monitor.services.title }]}>
         {/* Configuración del módulo (drawer derecho + menú lateral, como Correo/Cron/Files). */}
         <div slot="title-actions">
           <ViewSettingsModal
@@ -73,7 +74,7 @@ export default function pages_panel_monitor_index(props: any) {
                     label: t.monitor.history.title,
                     icon: "ti-chart-line",
                   },
-                  { id: "alerts", label: ms.alerts, icon: "ti-bell" },
+                  { id: "alerts",label: ms.alerts,icon: "ti-bell" },
                   {
                     id: "watchdog",
                     label: ms.restart,
@@ -84,20 +85,20 @@ export default function pages_panel_monitor_index(props: any) {
                     label: ms.diagnostics,
                     icon: "ti-activity-heartbeat",
                   },
-                ].map((item: any, index: number) => (
+                ].map((item: any,index: number) => (
                   <Fragment>
                     <button
                       type="button"
                       role="tab"
-                      aria-selected={index === 0 ? "true" : "false"}
+                      aria-selected={index===0? "true":"false"}
                       aria-controls={`monitor-settings-${item.id}`}
                       data-monitor-settings-nav={item.id}
                       title={item.label}
                       className={classList([
                         "flex items-center justify-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-200 ease-out @xl:justify-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                        index === 0
+                        index===0
                           ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                          :"text-muted-foreground hover:bg-accent hover:text-foreground",
                       ])}
                     >
                       <i
@@ -137,7 +138,7 @@ export default function pages_panel_monitor_index(props: any) {
                       className="flex flex-wrap gap-1.5"
                       data-monitor-pagesize-group
                     >
-                      {[10, 25, 50, 100].map((n: any) => (
+                      {[10,25,50,100].map((n: any) => (
                         <Fragment>
                           <button
                             type="button"
@@ -591,282 +592,57 @@ export default function pages_panel_monitor_index(props: any) {
         </ModuleHeaderStatus>
 
         {/** Live server overview */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <section
-            className="rounded-xl border border-border bg-card p-5"
-            aria-labelledby="resources-title"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 id="resources-title" className="text-sm font-semibold">
-                {t.monitor.stats.resources}
-              </h2>
-              <i
-                className="ti ti-activity-heartbeat text-xl text-emerald-500"
-                aria-hidden="true"
-              ></i>
+        <ModuleSection id="overview">
+          <div className="monitor-overview">
+            <div className="monitor-overview-status">
+              <span>{t.monitor.overview.recent}</span>
+              <p id="sse-status" className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-muted animate-pulse"></span>{t.monitor.stats.connecting}</p>
             </div>
-            <div className="space-y-3.5">
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {t.monitor.labels.cpu}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <strong className="text-lg tabular-nums">
-                      <span id="stat-cpu">—</span>
-                      <span className="text-xs font-normal text-muted-foreground">
-                        %
-                      </span>
-                    </strong>
-                    <button
-                      type="button"
-                      data-ai-optimize="cpu"
-                      aria-label={t.monitor.actions.optimizeCpu}
-                      title={t.monitor.actions.optimizeCpu}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-500 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <i className="ti ti-sparkles" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    id="bar-cpu"
-                    className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                    style={cssStyle("width:0%")}
-                  ></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {t.monitor.stats.memoryRam}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <strong className="text-lg tabular-nums">
-                      <span id="stat-mem">—</span>
-                      <span className="text-xs font-normal text-muted-foreground">
-                        %
-                      </span>
-                    </strong>
-                    <button
-                      type="button"
-                      data-ai-optimize="ram"
-                      aria-label={t.monitor.actions.optimizeRam}
-                      title={t.monitor.actions.optimizeRam}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-500 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <i className="ti ti-sparkles" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    id="bar-mem"
-                    className="h-full rounded-full bg-purple-500 transition-all duration-500"
-                    style={cssStyle("width:0%")}
-                  ></div>
-                </div>
-                <p
-                  id="mem-detail"
-                  className="mt-1 text-[11px] tabular-nums text-muted-foreground"
-                >
-                  — / — MB
-                </p>
-              </div>
-              <div className="border-t border-border pt-3">
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                  {t.monitor.stats.network}
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
-                  <span className="min-w-0 truncate">
-                    <i
-                      className="ti ti-arrow-down mr-1 text-emerald-500"
-                      aria-hidden="true"
-                    ></i>
-                    {t.monitor.labels.rx} <strong id="stat-rx">—</strong>
-                  </span>
-                  <span className="min-w-0 truncate">
-                    <i
-                      className="ti ti-arrow-up mr-1 text-amber-500"
-                      aria-hidden="true"
-                    ></i>
-                    {t.monitor.labels.tx} <strong id="stat-tx">—</strong>
-                  </span>
-                </div>
-              </div>
+            <div className="monitor-overview-grid">
+              {([
+                { key: "cpu",title: t.monitor.stats.cpu,icon: "ti-cpu",stat: "stat-cpu",bar: "bar-cpu",action: "cpu",actionLabel: t.monitor.actions.optimizeCpu },
+                { key: "ram",title: t.monitor.stats.memoryRam,icon: "ti-device-desktop-analytics",stat: "stat-mem",bar: "bar-mem",action: "ram",actionLabel: t.monitor.actions.optimizeRam },
+              ]).map((card) => (
+                <section key={card.key} className={`monitor-overview-card monitor-resource-${card.key}`} aria-labelledby={`overview-${card.key}-title`}>
+                  <div className="monitor-card-heading"><h2 id={`overview-${card.key}-title`}>{card.title}</h2><i className={`ti ${card.icon}`} aria-hidden="true" /></div>
+                  <div className="monitor-card-value"><span id={card.stat}>—</span><small>%</small></div>
+                  <div className="monitor-meter"><div id={card.bar} style={{ width: "0%" }} /></div>
+                  <p id={card.key==="ram"? "mem-detail":"cpu-detail"} className="monitor-card-detail">—</p>
+                  <div className="monitor-live-chart"><canvas id={`chart-overview-${card.key}`} role="img" aria-label={card.title} /><span data-overview-wait={card.key}>{t.monitor.overview.collecting}</span></div>
+                  <button type="button" data-ai-optimize={card.action} className="monitor-card-action" aria-label={card.actionLabel}><i className="ti ti-sparkles" aria-hidden="true" />{card.actionLabel}</button>
+                </section>
+              ))}
+              <section className="monitor-overview-card monitor-resource-disk" aria-labelledby="disk-title">
+                <div className="monitor-card-heading"><h2 id="disk-title">{t.monitor.stats.disk}</h2><i className="ti ti-database" aria-hidden="true" /></div>
+                <div className="monitor-card-value"><span id="stat-disk">—</span><small>%</small></div>
+                <div className="monitor-meter"><div id="bar-disk" style={{ width: "0%" }} /></div>
+                <p id="disk-detail" className="monitor-card-detail">—</p>
+                <div className="monitor-folders"><h3>{t.monitor.stats.topFolders}</h3><div id="monitor-top-folders" className="space-y-3">{Array.from({ length: 3 },(_,i) => <div key={i} className="h-4 animate-pulse rounded bg-muted" />)}</div><p id="monitor-folders-status" role="status" className="mt-2 text-xs text-muted-foreground" /><button id="monitor-folders-retry" type="button" hidden className="monitor-card-action">{t.monitor.topFolders.retry}</button></div>
+                <button type="button" data-ai-optimize="disk" className="monitor-card-action"><i className="ti ti-sparkles" aria-hidden="true" />{t.monitor.actions.optimizeDisk}</button>
+              </section>
+              <section className="monitor-overview-card monitor-resource-network" aria-labelledby="overview-network-title">
+                <div className="monitor-card-heading"><h2 id="overview-network-title">{t.monitor.stats.network}</h2><i className="ti ti-network" aria-hidden="true" /></div>
+                <div className="monitor-network-values"><div><span><i className="ti ti-arrow-down" aria-hidden="true" />{t.monitor.overview.received}</span><strong id="stat-rx">—</strong></div><div><span><i className="ti ti-arrow-up" aria-hidden="true" />{t.monitor.overview.sent}</span><strong id="stat-tx">—</strong></div></div>
+                <div className="monitor-live-chart"><canvas id="chart-overview-network" role="img" aria-label={t.monitor.stats.network} /><span data-overview-wait="network">{t.monitor.overview.collecting}</span></div>
+                <p className="monitor-card-detail">{t.monitor.overview.recent}</p>
+              </section>
+              <section className="monitor-overview-card" aria-labelledby="activity-title">
+                <div className="monitor-card-heading"><h2 id="activity-title">{t.monitor.stats.serverActivity}</h2><i className="ti ti-clock-hour-4" aria-hidden="true" /></div>
+                <p className="monitor-card-detail">{t.monitor.stats.uptime}</p><p id="stat-uptime" className="monitor-card-value">—</p>
+                <div className="monitor-load"><h3>{t.monitor.stats.loadAvg}</h3><div id="load-avg" className="sr-only">—</div><div className="monitor-load-values">{[1,5,15].map(min => <div key={min}><strong id={`load-avg-${min}`}>—</strong><span>{min} min</span></div>)}</div></div>
+              </section>
+              <section className="monitor-overview-card" aria-labelledby="hotspots-title">
+                <div className="monitor-card-heading"><h2 id="hotspots-title">{t.monitor.stats.topActive}</h2><i className="ti ti-list-details" aria-hidden="true" /></div>
+                <div className="monitor-top-processes">{(["cpu","ram"] as const).map(kind => <div key={kind}><h3>{kind==="cpu"? t.monitor.stats.topCpu:t.monitor.stats.topRam}</h3><div id={`overview-processes-${kind}`} className="monitor-process-list"><span className="text-muted-foreground">—</span></div></div>)}</div>
+                <button type="button" data-monitor-open-processes onClick={() => document.getElementById("monitor-tab-processes")?.click()} className="monitor-card-action">{t.monitor.stats.viewProcesses}<i className="ti ti-arrow-right" aria-hidden="true" /></button>
+              </section>
             </div>
-            <p
-              id="sse-status"
-              className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-muted animate-pulse"></span>
-              {t.monitor.stats.connecting}
-            </p>
-          </section>
-
-          <section
-            className="rounded-xl border border-border bg-card p-5"
-            aria-labelledby="disk-title"
-          >
-            <div className="flex items-center justify-between">
-              <h2 id="disk-title" className="text-sm font-semibold">
-                {t.monitor.stats.disk}
-              </h2>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
-                <i className="ti ti-database text-lg" aria-hidden="true"></i>
-              </div>
-            </div>
-            <div className="mt-3 flex items-end gap-2">
-              <p id="stat-disk" className="text-3xl font-bold tracking-tight">
-                —
-              </p>
-              <p className="mb-0.5 text-sm text-muted-foreground">%</p>
-            </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                id="bar-disk"
-                className="h-full rounded-full bg-blue-500 transition-all duration-500"
-                style={cssStyle("width:0%")}
-              ></div>
-            </div>
-            <p id="disk-detail" className="mt-1 text-xs text-muted-foreground">
-              — / — GB
-            </p>
-            <div className="mt-3 border-t border-border pt-2">
-              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t.monitor.stats.topFolders}
-              </p>
-              <div id="monitor-top-folders" className="space-y-1.5">
-                {Array.from({ length: 3 }).map(() => (
-                  <Fragment>
-                    <div className="h-4 animate-pulse rounded bg-muted"></div>
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-            <button
-              type="button"
-              data-ai-optimize="disk"
-              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <i
-                className="ti ti-sparkles text-sm text-emerald-500"
-                aria-hidden="true"
-              ></i>
-              {t.monitor.actions.optimizeDisk}
-            </button>
-          </section>
-
-          <section
-            className="rounded-xl border border-border bg-card p-5"
-            aria-labelledby="activity-title"
-          >
-            <div className="flex items-center justify-between">
-              <h2 id="activity-title" className="text-sm font-semibold">
-                {t.monitor.stats.serverActivity}
-              </h2>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
-                <i
-                  className="ti ti-clock-hour-4 text-lg"
-                  aria-hidden="true"
-                ></i>
-              </div>
-            </div>
-            <p className="mt-5 text-xs text-muted-foreground">
-              {t.monitor.stats.uptime}
-            </p>
-            <p
-              id="stat-uptime"
-              className="mt-1 text-2xl font-semibold tabular-nums tracking-tight"
-            >
-              —
-            </p>
-            <div className="mt-5 border-t border-border pt-3">
-              <p className="text-xs text-muted-foreground">
-                {t.monitor.stats.loadAvg}
-              </p>
-              <p
-                id="load-avg"
-                className="mt-1 font-mono text-base font-semibold tabular-nums tracking-tight"
-              >
-                —
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                1 / 5 / 15 min
-              </p>
-            </div>
-          </section>
-
-          <section
-            className="rounded-xl border border-border bg-card p-5"
-            aria-labelledby="hotspots-title"
-          >
-            <div className="flex items-center justify-between">
-              <h2 id="hotspots-title" className="text-sm font-semibold">
-                {t.monitor.stats.topActive}
-              </h2>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
-                <i
-                  className="ti ti-list-details text-lg"
-                  aria-hidden="true"
-                ></i>
-              </div>
-            </div>
-            <div className="mt-4 space-y-3">
-              <div className="rounded-lg bg-amber-500/5 px-3 py-2.5">
-                <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                  {t.monitor.stats.topCpu}
-                </p>
-                <div className="mt-1 flex items-center justify-between gap-2 text-sm">
-                  <span
-                    id="top-proc-cpu"
-                    className="min-w-0 truncate font-mono"
-                  >
-                    —
-                  </span>
-                  <strong
-                    id="top-proc-cpu-value"
-                    className="shrink-0 tabular-nums"
-                  >
-                    —
-                  </strong>
-                </div>
-              </div>
-              <div className="rounded-lg bg-purple-500/5 px-3 py-2.5">
-                <p className="text-[11px] font-medium text-purple-600 dark:text-purple-400">
-                  {t.monitor.stats.topRam}
-                </p>
-                <div className="mt-1 flex items-center justify-between gap-2 text-sm">
-                  <span
-                    id="top-proc-ram"
-                    className="min-w-0 truncate font-mono"
-                  >
-                    —
-                  </span>
-                  <strong
-                    id="top-proc-ram-value"
-                    className="shrink-0 tabular-nums"
-                  >
-                    —
-                  </strong>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              data-monitor-open-processes
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              {t.monitor.stats.viewProcesses}
-              <i className="ti ti-arrow-right" aria-hidden="true"></i>
-            </button>
-          </section>
-        </div>
+          </div>
+        </ModuleSection>
 
         {/** Monitor history and processes share one workspace. */}
         <section
-          id="monitor-workspace"
+          id="monitor-workspace" data-module-section-container
           className="mb-6 overflow-hidden rounded-xl border border-border bg-card"
         >
           <div
@@ -899,7 +675,7 @@ export default function pages_panel_monitor_index(props: any) {
               {t.monitor.processes.title}
             </button>
           </div>
-          <div
+          <ModuleSection id="history"><div
             id="monitor-panel-history"
             role="tabpanel"
             aria-labelledby="monitor-tab-history"
@@ -928,10 +704,10 @@ export default function pages_panel_monitor_index(props: any) {
                   >
                     {(
                       [
-                        { code: "1h", label: t.monitor.history.ranges["1h"] },
-                        { code: "6h", label: t.monitor.history.ranges["6h"] },
-                        { code: "24h", label: t.monitor.history.ranges["24h"] },
-                        { code: "7d", label: t.monitor.history.ranges["7d"] },
+                        { code: "1h",label: t.monitor.history.ranges["1h"] },
+                        { code: "6h",label: t.monitor.history.ranges["6h"] },
+                        { code: "24h",label: t.monitor.history.ranges["24h"] },
+                        { code: "7d",label: t.monitor.history.ranges["7d"] },
                       ] as const
                     ).map((r: any) => (
                       <Fragment>
@@ -939,12 +715,12 @@ export default function pages_panel_monitor_index(props: any) {
                           type="button"
                           className={classList([
                             "range-btn rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                            r.code === "1h"
+                            r.code==="1h"
                               ? "bg-primary text-primary-foreground"
-                              : "text-muted-foreground hover:bg-accent",
+                              :"text-muted-foreground hover:bg-accent",
                           ])}
                           data-range={r.code}
-                          aria-pressed={r.code === "1h" ? "true" : "false"}
+                          aria-pressed={r.code==="1h"? "true":"false"}
                         >
                           {r.label}
                         </button>
@@ -995,12 +771,12 @@ export default function pages_panel_monitor_index(props: any) {
                       <button
                         type="button"
                         data-history-metric={metric.code}
-                        aria-pressed={metric.code === "all" ? "true" : "false"}
+                        aria-pressed={metric.code==="all"? "true":"false"}
                         className={classList([
                           "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                          metric.code === "all"
+                          metric.code==="all"
                             ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+                            :"border-border text-muted-foreground hover:bg-accent hover:text-foreground",
                         ])}
                       >
                         <span
@@ -1032,14 +808,17 @@ export default function pages_panel_monitor_index(props: any) {
                 ></div>
               </div>
               <div className="px-3 pb-5 pt-3 sm:px-5">
-                <div className="relative h-80 w-full sm:h-96">
+                <div className="monitor-history-chart">
                   <canvas id="chart-history"></canvas>
+                  <div id="history-gap-tooltip" hidden role="status" className="monitor-gap-tooltip" />
                   <div
                     id="history-overlay"
                     className="absolute inset-0 hidden items-center justify-center rounded-lg bg-card/95 px-4 text-center text-sm text-muted-foreground"
                     role="status"
                   ></div>
                 </div>
+                <div id="history-gap-track" className="monitor-gap-track" hidden />
+                <p id="history-gap-legend" className="monitor-gap-legend" hidden>{t.monitor.history.gapLegend}</p>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
                   <i className="ti ti-info-circle"></i>
                   {t.monitor.history.peakHint}
@@ -1116,8 +895,8 @@ export default function pages_panel_monitor_index(props: any) {
                 </div>
               </div>
             </div>
-          </div>
-          <div
+          </div></ModuleSection>
+          <ModuleSection id="processes"><div
             id="monitor-panel-processes"
             role="tabpanel"
             aria-labelledby="monitor-tab-processes"
@@ -1125,74 +904,25 @@ export default function pages_panel_monitor_index(props: any) {
           >
             {/** Process list */}
             <div className="p-5">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold">
-                    {t.monitor.processes.tableTitle}
-                  </h2>
-                  <p
-                    id="proc-updated"
-                    className="text-xs text-muted-foreground"
-                  >
-                    {t.monitor.processes.updatedMomentAgo}
-                  </p>
-                </div>
-                <div
-                  id="proc-live-controls"
-                  className="flex items-center gap-3"
-                >
+              <span id="proc-updated" hidden aria-hidden="true" />
+              <div data-module-local-controls className="monitor-process-toolbar" role="toolbar" aria-label={t.monitor.processes.title}>
+                <div id="proc-live-controls" className="flex items-center gap-2">
                   <div className="flex rounded-lg border border-border p-0.5 text-xs font-medium">
-                    <button
-                      id="proc-sort-cpu"
-                      className="rounded-md px-3 py-1 transition-colors bg-primary text-primary-foreground"
-                    >
-                      {t.monitor.labels.cpu}
-                    </button>
-                    <button
-                      id="proc-sort-mem"
-                      className="rounded-md px-3 py-1 transition-colors text-muted-foreground hover:bg-accent"
-                    >
-                      {t.monitor.labels.ram}
-                    </button>
+                    <button id="proc-sort-cpu" type="button" className="rounded-md px-3 py-1 transition-colors bg-primary text-primary-foreground">{t.monitor.labels.cpu}</button>
+                    <button id="proc-sort-mem" type="button" className="rounded-md px-3 py-1 transition-colors text-muted-foreground hover:bg-accent">{t.monitor.labels.ram}</button>
                   </div>
-                  <button
-                    id="btn-refresh-procs"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors"
-                    title={t.monitor.processes.refreshTitle}
-                  >
-                    <i className="ti ti-refresh text-sm"></i>
+                  <button id="btn-refresh-procs" type="button" className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors" title={t.monitor.processes.refreshTitle} aria-label={t.monitor.processes.refreshTitle}>
+                    <i className="ti ti-refresh text-sm" aria-hidden="true" />
                   </button>
                 </div>
-              </div>
-              <div className="mb-4 flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center">
-                <button
-                  id="proc-mode-live"
-                  type="button"
-                  aria-pressed="true"
-                  className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
-                >
-                  <i className="ti ti-activity mr-1" aria-hidden="true"></i>
-                  {t.monitor.processes.liveMode}
+                <button id="proc-mode-live" type="button" aria-pressed="true" className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground">
+                  <i className="ti ti-activity mr-1" aria-hidden="true" />{t.monitor.processes.liveMode}
                 </button>
-                <label
-                  className="text-xs font-medium text-muted-foreground"
-                  htmlFor="proc-history-select"
-                >
-                  {t.monitor.processes.historyMode}
-                </label>
-                <select
-                  id="proc-history-select"
-                  className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  disabled
-                >
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="proc-history-select">{t.monitor.processes.historyMode}</label>
+                <select id="proc-history-select" className="rounded-lg border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" disabled>
                   <option value="">{t.monitor.processes.selectInterval}</option>
                 </select>
-                <p
-                  id="proc-history-status"
-                  className="text-xs text-muted-foreground"
-                  role="status"
-                  aria-live="polite"
-                ></p>
+                <p id="proc-history-status" className="text-xs text-muted-foreground" role="status" aria-live="polite" />
               </div>
               <p
                 id="proc-history-note"
@@ -1210,18 +940,14 @@ export default function pages_panel_monitor_index(props: any) {
                 rowActions={processTableRowActions(processTableStrings)}
               />
             </div>
-          </div>
+          </div></ModuleSection>
         </section>
 
         {/** Service status + Automatic restart (one row, equal height) */}
-        <div className="mb-6 grid items-stretch gap-6 lg:grid-cols-2">
+        <ModuleSection id="services"><div className="monitor-services-workspace">
           {/** Services */}
-          <div className="flex flex-col rounded-xl border border-border bg-card">
-            <div className="border-b border-border px-5 py-4">
-              <h2 className="text-base font-semibold">
-                {t.monitor.services.title}
-              </h2>
-            </div>
+          <div className="monitor-services-card flex flex-col rounded-xl border border-border bg-card">
+
             <div
               id="services-list"
               className="flex-1 divide-y divide-border px-1 py-1"
@@ -1375,10 +1101,10 @@ export default function pages_panel_monitor_index(props: any) {
               </div>
             </div>
           </div>
-        </div>
+        </div></ModuleSection>
 
         {/** Kill confirm dialog */}
-        <dialog
+        <dialog data-aux-drawer
           id="dialog-kill"
           className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
         >
@@ -1386,54 +1112,57 @@ export default function pages_panel_monitor_index(props: any) {
             title={t.monitor.killDialog.title}
             closeId="kill-close"
           />
-          <div className="flex flex-col gap-4 px-6 py-5">
-            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-amber-500">
-              <i className="ti ti-alert-triangle text-lg shrink-0 mt-0.5"></i>
-              <div className="text-sm">
-                <p className="font-medium">
-                  {t.monitor.killDialog.warningTitle}
+          <div data-aux-body>
+            <div className="flex flex-col gap-4 px-6 py-5">
+              <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-amber-500">
+                <i className="ti ti-alert-triangle text-lg shrink-0 mt-0.5"></i>
+                <div className="text-sm">
+                  <p className="font-medium">
+                    {t.monitor.killDialog.warningTitle}
+                  </p>
+                  <p className="text-xs opacity-80 mt-1">
+                    {t.monitor.killDialog.warningDetail}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                  {t.monitor.killDialog.processLabel}
                 </p>
-                <p className="text-xs opacity-80 mt-1">
-                  {t.monitor.killDialog.warningDetail}
+                <p id="kill-name" className="font-mono font-medium truncate">
+                  —
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t.monitor.killDialog.pidLabel}{" "}
+                  <span id="kill-pid" className="font-mono">
+                    —
+                  </span>
                 </p>
               </div>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                {t.monitor.killDialog.processLabel}
-              </p>
-              <p id="kill-name" className="font-mono font-medium truncate">
-                —
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t.monitor.killDialog.pidLabel}{" "}
-                <span id="kill-pid" className="font-mono">
-                  —
-                </span>
-              </p>
-            </div>
-            <div
-              id="kill-error"
-              className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-            ></div>
-            <div className="flex gap-3">
-              <button
-                id="kill-cancel"
-                type="button"
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
-              >
-                {t.monitor.killDialog.cancelButton}
-              </button>
-              <button
-                id="kill-confirm"
-                type="button"
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
-              >
-                <i className="ti ti-trash text-sm"></i>
-                {t.monitor.killDialog.confirmButton}
-              </button>
+              <div
+                id="kill-error"
+                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+              ></div>
+              <div className="flex gap-3">
+                <button
+                  id="kill-cancel"
+                  type="button"
+                  className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  {t.monitor.killDialog.cancelButton}
+                </button>
+                <button
+                  id="kill-confirm"
+                  type="button"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+                >
+                  <i className="ti ti-trash text-sm"></i>
+                  {t.monitor.killDialog.confirmButton}
+                </button>
+              </div>
             </div>
           </div>
+
         </dialog>
       </PanelLayout>
 
@@ -1445,7 +1174,7 @@ export default function pages_panel_monitor_index(props: any) {
       </div>
 
       {/** AI provider picker (shown when more than one provider is active) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dialog-ai-optimize"
         className="w-full max-w-sm rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -1455,15 +1184,18 @@ export default function pages_panel_monitor_index(props: any) {
           icon="ti-sparkles"
           closeId="ai-optimize-close"
         />
-        <div className="flex flex-col gap-3 px-6 py-5">
-          <p
-            id="ai-provider-subtitle"
-            className="text-sm text-muted-foreground"
-          >
-            {t.monitor.aiOptimize.subtitle}
-          </p>
-          <div id="ai-optimize-providers" className="grid gap-2"></div>
+        <div data-aux-body>
+          <div className="flex flex-col gap-3 px-6 py-5">
+            <p
+              id="ai-provider-subtitle"
+              className="text-sm text-muted-foreground"
+            >
+              {t.monitor.aiOptimize.subtitle}
+            </p>
+            <div id="ai-optimize-providers" className="grid gap-2"></div>
+          </div>
         </div>
+
       </dialog>
 
       <script

@@ -66,7 +66,7 @@ export function ModalNavbar({
   const shellClose = useModalClose();
   const handleClose = shellClose ? () => shellClose.requestClose(onClose) : onClose;
   return (
-    <div className={cn("flex h-14 items-center gap-3 border-b border-border px-4", className)}>
+    <div data-aux-header className={cn("flex h-14 items-center gap-3 border-b border-border px-4", className)}>
       {onBack && (
         <button
           type="button"

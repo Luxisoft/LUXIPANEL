@@ -1,3 +1,4 @@
+import ModalNavbar from "./components_ui_ModalNavbar";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Internal component migrated from src/pages/panel/repository-store/index.astro.
 import { SlotFragment as Fragment } from "../view-context";
@@ -19,17 +20,17 @@ import PanelLayout from "../module-frame";
 import RepositorySettingsDrawer from "./components_panel_repository_store_RepositorySettingsDrawer";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_repository_store_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, [
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,[
     "repositoryStore",
     "settings",
     "components",
   ]);
-  const rs = t.repositoryStore;
+  const rs=t.repositoryStore;
   interface StackCategory {
     id: string;
     label: string;
@@ -43,7 +44,7 @@ export default function pages_panel_repository_store_index(props: any) {
   }
   // Single source of truth for the stack → categories tree.
   // The script reads `data-stack` / `data-category` to build the GitHub query.
-  const STACKS: Stack[] = [
+  const STACKS: Stack[]=[
     {
       id: "all",
       label: t.repositoryStore.stacks.todos,
@@ -86,7 +87,7 @@ export default function pages_panel_repository_store_index(props: any) {
           label: t.repositoryStore.stacks.catFrameworks,
           icon: "ti-components",
         },
-        { id: "cms", label: t.repositoryStore.stacks.catCms, icon: "ti-edit" },
+        { id: "cms",label: t.repositoryStore.stacks.catCms,icon: "ti-edit" },
       ],
     },
     {
@@ -254,7 +255,7 @@ export default function pages_panel_repository_store_index(props: any) {
           label: t.repositoryStore.stacks.catTodos,
           icon: "ti-layout-grid",
         },
-        { id: "auth", label: t.repositoryStore.stacks.catAuth, icon: "ti-key" },
+        { id: "auth",label: t.repositoryStore.stacks.catAuth,icon: "ti-key" },
         {
           id: "crypto",
           label: t.repositoryStore.stacks.catCrypto,
@@ -273,7 +274,7 @@ export default function pages_panel_repository_store_index(props: any) {
       ],
     },
   ];
-  Object.assign(context.scope.vars, { stacks: STACKS });
+  Object.assign(context.scope.vars,{ stacks: STACKS });
   return (
     <Fragment>
       <PanelLayout
@@ -284,22 +285,53 @@ export default function pages_panel_repository_store_index(props: any) {
           <RepositorySettingsDrawer />
         </div>
         <div
-          className="lxp-repository-store-page space-y-6 pt-5"
+          className="lxp-repository-store-page space-y-6"
           id="repo-store-root"
         >
           {/** Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">
-                {t.repositoryStore.pageTitle}
-              </h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {t.repositoryStore.header.subtitle}
-              </p>
-            </div>
+              {/** Technology shortcuts replace the former title and subtitle. */}
+              <div id="repo-stack-row" className="flex flex-wrap items-center gap-2">
+                <select
+                  id="repo-stack-select"
+                  aria-label={t.repositoryStore.filters.stackLabel}
+                  className="hidden"
+                >
+                  {STACKS.map((s: any) => (
+                    <Fragment>
+                      <option value={s.id}>{s.label}</option>
+                    </Fragment>
+                  ))}
+                </select>
+                <div
+                  id="repo-stack-pills"
+                  role="group" aria-label={t.repositoryStore.filters.stackLabel}
+                  className="flex flex-wrap gap-2"
+                >
+                  {STACKS.map((s: any,i: number) => (
+                    <Fragment>
+                      <button
+                        type="button"
+                        data-stack={s.id}
+                        className={classList([
+                          "stack-filter-btn lxp-repo-filter inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                          i===0
+                            ? "border border-primary bg-primary text-primary-foreground"
+                            :"border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+                        ])}
+                      >
+                        <i className={`ti ${s.icon} text-sm`}></i>
+                        <span>{s.label}</span>
+                      </button>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <select
                 id="repo-sort"
+                data-module-topbar-region="filters"
                 className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-primary/60 sm:flex-none"
               >
                 <option value="relevance">
@@ -317,6 +349,7 @@ export default function pages_panel_repository_store_index(props: any) {
               </select>
               <button
                 id="repo-refresh"
+                data-module-topbar-region="native-actions"
                 type="button"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent transition-colors"
                 title={t.repositoryStore.header.refreshTitle}
@@ -383,7 +416,7 @@ export default function pages_panel_repository_store_index(props: any) {
               data-tab="all"
               className="repo-tab-btn inline-flex items-center gap-2 border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-all hover:text-primary/80"
             >
-              <span>{t.repositoryStore.tabs.todos}</span>
+              <span>{rs.settingsUi.catalog}</span>
               <span
                 id="tab-all-count"
                 className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold"
@@ -433,7 +466,7 @@ export default function pages_panel_repository_store_index(props: any) {
           </div>
 
           {/** Stats card */}
-          <div className="flex items-center gap-6 rounded-2xl border border-border bg-card px-5 py-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3">
             <div className="flex items-center gap-2 text-sm">
               <span className="h-2 w-2 rounded-full bg-primary"></span>
               <span className="text-muted-foreground">
@@ -471,7 +504,7 @@ export default function pages_panel_repository_store_index(props: any) {
           {/** Sticky toolbar: search + Stack/Categoría/Estado filters stay pinned
          to the top of the scroll area while the results grid scrolls under it. */}
           <div className="sticky top-0 z-20 -mx-5 space-y-3 border-b border-border bg-background px-5 pb-4 pt-2">
-            <div className="relative w-full sm:w-72">
+            <div id="repo-search-control" data-module-topbar-region="search" className="relative w-full sm:w-72">
               <i className="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none"></i>
               <input
                 id="repo-search"
@@ -482,62 +515,20 @@ export default function pages_panel_repository_store_index(props: any) {
               />
             </div>
 
-            <div id="repo-catalog-filters" className="space-y-3">
-              {/** Stack filter pills */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  {t.repositoryStore.filters.stackLabel}
-                </span>
-                <select
-                  id="repo-stack-select"
-                  aria-label={t.repositoryStore.filters.stackLabel}
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-primary/60 md:hidden"
-                >
-                  {STACKS.map((s: any) => (
-                    <Fragment>
-                      <option value={s.id}>{s.label}</option>
-                    </Fragment>
-                  ))}
-                </select>
-                <div
-                  id="repo-stack-pills"
-                  className="hidden flex-wrap gap-2 md:flex"
-                >
-                  {STACKS.map((s: any, i: number) => (
-                    <Fragment>
-                      <button
-                        type="button"
-                        data-stack={s.id}
-                        className={classList([
-                          "stack-filter-btn inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
-                          i === 0
-                            ? "border border-primary bg-primary text-primary-foreground"
-                            : "border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
-                        ])}
-                      >
-                        <i className={`ti ${s.icon} text-sm`}></i>
-                        <span>{s.label}</span>
-                      </button>
-                    </Fragment>
-                  ))}
-                </div>
-              </div>
-
+            <div id="repo-catalog-filters" className="lxp-repo-filters">
               {/** Category filter pills (dynamic per stack) */}
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  {t.repositoryStore.filters.categoriaLabel}
-                </span>
                 <select
                   id="repo-category-select"
                   aria-label={t.repositoryStore.filters.categoriaLabel}
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-primary/60 md:hidden"
+                  className="lxp-repo-filter w-full rounded-lg border border-border bg-card px-3 py-1.5 text-xs outline-none transition-colors focus:border-primary/60 md:hidden"
                 >
                   {/** Options populated by the script based on the active stack */}
                 </select>
                 <div
                   id="repo-category-pills"
-                  className="hidden flex-wrap gap-2 md:flex"
+                  role="group" aria-label={t.repositoryStore.filters.categoriaLabel}
+                  className="hidden flex-wrap gap-1 md:flex"
                 >
                   {/** Populated by the script based on the active stack */}
                 </div>
@@ -618,66 +609,53 @@ export default function pages_panel_repository_store_index(props: any) {
             </button>
           </div>
         </div>
-        <dialog
+        <dialog data-aux-drawer
           id="repo-clone-dialog"
-          className="w-[min(94vw,34rem)] rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl backdrop:bg-black/60"
+          className="w-[min(94vw,34rem)] rounded-2xl border border-border bg-card p-0 text-foreground shadow-2xl backdrop:bg-black/60"
         >
-          <form id="repo-clone-form" className="space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">
-                  {rs.catalogUi.cloneRepository}
-                </h2>
-                <p
-                  id="repo-clone-name"
-                  className="text-sm text-muted-foreground"
-                ></p>
-              </div>
-              <button
-                id="repo-clone-close"
-                type="button"
-                aria-label={t.components.modalNavbar.close}
-                className="rounded-lg p-2 hover:bg-accent"
-              >
-                <i className="ti ti-x"></i>
-              </button>
+          <form data-aux-form id="repo-clone-form" className="space-y-4">
+            <ModalNavbar title={rs.catalogUi.cloneRepository} closeId="repo-clone-close" />
+            <div data-aux-body><p id="repo-clone-name" className="text-sm text-muted-foreground" />
+              <label className="block text-xs text-muted-foreground">
+                {rs.catalogUi.targetFolder}
+                <input
+                  id="repo-clone-dest"
+                  required
+                  type="text"
+                  className="mt-1 w-full rounded-lg border border-border bg-background p-2 font-mono text-sm"
+                />
+              </label>
+              <label className="block text-xs text-muted-foreground">
+                {rs.catalogUi.method}
+                <select
+                  id="repo-clone-transport"
+                  className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
+                >
+                  <option value="https">HTTPS</option>
+                  <option value="ssh">SSH</option>
+                </select>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {rs.catalogUi.cloneHint}
+              </p>
+              <p
+                id="repo-clone-error"
+                className="hidden text-sm text-destructive"
+              ></p>
+
             </div>
-            <label className="block text-xs text-muted-foreground">
-              {rs.catalogUi.targetFolder}
-              <input
-                id="repo-clone-dest"
-                required
-                type="text"
-                className="mt-1 w-full rounded-lg border border-border bg-background p-2 font-mono text-sm"
-              />
-            </label>
-            <label className="block text-xs text-muted-foreground">
-              {rs.catalogUi.method}
-              <select
-                id="repo-clone-transport"
-                className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
+<div data-aux-footer>              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
               >
-                <option value="https">HTTPS</option>
-                <option value="ssh">SSH</option>
-              </select>
-            </label>
-            <p className="text-xs text-muted-foreground">
-              {rs.catalogUi.cloneHint}
-            </p>
-            <p
-              id="repo-clone-error"
-              className="hidden text-sm text-destructive"
-            ></p>
-            <button
-              type="submit"
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-            >
-              {rs.catalogUi.cloneButton}
-            </button>
+                {rs.catalogUi.cloneButton}
+              </button></div>
+
           </form>
         </dialog>
       </PanelLayout>
 
+      <script id="repository-store-stacks" type="application/json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STACKS).replaceAll("<", "\\u003c") }} />
       <script
         id="repository-store-i18n"
         type="application/json"
@@ -686,7 +664,6 @@ export default function pages_panel_repository_store_index(props: any) {
         }}
       ></script>
 
-      <style>{`{"\\n  main:has(> .lxp-repository-store-page) {\\n    padding-top: 0;\\n  }\\n"}`}</style>
     </Fragment>
   );
 }

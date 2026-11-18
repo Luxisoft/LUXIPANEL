@@ -1,3 +1,4 @@
+import { showContextMenu as showSharedContextMenu } from "../../../../../lib/context-menu";
 // Files page — context-menu submodule (code-move from index-script1.ts; no behavior change).
 import { getPasteTargetPath, pasteFilesClipboard, readFilesClipboard, writeFilesClipboard } from "./clipboard";
 import { mediaKind, openMediaModal } from "./editor";
@@ -24,10 +25,12 @@ import { requestAssistant } from "/scripts/extracted/lib/assistant-request.js?v=
   });
 
   // ── Context menu (right-click actions) ────────────────────
+  let closeSharedMenu: (() => void) | undefined;
   export function hideContextMenu() {
+    const hadShared = !!closeSharedMenu; closeSharedMenu?.(); closeSharedMenu = undefined;
     const menu = document.getElementById("files-context-menu");
     if (menu) {
-      menu.hidePopover?.();
+      if (!hadShared) menu.hidePopover?.();
       menu.classList.add("hidden");
       menu.innerHTML = "";
     }
@@ -148,20 +151,7 @@ import { requestAssistant } from "/scripts/extracted/lib/assistant-request.js?v=
     const menu = document.getElementById("files-context-menu");
     if (!menu) return;
     menu.innerHTML = buildContextMenu(path, name, isDir, kind);
-    menu.classList.remove("hidden");
-    // The workspace sheet is transformed and clips its descendants. A popover
-    // stays in this controller's DOM scope while using viewport coordinates.
-    menu.showPopover?.();
-
-    const margin = 6;
-    const { innerWidth, innerHeight } = window;
-    const rect = menu.getBoundingClientRect();
-    let x = e.clientX;
-    let y = e.clientY;
-    if (x + rect.width + margin > innerWidth) x = innerWidth - rect.width - margin;
-    if (y + rect.height + margin > innerHeight) y = innerHeight - rect.height - margin;
-    menu.style.left = `${Math.max(margin, x)}px`;
-    menu.style.top = `${Math.max(margin, y)}px`;
+    closeSharedMenu = showSharedContextMenu(menu, e);
   }
 
   (window as any).showFileContextMenu = (e: MouseEvent, path: string, name: string, isDir: boolean) => {

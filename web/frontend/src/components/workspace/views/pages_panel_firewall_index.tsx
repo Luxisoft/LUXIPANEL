@@ -21,33 +21,33 @@ import SettingsSectionLayout from "./components_ui_SettingsSectionLayout";
 import { hasAction } from "../view-context";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_firewall_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["firewall", "panelLayout"]);
-  const user = Astro.locals.user;
-  const userModules = new Set(user?.modules ?? []);
-  const canUseSecurityAudit =
-    user?.kind === "admin" || userModules.has("security-audit");
-  const canManageFirewall = !!user && hasAction(user, "firewall.manage");
-  const fws = t.firewall.settingsUi;
-  const firewallSettingsSections = [
-    { id: "rules", label: fws.rulesView, icon: "ti-adjustments-horizontal" },
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["firewall","panelLayout"]);
+  const user=Astro.locals.user;
+  const userModules=new Set(user?.modules??[]);
+  const canUseSecurityAudit=
+    user?.kind==="admin"||userModules.has("security-audit");
+  const canManageFirewall=!!user&&hasAction(user,"firewall.manage");
+  const fws=t.firewall.settingsUi;
+  const firewallSettingsSections=[
+    { id: "rules",label: fws.rulesView,icon: "ti-adjustments-horizontal" },
     ...(canManageFirewall
-      ? [{ id: "logging", label: fws.ufwLog, icon: "ti-file-text" }]
-      : []),
-    { id: "related", label: fws.related, icon: "ti-apps" },
+      ? [{ id: "logging",label: fws.ufwLog,icon: "ti-file-text" }]
+      :[]),
+    { id: "related",label: fws.related,icon: "ti-apps" },
   ];
-  const firewallView = Astro.url.searchParams.get("workspaceView");
-  const showFirewallView = (view: string) => view !== "audit" || canUseSecurityAudit;
-  const initialTab = ["audit", "rules", "fail2ban"].includes(firewallView ?? "") && showFirewallView(firewallView!)
-    ? firewallView : canUseSecurityAudit ? "audit" : "rules";
-  const tabs = [
-    ...(canUseSecurityAudit ? [{ id: "audit", label: t.panelLayout.workspaceViews.firewall.audit, panel: "security-audit-section" }] : []),
-    { id: "rules", label: t.firewall.ufwRules.title, panel: "fw-rules-panel" },
-    { id: "fail2ban", label: "Fail2ban", panel: "fw-fail2ban-panel" },
+  const firewallView=Astro.url.searchParams.get("workspaceView");
+  const showFirewallView=(view: string) => view!=="audit"||canUseSecurityAudit;
+  const initialTab=["audit","rules","fail2ban"].includes(firewallView??"")&&showFirewallView(firewallView!)
+    ? firewallView:canUseSecurityAudit? "audit":"rules";
+  const tabs=[
+    ...(canUseSecurityAudit? [{ id: "audit",label: t.panelLayout.workspaceViews.firewall.audit,panel: "security-audit-section" }]:[]),
+    { id: "rules",label: t.firewall.ufwRules.title,panel: "fw-rules-panel" },
+    { id: "fail2ban",label: "Fail2ban",panel: "fw-fail2ban-panel" },
   ];
 
   return (
@@ -94,7 +94,7 @@ export default function pages_panel_firewall_index(props: any) {
                   </select>
                 </label>
               </section>
-              {canManageFirewall && (
+              {canManageFirewall&&(
                 <Fragment>
                   <section
                     id="firewall-settings-panel-logging"
@@ -160,8 +160,8 @@ export default function pages_panel_firewall_index(props: any) {
         <div data-firewall-tabs-row className="mb-4 border-b border-border">
           <div role="tablist" aria-label={t.firewall.pageTitle} className="flex flex-wrap gap-1">
             {tabs.map(tab => <button key={tab.id} id={`fw-tab-${tab.id}`} type="button" role="tab"
-              data-firewall-tab={tab.id} aria-selected={initialTab === tab.id} aria-controls={tab.panel}
-              tabIndex={initialTab === tab.id ? 0 : -1}
+              data-firewall-tab={tab.id} aria-selected={initialTab===tab.id} aria-controls={tab.panel}
+              tabIndex={initialTab===tab.id? 0:-1}
               className="rounded-t-lg px-3 py-2 text-sm font-medium text-muted-foreground aria-selected:bg-primary/10 aria-selected:text-primary">
               {tab.label}
             </button>)}
@@ -248,23 +248,18 @@ export default function pages_panel_firewall_index(props: any) {
         </div>
 
         {/** Security Audit Tab */}
-        {showFirewallView("audit") && (
+        {showFirewallView("audit")&&(
           <Fragment>
             <div
               id="security-audit-section"
               role="tabpanel"
               aria-labelledby="fw-tab-audit"
-              data-enabled={canUseSecurityAudit ? "true" : "false"}
-              className={initialTab === "audit" ? "mb-6" : "hidden mb-6"}
+              data-enabled={canUseSecurityAudit? "true":"false"}
+              className={initialTab==="audit"? "mb-6":"hidden mb-6"}
             >
               <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <i className="ti ti-shield-alert text-xl text-primary"></i>
-                    <h2 className="text-base font-semibold">
-                      {t.firewall.securityAudit.title}
-                    </h2>
-                  </div>
+                <div className="contents">
+
                   <button
                     id="btn-start-audit"
                     className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
@@ -420,18 +415,16 @@ export default function pages_panel_firewall_index(props: any) {
           className="grid gap-6"
         >
           {/** UFW Rules */}
-          {showFirewallView("rules") && (
+          {showFirewallView("rules")&&(
             <Fragment>
               <div
                 id="fw-rules-panel"
                 role="tabpanel"
                 aria-labelledby="fw-tab-rules"
-                className={`${initialTab === "rules" ? "" : "hidden "}rounded-xl border border-border bg-card overflow-hidden`}
+                className={`${initialTab==="rules"? "":"hidden "}rounded-xl border border-border bg-card overflow-hidden`}
               >
-                <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                  <h2 className="text-base font-semibold">
-                    {t.firewall.ufwRules.title}
-                  </h2>
+                <div className="contents">
+
                   <div className="flex items-center gap-2">
                     <button
                       id="btn-ai-ufw"
@@ -483,16 +476,16 @@ export default function pages_panel_firewall_index(props: any) {
           )}
 
           {/** Fail2ban */}
-          {showFirewallView("fail2ban") && (
+          {showFirewallView("fail2ban")&&(
             <Fragment>
               <div
                 id="fw-fail2ban-panel"
                 role="tabpanel"
                 aria-labelledby="fw-tab-fail2ban"
-                className={`${initialTab === "fail2ban" ? "" : "hidden "}rounded-xl border border-border bg-card overflow-hidden`}
+                className={`${initialTab==="fail2ban"? "":"hidden "}rounded-xl border border-border bg-card overflow-hidden`}
               >
-                <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                  <h2 className="text-base font-semibold">Fail2ban</h2>
+                <div className="contents">
+
                   <div className="flex items-center gap-2">
                     <button
                       id="btn-ai-fail2ban"
@@ -523,9 +516,9 @@ export default function pages_panel_firewall_index(props: any) {
       </PanelLayout>
 
       {/** Add rule dialog */}
-      {showFirewallView("rules") && (
+      {showFirewallView("rules")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-rule"
             className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -533,84 +526,92 @@ export default function pages_panel_firewall_index(props: any) {
               title={t.firewall.ruleDialog.title}
               closeId="rule-close"
             />
-            <form id="form-rule" className="flex flex-col gap-4 px-6 py-5">
-              <div
-                id="rule-error"
-                className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
-              ></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">
-                    {t.firewall.ruleDialog.labelAction}
-                  </label>
-                  <select
-                    id="rule-action"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
-                  >
-                    <option value="allow">
-                      {t.firewall.ruleDialog.optionAllow}
-                    </option>
-                    <option value="deny">
-                      {t.firewall.ruleDialog.optionDeny}
-                    </option>
-                    <option value="reject">
-                      {t.firewall.ruleDialog.optionReject}
-                    </option>
-                  </select>
+            <form data-aux-form id="form-rule" className="flex flex-col gap-4 px-6 py-5">
+              <div data-aux-body>
+
+                <div
+                  id="rule-error"
+                  className="hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive"
+                ></div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">
+                      {t.firewall.ruleDialog.labelAction}
+                    </label>
+                    <select
+                      id="rule-action"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                    >
+                      <option value="allow">
+                        {t.firewall.ruleDialog.optionAllow}
+                      </option>
+                      <option value="deny">
+                        {t.firewall.ruleDialog.optionDeny}
+                      </option>
+                      <option value="reject">
+                        {t.firewall.ruleDialog.optionReject}
+                      </option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">
+                      {t.firewall.ruleDialog.labelProtocol}
+                    </label>
+                    <select
+                      id="rule-proto"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                    >
+                      <option value="tcp">TCP</option>
+                      <option value="udp">UDP</option>
+                      <option value="any">
+                        {t.firewall.ruleDialog.optionAny}
+                      </option>
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">
-                    {t.firewall.ruleDialog.labelProtocol}
-                  </label>
-                  <select
-                    id="rule-proto"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
-                  >
-                    <option value="tcp">TCP</option>
-                    <option value="udp">UDP</option>
-                    <option value="any">
-                      {t.firewall.ruleDialog.optionAny}
-                    </option>
-                  </select>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="rule-port">
+                      {t.firewall.ruleDialog.labelPort}
+                    </label>
+                    <input
+                      id="rule-port"
+                      type="text"
+                      required
+                      placeholder={t.firewall.ruleDialog.placeholderPort}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium" htmlFor="rule-from">
+                      {t.firewall.ruleDialog.labelFromIp}
+                    </label>
+                    <input
+                      id="rule-from"
+                      type="text"
+                      placeholder={t.firewall.ruleDialog.placeholderFromIp}
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="rule-port">
-                    {t.firewall.ruleDialog.labelPort}
+                  <label className="text-sm font-medium" htmlFor="rule-comment">
+                    {t.firewall.ruleDialog.labelComment}
                   </label>
                   <input
-                    id="rule-port"
+                    id="rule-comment"
                     type="text"
-                    required
-                    placeholder={t.firewall.ruleDialog.placeholderPort}
+                    placeholder={t.firewall.ruleDialog.placeholderComment}
                     className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium" htmlFor="rule-from">
-                    {t.firewall.ruleDialog.labelFromIp}
-                  </label>
-                  <input
-                    id="rule-from"
-                    type="text"
-                    placeholder={t.firewall.ruleDialog.placeholderFromIp}
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+
+
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="rule-comment">
-                  {t.firewall.ruleDialog.labelComment}
-                </label>
-                <input
-                  id="rule-comment"
-                  type="text"
-                  placeholder={t.firewall.ruleDialog.placeholderComment}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              <div className="flex gap-3">
+              <div data-aux-footer className="flex gap-3">
                 <button
                   type="button"
                   id="rule-cancel"
@@ -631,9 +632,9 @@ export default function pages_panel_firewall_index(props: any) {
       )}
 
       {/** Ban IP dialog */}
-      {showFirewallView("fail2ban") && (
+      {showFirewallView("fail2ban")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dialog-ban"
             className="w-full max-w-sm rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
           >
@@ -641,33 +642,39 @@ export default function pages_panel_firewall_index(props: any) {
               title={t.firewall.banDialog.title}
               closeId="ban-close"
             />
-            <form id="form-ban" className="flex flex-col gap-4 px-6 py-5">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="ban-ip">
-                  {t.firewall.banDialog.labelIp}
-                </label>
-                <input
-                  id="ban-ip"
-                  type="text"
-                  required
-                  placeholder={t.firewall.banDialog.placeholderIp}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
+            <form data-aux-form id="form-ban" className="flex flex-col gap-4 px-6 py-5">
+              <div data-aux-body>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="ban-ip">
+                    {t.firewall.banDialog.labelIp}
+                  </label>
+                  <input
+                    id="ban-ip"
+                    type="text"
+                    required
+                    placeholder={t.firewall.banDialog.placeholderIp}
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="ban-jail">
+                    {t.firewall.banDialog.labelJail}
+                  </label>
+                  <select
+                    id="ban-jail"
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                  >
+                    <option value="sshd">sshd</option>
+                    <option value="postfix-sasl">postfix-sasl</option>
+                    <option value="nginx-http-auth">nginx-http-auth</option>
+                  </select>
+                </div>
+
+
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="ban-jail">
-                  {t.firewall.banDialog.labelJail}
-                </label>
-                <select
-                  id="ban-jail"
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="sshd">sshd</option>
-                  <option value="postfix-sasl">postfix-sasl</option>
-                  <option value="nginx-http-auth">nginx-http-auth</option>
-                </select>
-              </div>
-              <div className="flex gap-3">
+              <div data-aux-footer className="flex gap-3">
                 <button
                   type="button"
                   id="ban-cancel"
@@ -695,33 +702,23 @@ export default function pages_panel_firewall_index(props: any) {
       />
 
       {/** Audit report dialog */}
-      {showFirewallView("audit") && (
+      {showFirewallView("audit")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dlg-audit-report"
-            className="w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-xl backdrop:bg-black/50"
+            className="w-full max-w-2xl rounded-2xl border border-border bg-card p-0 shadow-xl backdrop:bg-black/50"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">
-                {t.firewall.auditReportDialog.title}
-              </h3>
-              <button
-                onClick={() => {
-                  (document.getElementById("dlg-audit-report") as HTMLDialogElement | null)?.close();
-                }}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent"
-              >
-                <i className="ti ti-x"></i>
-              </button>
+            <ModalNavbar title={<>{t.firewall.auditReportDialog.title}</>}   onClose={() => (document.getElementById("dlg-audit-report") as HTMLDialogElement | null)?.close()} ></ModalNavbar>
+            <div data-aux-body>
+              <div
+                id="audit-report-content"
+                className="space-y-4 max-h-[60vh] overflow-y-auto"
+              ></div>
             </div>
-            <div
-              id="audit-report-content"
-              className="space-y-4 max-h-[60vh] overflow-y-auto"
-            ></div>
-            <div className="mt-4 flex justify-end">
+            <div data-aux-footer className="mt-4 flex justify-end">
               <button
                 onClick={() => {
-                  (document.getElementById("dlg-audit-report") as HTMLDialogElement | null)?.close();
+                  (document.getElementById("dlg-audit-report") as HTMLDialogElement|null)?.close();
                 }}
                 className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
               >

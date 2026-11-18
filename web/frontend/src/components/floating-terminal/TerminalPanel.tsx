@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 LUXISOFT
-import { useEffect, useRef, useState } from "react";
+import { setTerminalLoading } from "@/lib/terminal-loading";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useBodyPointerEventsWhileOpen } from "@/lib/body-pointer-events";
 import { useViewDirection, useViewEnterReplay } from "@/components/ui/ViewTransition";
@@ -48,6 +49,9 @@ export default function TerminalPanel({
   onLockedChange,
 }: TerminalPanelProps) {
   const messages = useTerminalMessages(locale);
+  const bindTerminalHost = useCallback((host: HTMLDivElement | null) => {
+    if (host && !host.querySelector(":scope > #lxp-terminal-loading")) setTerminalLoading(host, true, messages.console.connecting);
+  }, [messages.console.connecting]);
   const settingsDialog = useRef<HTMLDialogElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const openSettings = () => {
@@ -272,7 +276,8 @@ export default function TerminalPanel({
           </div>
           <div
             id="terminal-container"
-            className="flex-1 min-h-0 overflow-hidden bg-background"
+            ref={bindTerminalHost}
+            className="relative flex-1 min-h-0 overflow-hidden bg-background"
           ></div>
         </section>
 
@@ -323,7 +328,7 @@ export default function TerminalPanel({
           {/* Las secciones permanecen montadas (DOM gobernado por scripts:
               #panel-snippets, historial…): la transición de vista se
               reproduce sobre este contenedor ya montado (motion.css). */}
-          <div ref={sidebarViewRef} className="flex-1 overflow-hidden">
+          <div ref={sidebarViewRef} className="min-h-0 flex-1 overflow-hidden">
             <section
               data-floating-terminal-panel="snippets"
               className={
@@ -336,21 +341,16 @@ export default function TerminalPanel({
                 id="panel-snippets"
                 className="flex h-full min-h-0 flex-col overflow-hidden"
               >
-                <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {messages.snippets.heading}
-                  </p>
                   <button
                     id="btn-new-snippet"
                     type="button"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="m-2 mb-0 inline-flex self-end items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     title={messages.snippets.newSnippet}
                     aria-label={messages.snippets.newSnippet}
                   >
                     <i className="ti ti-plus text-sm"></i>
                     <span>{messages.snippets.newSnippet}</span>
                   </button>
-                </div>
                 <div className="space-y-2 border-b border-border px-3 py-2">
                   <div className="flex items-center gap-2">
                     <div className="relative min-w-0 flex-1">
@@ -412,7 +412,7 @@ export default function TerminalPanel({
                     </button>
                   </div>
                 </div>
-                <div id="history-list" className="flex-1 min-h-0 overflow-y-auto">
+                <div id="history-list" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                   {sidebarTab === "history" ? <HistoryPanel messages={messages.history} settingsButtonContainer={historySettingsContainer} /> : null}
                 </div>
               </div>

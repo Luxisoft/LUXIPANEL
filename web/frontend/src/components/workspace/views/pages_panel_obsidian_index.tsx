@@ -19,19 +19,19 @@ import {
 import PanelLayout from "../module-frame";
 import ModalNavbar from "./components_ui_ModalNavbar";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
-import { getSession, canSeeSidebar } from "../view-context";
+import { getSession,canSeeSidebar } from "../view-context";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_obsidian_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["obsidian"]);
-  const user = getSession(Astro.request);
-  const isAdmin = user?.kind === "admin";
-  const canUseAssistant = user ? canSeeSidebar(user, "assistant") : false;
-  const ui = t.obsidian.workspace;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["obsidian"]);
+  const user=getSession(Astro.request);
+  const isAdmin=user?.kind==="admin";
+  const canUseAssistant=user? canSeeSidebar(user,"assistant"):false;
+  const ui=t.obsidian.workspace;
 
   return (
     <Fragment>
@@ -67,7 +67,7 @@ export default function pages_panel_obsidian_index(props: any) {
                   <i className="ti ti-keyboard text-lg"></i>
                   <span className="hidden @xl:inline">{ui.shortcuts}</span>
                 </button>
-                {isAdmin && (
+                {isAdmin&&(
                   <Fragment>
                     <button
                       type="button"
@@ -80,7 +80,7 @@ export default function pages_panel_obsidian_index(props: any) {
                     </button>
                   </Fragment>
                 )}
-                {isAdmin && (
+                {isAdmin&&(
                   <Fragment>
                     <button
                       type="button"
@@ -157,7 +157,7 @@ export default function pages_panel_obsidian_index(props: any) {
                     </div>
                   </dl>
                 </section>
-                {isAdmin && (
+                {isAdmin&&(
                   <Fragment>
                     <section
                       data-obs-settings-panel="vaults"
@@ -192,7 +192,7 @@ export default function pages_panel_obsidian_index(props: any) {
                     </section>
                   </Fragment>
                 )}
-                {isAdmin && (
+                {isAdmin&&(
                   <Fragment>
                     <section
                       data-obs-settings-panel="ai"
@@ -230,9 +230,6 @@ export default function pages_panel_obsidian_index(props: any) {
           </ViewSettingsModal>
         </div>
 
-        <p className="mb-4 text-sm text-muted-foreground">
-          {t.obsidian.header.subheading}
-        </p>
         <div
           id="obs-toolbar"
           className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3"
@@ -287,9 +284,9 @@ export default function pages_panel_obsidian_index(props: any) {
             {t.obsidian.empty.noVaultsTitle}
           </h3>
           <p className="mx-auto mb-5 max-w-md text-sm text-muted-foreground">
-            {isAdmin ? t.obsidian.empty.noVaultsDescription : ui.askAdmin}
+            {isAdmin? t.obsidian.empty.noVaultsDescription:ui.askAdmin}
           </p>
-          {isAdmin && (
+          {isAdmin&&(
             <Fragment>
               <button
                 id="obs-empty-cta"
@@ -433,7 +430,7 @@ export default function pages_panel_obsidian_index(props: any) {
                     className="ti ti-chevron-down text-sm"
                   ></i>
                 </button>
-                {canUseAssistant && (
+                {canUseAssistant&&(
                   <Fragment>
                     <button
                       id="obs-analyze-ai"
@@ -517,7 +514,7 @@ export default function pages_panel_obsidian_index(props: any) {
       </PanelLayout>
 
       {/** New vault (create folder or register existing) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-obs-vault"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -525,86 +522,88 @@ export default function pages_panel_obsidian_index(props: any) {
           title={t.obsidian.vaultDialog.title}
           closeId="obs-vault-x"
         />
-        <div className="flex flex-col gap-4 px-6 py-4">
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium"
-              htmlFor="obs-vault-name"
-            >
-              {t.obsidian.vaultDialog.labelName}
-            </label>
-            <input
-              id="obs-vault-name"
-              type="text"
-              placeholder={t.obsidian.vaultDialog.placeholderName}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label
-              className="mb-1 block text-xs font-medium"
-              htmlFor="obs-vault-path"
-            >
-              {t.obsidian.vaultDialog.labelPath}
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="obs-vault-path"
-                type="text"
-                placeholder={t.obsidian.vaultDialog.placeholderPath}
-                spellCheck="false"
-                className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <button
-                id="obs-vault-browse"
-                type="button"
-                title={t.obsidian.vaultDialog.btnBrowse}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+        <div data-aux-body>
+          <div className="flex flex-col gap-4 px-6 py-4">
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium"
+                htmlFor="obs-vault-name"
               >
-                <i className="ti ti-folder-search text-base"></i>
-                <span className="hidden sm:inline">
-                  {t.obsidian.vaultDialog.btnBrowse}
+                {t.obsidian.vaultDialog.labelName}
+              </label>
+              <input
+                id="obs-vault-name"
+                type="text"
+                placeholder={t.obsidian.vaultDialog.placeholderName}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label
+                className="mb-1 block text-xs font-medium"
+                htmlFor="obs-vault-path"
+              >
+                {t.obsidian.vaultDialog.labelPath}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="obs-vault-path"
+                  type="text"
+                  placeholder={t.obsidian.vaultDialog.placeholderPath}
+                  spellCheck="false"
+                  className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <button
+                  id="obs-vault-browse"
+                  type="button"
+                  title={t.obsidian.vaultDialog.btnBrowse}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  <i className="ti ti-folder-search text-base"></i>
+                  <span className="hidden sm:inline">
+                    {t.obsidian.vaultDialog.btnBrowse}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border px-3 py-2.5 hover:bg-accent">
+                <input
+                  type="radio"
+                  name="obs-vault-mode"
+                  defaultValue="create"
+                  defaultChecked
+                  className="mt-0.5 h-4 w-4 border-input text-primary"
+                />
+                <span>
+                  <span className="block text-sm font-medium">
+                    {t.obsidian.vaultDialog.modeCreate}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t.obsidian.vaultDialog.modeCreateHint}
+                  </span>
                 </span>
-              </button>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border px-3 py-2.5 hover:bg-accent">
+                <input
+                  type="radio"
+                  name="obs-vault-mode"
+                  defaultValue="register"
+                  className="mt-0.5 h-4 w-4 border-input text-primary"
+                />
+                <span>
+                  <span className="block text-sm font-medium">
+                    {t.obsidian.vaultDialog.modeRegister}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t.obsidian.vaultDialog.modeRegisterHint}
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border px-3 py-2.5 hover:bg-accent">
-              <input
-                type="radio"
-                name="obs-vault-mode"
-                defaultValue="create"
-                defaultChecked
-                className="mt-0.5 h-4 w-4 border-input text-primary"
-              />
-              <span>
-                <span className="block text-sm font-medium">
-                  {t.obsidian.vaultDialog.modeCreate}
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  {t.obsidian.vaultDialog.modeCreateHint}
-                </span>
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border px-3 py-2.5 hover:bg-accent">
-              <input
-                type="radio"
-                name="obs-vault-mode"
-                defaultValue="register"
-                className="mt-0.5 h-4 w-4 border-input text-primary"
-              />
-              <span>
-                <span className="block text-sm font-medium">
-                  {t.obsidian.vaultDialog.modeRegister}
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  {t.obsidian.vaultDialog.modeRegisterHint}
-                </span>
-              </span>
-            </label>
-          </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="obs-vault-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -622,7 +621,7 @@ export default function pages_panel_obsidian_index(props: any) {
       </dialog>
 
       {/** Server folder picker for the vault path (same pattern as the users module) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-obs-path-browser"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
@@ -630,7 +629,10 @@ export default function pages_panel_obsidian_index(props: any) {
           title={t.obsidian.pathBrowserDialog.title}
           closeId="obs-path-browser-x"
         />
-        <div className="flex flex-col gap-3 px-5 py-4">
+        <div data-aux-body>
+
+        </div>
+        <div data-aux-footer className="flex flex-col gap-3 px-5 py-4">
           <div className="flex items-center gap-2">
             <button
               id="obs-path-browser-up"
@@ -674,26 +676,28 @@ export default function pages_panel_obsidian_index(props: any) {
       </dialog>
 
       {/** Generic input dialog (new note / new folder / rename) */}
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-obs-input"
         className="w-full max-w-md rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm"
       >
         <ModalNavbar title="" titleId="obs-input-title" closeId="obs-input-x" />
-        <div className="px-6 py-4">
-          <label
-            id="obs-input-label"
-            className="mb-1 block text-xs font-medium"
-            htmlFor="obs-input-value"
-          ></label>
-          <input
-            id="obs-input-value"
-            type="text"
-            spellCheck="false"
-            autoComplete="off"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+        <div data-aux-body>
+          <div className="px-6 py-4">
+            <label
+              id="obs-input-label"
+              className="mb-1 block text-xs font-medium"
+              htmlFor="obs-input-value"
+            ></label>
+            <input
+              id="obs-input-value"
+              type="text"
+              spellCheck="false"
+              autoComplete="off"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="obs-input-cancel"
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -709,21 +713,23 @@ export default function pages_panel_obsidian_index(props: any) {
         </div>
       </dialog>
 
-      <dialog
+      <dialog data-aux-drawer
         id="dlg-obs-daily"
         className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60"
       >
         <ModalNavbar title={ui.quickEntry} closeId="obs-daily-x" />
-        <div className="space-y-3 px-6 py-4">
-          <p className="text-sm text-muted-foreground">{ui.quickEntryHint}</p>
-          <textarea
-            id="obs-daily-content"
-            rows={6}
-            className="w-full resize-y rounded-lg border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            aria-label={ui.quickEntry}
-          ></textarea>
+        <div data-aux-body>
+          <div className="space-y-3 px-6 py-4">
+            <p className="text-sm text-muted-foreground">{ui.quickEntryHint}</p>
+            <textarea
+              id="obs-daily-content"
+              rows={6}
+              className="w-full resize-y rounded-lg border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label={ui.quickEntry}
+            ></textarea>
+          </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+        <div data-aux-footer className="flex justify-end gap-2 border-t border-border px-6 py-4">
           <button
             id="obs-daily-cancel"
             type="button"

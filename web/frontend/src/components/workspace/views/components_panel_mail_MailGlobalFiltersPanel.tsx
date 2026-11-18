@@ -8,7 +8,7 @@ import {
   cssStyle,
 } from "../view-context";
 
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 export default function components_panel_mail_MailGlobalFiltersPanel(
   props: any,
 ) {
@@ -33,19 +33,13 @@ export default function components_panel_mail_MailGlobalFiltersPanel(
         className="hidden space-y-4"
       >
         <div className="rounded-xl border border-border bg-background p-4">
-          <h4 className="text-sm font-semibold">
-            {t.mail.globalFilters.sectionTitle}
-          </h4>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t.mail.globalFilters.sectionDesc}
-          </p>
 
           <div
             id="mail-global-filters-error"
-            className="mt-3 hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+            className="mb-3 hidden rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
           ></div>
 
-          <div className="mt-4">
+          <div className="mb-4">
             <button
               type="button"
               id="mail-global-filters-new"
@@ -55,10 +49,8 @@ export default function components_panel_mail_MailGlobalFiltersPanel(
             </button>
           </div>
 
-          <div className="mt-4 rounded-lg border border-border overflow-hidden">
-            <div className="border-b border-border bg-muted/30 px-3 py-2 text-sm font-medium">
-              {t.mail.globalFilters.currentFiltersHeader}
-            </div>
+          <div className="rounded-lg border border-border overflow-hidden">
+
             <div className="p-3">
               <DataTable
                 i18n={dataTableI18n}

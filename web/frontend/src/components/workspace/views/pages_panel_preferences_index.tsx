@@ -1,3 +1,4 @@
+import ModalNavbar from "./components_ui_ModalNavbar";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Internal component migrated from src/pages/panel/preferences/index.astro.
 import { SlotFragment as Fragment } from "../view-context";
@@ -18,36 +19,29 @@ import PanelLayout from "../module-frame";
 import { getInitials } from "../view-context";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_preferences_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["preferences"]);
-  const user = Astro.locals.user;
-  const initials = getInitials(user);
-  const prefView = Astro.url.searchParams.get("workspaceView");
-  const isolatedPrefView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    ["profile", "security", "audit"].includes(prefView ?? "");
-  const showPrefView = (view: string) => !isolatedPrefView || prefView === view;
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["preferences"]);
+  const user=Astro.locals.user;
+  const initials=getInitials(user);
+  const prefView=Astro.url.searchParams.get("workspaceView");
+  const isolatedPrefView=
+    Astro.url.searchParams.get("embed")==="1"&&
+    ["profile","security","audit"].includes(prefView??"");
+  const showPrefView=(view: string) => !isolatedPrefView||prefView===view;
 
   return (
     <Fragment>
       <PanelLayout title={t.preferences.pageTitle} activeModule="preferences">
-        <div id="pref-root" className="space-y-6 max-w-3xl">
+        <div id="pref-root" className="contents">
           {/** Header */}
-          <div>
-            <h1 className="text-xl font-semibold">
-              {t.preferences.header.title}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {t.preferences.header.subtitle}
-            </p>
-          </div>
+
 
           {/** Profile */}
-          {showPrefView("profile") && (
+          {showPrefView("profile")&&(
             <Fragment>
               <section
                 id="pref-profile"
@@ -80,7 +74,7 @@ export default function pages_panel_preferences_index(props: any) {
                       <input
                         id="pref-display-name"
                         type="text"
-                        defaultValue={user?.displayName ?? ""}
+                        defaultValue={user?.displayName??""}
                         className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
@@ -101,7 +95,7 @@ export default function pages_panel_preferences_index(props: any) {
                       </label>
                       <input
                         type="text"
-                        defaultValue={user?.username ?? ""}
+                        defaultValue={user?.username??""}
                         disabled
                         className="w-full h-10 rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground cursor-not-allowed"
                       />
@@ -112,7 +106,7 @@ export default function pages_panel_preferences_index(props: any) {
                       </label>
                       <input
                         type="text"
-                        defaultValue={user?.role ?? "user"}
+                        defaultValue={user?.role??"user"}
                         disabled
                         className="w-full h-10 rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground capitalize cursor-not-allowed"
                       />
@@ -133,7 +127,7 @@ export default function pages_panel_preferences_index(props: any) {
           )}
 
           {/** Change password */}
-          {showPrefView("security") && (
+          {showPrefView("security")&&(
             <Fragment>
               <section
                 id="pref-password"
@@ -159,7 +153,7 @@ export default function pages_panel_preferences_index(props: any) {
           )}
 
           {/** Passkeys */}
-          {showPrefView("security") && (
+          {showPrefView("security")&&(
             <Fragment>
               <section
                 id="pref-passkeys"
@@ -209,7 +203,7 @@ export default function pages_panel_preferences_index(props: any) {
           )}
 
           {/** Recovery codes */}
-          {showPrefView("security") && (
+          {showPrefView("security")&&(
             <Fragment>
               <section
                 id="pref-recovery-codes"
@@ -279,7 +273,7 @@ export default function pages_panel_preferences_index(props: any) {
           )}
 
           {/** Two-Factor Authentication (2FA) */}
-          {showPrefView("security") && (
+          {showPrefView("security")&&(
             <Fragment>
               <section
                 id="pref-2fa"
@@ -340,7 +334,7 @@ export default function pages_panel_preferences_index(props: any) {
           )}
 
           {/** Audit log */}
-          {showPrefView("audit") && (
+          {showPrefView("audit")&&(
             <Fragment>
               <section
                 id="pref-audit"
@@ -390,27 +384,22 @@ export default function pages_panel_preferences_index(props: any) {
         </div>
 
         {/** Confirm regenerate dialog */}
-        {showPrefView("security") && (
+        {showPrefView("security")&&(
           <Fragment>
-            <dialog
+            <dialog data-aux-drawer
               id="dlg-confirm-regen"
-              className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl backdrop:bg-black/50"
+              className="w-full max-w-sm rounded-2xl border border-border bg-card p-0 shadow-xl backdrop:bg-black/50"
             >
-              <div className="text-center space-y-3 mb-5">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                  <i className="ti ti-alert-triangle text-xl text-destructive"></i>
-                </div>
-                <h3 className="text-base font-semibold">
-                  {t.preferences.dialogRegenCodes.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
+              <ModalNavbar title={<>{t.preferences.dialogRegenCodes.title}</>}   onClose={() => (document.getElementById("dlg-confirm-regen") as HTMLDialogElement | null)?.close()} ></ModalNavbar>
+              <div data-aux-body><p className="text-sm text-muted-foreground">
                   {t.preferences.dialogRegenCodes.body}
                 </p>
+
               </div>
-              <div className="flex gap-3">
+              <div data-aux-footer className="flex gap-3">
                 <button
                   onClick={() => {
-                    (document.getElementById("dlg-confirm-regen") as HTMLDialogElement | null)?.close();
+                    (document.getElementById("dlg-confirm-regen") as HTMLDialogElement|null)?.close();
                   }}
                   className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
                 >
@@ -428,85 +417,72 @@ export default function pages_panel_preferences_index(props: any) {
         )}
 
         {/** Setup 2FA dialog */}
-        {showPrefView("security") && (
+        {showPrefView("security")&&(
           <Fragment>
-            <dialog
+            <dialog data-aux-drawer
               id="dlg-setup-2fa"
-              className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl backdrop:bg-black/50"
+              className="w-full max-w-sm rounded-2xl border border-border bg-card p-0 shadow-xl backdrop:bg-black/50"
             >
-              <div className="text-center space-y-4 mb-6">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <i className="ti ti-shield-lock text-xl text-primary"></i>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold">
-                    {t.preferences.dialogSetup2fa.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+              <ModalNavbar title={<>{t.preferences.dialogSetup2fa.title}</>}   onClose={() => (document.getElementById("dlg-setup-2fa") as HTMLDialogElement | null)?.close()} ></ModalNavbar>
+              <div data-aux-body><p className="text-sm text-muted-foreground mt-1">
                     {t.preferences.dialogSetup2fa.subtitle}
                   </p>
+                {/** QR Code */}
+                <div className="flex justify-center mb-6">
+                  <canvas
+                    id="qr-canvas"
+                    className="border border-border rounded-lg p-3"
+                  ></canvas>
                 </div>
-              </div>
-
-              {/** QR Code */}
-              <div className="flex justify-center mb-6">
-                <canvas
-                  id="qr-canvas"
-                  className="border border-border rounded-lg p-3"
-                ></canvas>
-              </div>
-
-              {/** Secret text (fallback) */}
-              <div className="bg-muted/50 rounded-lg p-4 mb-6 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {t.preferences.dialogSetup2fa.manualEntryLabel}
-                </p>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="secret-text"
-                    type="text"
-                    readOnly
-                    className="flex-1 h-9 rounded-lg border border-input bg-background px-3 text-xs font-mono text-center focus:outline-none"
-                  />
-                  <button
-                    id="btn-copy-secret"
-                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs hover:bg-accent transition-colors"
-                    title={t.preferences.dialogSetup2fa.titleCopySecret}
+                {/** Secret text (fallback) */}
+                <div className="bg-muted/50 rounded-lg p-4 mb-6 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {t.preferences.dialogSetup2fa.manualEntryLabel}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="secret-text"
+                      type="text"
+                      readOnly
+                      className="flex-1 h-9 rounded-lg border border-input bg-background px-3 text-xs font-mono text-center focus:outline-none"
+                    />
+                    <button
+                      id="btn-copy-secret"
+                      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs hover:bg-accent transition-colors"
+                      title={t.preferences.dialogSetup2fa.titleCopySecret}
+                    >
+                      <i className="ti ti-copy text-sm"></i>
+                    </button>
+                  </div>
+                </div>
+                {/** Code verification */}
+                <div className="space-y-3 mb-6">
+                  <label
+                    htmlFor="verify-code-input"
+                    className="text-sm font-medium"
                   >
-                    <i className="ti ti-copy text-sm"></i>
-                  </button>
+                    {t.preferences.dialogSetup2fa.verifyCodeLabel}
+                  </label>
+                  <input
+                    id="verify-code-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    className="w-full h-11 rounded-lg border border-input bg-background px-4 text-center text-lg font-mono tracking-[0.2em] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
+                {/** Error message */}
+                <p
+                  id="2fa-setup-error"
+                  className="hidden text-xs text-destructive mb-4"
+                ></p>
+                {/** Actions */}
               </div>
-
-              {/** Code verification */}
-              <div className="space-y-3 mb-6">
-                <label
-                  htmlFor="verify-code-input"
-                  className="text-sm font-medium"
-                >
-                  {t.preferences.dialogSetup2fa.verifyCodeLabel}
-                </label>
-                <input
-                  id="verify-code-input"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  className="w-full h-11 rounded-lg border border-input bg-background px-4 text-center text-lg font-mono tracking-[0.2em] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              {/** Error message */}
-              <p
-                id="2fa-setup-error"
-                className="hidden text-xs text-destructive mb-4"
-              ></p>
-
-              {/** Actions */}
-              <div className="flex gap-3">
+              <div data-aux-footer className="flex gap-3">
                 <button
                   onClick={() => {
-                    (document.getElementById("dlg-setup-2fa") as HTMLDialogElement | null)?.close();
+                    (document.getElementById("dlg-setup-2fa") as HTMLDialogElement|null)?.close();
                   }}
                   className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
                 >
@@ -524,27 +500,22 @@ export default function pages_panel_preferences_index(props: any) {
         )}
 
         {/** Disable 2FA confirmation dialog */}
-        {showPrefView("security") && (
+        {showPrefView("security")&&(
           <Fragment>
-            <dialog
+            <dialog data-aux-drawer
               id="dlg-disable-2fa"
-              className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl backdrop:bg-black/50"
+              className="w-full max-w-sm rounded-2xl border border-border bg-card p-0 shadow-xl backdrop:bg-black/50"
             >
-              <div className="text-center space-y-3 mb-5">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                  <i className="ti ti-alert-triangle text-xl text-destructive"></i>
-                </div>
-                <h3 className="text-base font-semibold">
-                  {t.preferences.dialogDisable2fa.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
+              <ModalNavbar title={<>{t.preferences.dialogDisable2fa.title}</>}   onClose={() => (document.getElementById("dlg-disable-2fa") as HTMLDialogElement | null)?.close()} ></ModalNavbar>
+              <div data-aux-body><p className="text-sm text-muted-foreground">
                   {t.preferences.dialogDisable2fa.body}
                 </p>
+
               </div>
-              <div className="flex gap-3">
+              <div data-aux-footer className="flex gap-3">
                 <button
                   onClick={() => {
-                    (document.getElementById("dlg-disable-2fa") as HTMLDialogElement | null)?.close();
+                    (document.getElementById("dlg-disable-2fa") as HTMLDialogElement|null)?.close();
                   }}
                   className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
                 >

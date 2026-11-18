@@ -16,17 +16,17 @@ const terminal = {
     "closeDrawerTitle": "إغلاق (تبقى الطرفيات نشطة)"
   },
   "sidebar": {
-    "tabSnippets": "المقتطفات",
+    "tabSnippets": "الأوامر المحفوظة",
     "tabHistory": "السجل",
     "tabConfig": "الإعدادات",
     "closePanel": "إغلاق اللوحة الجانبية",
     "closePanelTitle": "إغلاق اللوحة"
   },
   "snippets": {
-    "heading": "المقتطفات",
-    "newSnippet": "Snippet جديد",
-    "searchPlaceholder": "البحث عن snippet...",
-    "searchAria": "البحث في Snippets",
+    "heading": "الأوامر المحفوظة",
+    "newSnippet": "أمر جديد",
+    "searchPlaceholder": "البحث عن الأوامر...",
+    "searchAria": "البحث عن الأوامر المحفوظة",
     "filterByCategoryAria": "التصفية حسب الفئة",
     "allCategories": "جميع الفئات"
   },

@@ -32,18 +32,8 @@ export default function pages_panel_project_map_index(props: any) {
           data-messages={JSON.stringify(t)}
           className="flex min-h-0 flex-col gap-4"
         >
-          <header className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[.16em] text-primary">
-                {t.sourceLabel}
-              </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight">
-                {t.title}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t.description}
-              </p>
-            </div>
+          <header className="contents">
+
             <button
               id="pe-refresh"
               type="button"

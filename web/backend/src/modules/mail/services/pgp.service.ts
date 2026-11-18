@@ -1,3 +1,4 @@
+import { sanitizeEmailDocument } from "./mail-document-sanitizer.js";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 LUXISOFT
 import { randomBytes } from "node:crypto";
@@ -141,6 +142,7 @@ export async function decryptMailMessage(source: string, accountId: number, pass
       const mail = await simpleParser(content) as ParsedMail;
       return {
         text: mail.text ?? "",
+        htmlDocument: sanitizeEmailDocument(typeof mail.html === "string" ? mail.html : ""),
         html: sanitizeEmailHtml(typeof mail.html === "string" ? mail.html : ""),
         attachments: mail.attachments.map((item) => ({
           filename: item.filename || "adjunto",

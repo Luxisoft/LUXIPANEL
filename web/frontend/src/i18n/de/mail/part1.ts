@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "Erfordert gültige Schlüssel für alle Empfänger und den Absender."
   },
   "inbox": {
+    "readerLoading": "Nachricht wird geladen…",
+    "retryMessage": "Erneut versuchen",
+    "readerTimeout": "Das Laden hat zu lange gedauert. Bitte erneut versuchen.",
+
+    "toolsLabel": "Werkzeuge",
+    "filtersLabel": "Filter",
     "pageTitle": "Posteingang",
     "loadingAccount": "Konto wird geladen...",
     "allAccounts": "Alle Konten",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "Verschieben",
     "msgIframeTitle": "Nachrichteninhalt",
     "attachmentsLabel": "Anhänge",
+    "moveUi": {
+      "search": "Ordner suchen…",
+      "destination": "Zielordner",
+      "cancel": "Abbrechen",
+      "confirm": "Hierher verschieben",
+      "moving": "Wird verschoben…",
+      "empty": "Keine Ordner verfügbar",
+      "error": "Nachricht konnte nicht verschoben werden. Erneut versuchen.",
+      "origin": "Von"
+},
     "moveDlgTitle": "Nachricht verschieben",
     "foldersDlgTitle": "Ordner verwalten",
     "foldersExistingHeader": "Vorhandene Ordner",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "Konto #{id}",
-    "cleanupPrompt": "Bereinige den INBOX-Ordner von {account} (accountId: {id}). Gehe alle Nachrichten seitenweise durch. Lies verdächtige Nachrichten und prüfe SPF, DKIM, DMARC, Return-Path und Anhänge. Erkenne Spam, Phishing und Schadsoftware. Lass legitime E-Mails, bekannte Kontakte, Antworten und Rechnungen unverändert. Verschiebe Verdächtiges nach Revisar-IA und lösche nichts. Fasse zusammen, wie viele Nachrichten du verschoben hast und warum."
+    "cleanupPrompt": "Bereinige den INBOX-Ordner von {account} (accountId: {id}). Gehe alle Nachrichten seitenweise durch. Lies verdächtige Nachrichten und prüfe SPF, DKIM, DMARC, Return-Path und Anhänge. Erkenne Spam, Phishing und Schadsoftware. Lass legitime E-Mails, bekannte Kontakte, Antworten und Rechnungen unverändert. Verschiebe Verdächtiges nach Cuarentena und lösche nichts. Fasse zusammen, wie viele Nachrichten du verschoben hast und warum."
   }
 } as const;
 

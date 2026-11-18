@@ -449,6 +449,12 @@ const mailPart1 = {
     "encryptRequirements": "Exige chaves válidas de todos os destinatários e do remetente."
   },
   "inbox": {
+    "readerLoading": "Carregando mensagem…",
+    "retryMessage": "Tentar novamente",
+    "readerTimeout": "O carregamento demorou muito. Tente novamente.",
+
+    "toolsLabel": "Ferramentas",
+    "filtersLabel": "Filtros",
     "pageTitle": "Caixa de entrada",
     "loadingAccount": "Carregando conta...",
     "allAccounts": "Todas as contas",
@@ -473,6 +479,16 @@ const mailPart1 = {
     "titleMove": "Mover",
     "msgIframeTitle": "Conteúdo da mensagem",
     "attachmentsLabel": "Arquivos anexados",
+    "moveUi": {
+      "search": "Buscar pasta…",
+      "destination": "Pasta de destino",
+      "cancel": "Cancelar",
+      "confirm": "Mover para cá",
+      "moving": "Movendo…",
+      "empty": "Nenhuma pasta disponível",
+      "error": "Não foi possível mover a mensagem. Tente novamente.",
+      "origin": "Origem"
+},
     "moveDlgTitle": "Mover mensagem",
     "foldersDlgTitle": "Gerenciar pastas",
     "foldersExistingHeader": "Pastas existentes",
@@ -655,7 +671,7 @@ const mailPart1 = {
   },
   "assistant": {
     "accountNumber": "Conta nº {id}",
-    "cleanupPrompt": "Limpa a pasta INBOX de {account} (accountId: {id}). Percorre todas as mensagens por páginas. Lê as suspeitas e verifica SPF, DKIM, DMARC, Return-Path e anexos. Identifica spam, phishing e malware. Não alteres mensagens legítimas, contactos conhecidos, respostas nem faturas. Move as suspeitas para Revisar-IA; não apagues nada. Resume quantas moveste e porquê."
+    "cleanupPrompt": "Limpa a pasta INBOX de {account} (accountId: {id}). Percorre todas as mensagens por páginas. Lê as suspeitas e verifica SPF, DKIM, DMARC, Return-Path e anexos. Identifica spam, phishing e malware. Não alteres mensagens legítimas, contactos conhecidos, respostas nem faturas. Move as suspeitas para Cuarentena; não apagues nada. Resume quantas moveste e porquê."
   }
 } as const;
 

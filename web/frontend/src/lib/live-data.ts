@@ -18,7 +18,11 @@ export function watchModuleData(resources: string[], reload: () => Promise<unkno
   const button = document.createElement("button"); button.type = "button"; button.textContent = labels.refresh;
   button.className = "underline underline-offset-2";
   bar.append(status, button);
-  if (options.showStatus !== false) (root.closest<HTMLElement>("[data-internal-module]") ?? root.parentElement ?? root).prepend(bar);
+  // Drawers keep live subscriptions without a freshness/refresh row taking
+  // space from the module. Standalone pages retain their existing status UI.
+  if (options.showStatus !== false && !root.closest("[data-internal-module], .lxp-workspace-quick-drawer")) {
+    (root.parentElement ?? root).prepend(bar);
+  }
   // Mail can have an independently selected server. Its HTTP adapter keeps
   // that selection; only primary-target events/collector jobs belong here.
   const targetScope = resolveTargetScope();

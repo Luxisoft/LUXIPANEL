@@ -13,6 +13,7 @@ export type MailContact = {
 };
 
 export type MailFolder = {
+  protected?: boolean;
   path: string;
   name: string;
   delimiter?: string;

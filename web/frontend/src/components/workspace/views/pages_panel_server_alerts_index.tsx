@@ -22,7 +22,7 @@ import {
  * through LP's managed notification channel (the panel holds no push tokens).
  */
 import PanelLayout from "../module-frame";
-import DataTable from "@/components/ui/DataTable";
+import DataTable from "../ModuleDataTable";
 import ModalNavbar from "./components_ui_ModalNavbar";
 import ViewSettingsModal from "./components_ui_ViewSettingsModal";
 import { getSession } from "../view-context";
@@ -34,37 +34,37 @@ import {
 } from "@/config/tables/server-alerts-table-config";
 import { getPageMessages } from "../view-context";
 export default function pages_panel_server_alerts_index(props: any) {
-  const context = useViewContext();
-  const slots = splitSlots(props.children);
-  const Astro = context.forView(props, slots);
-  const document = context.scope.document;
-  const window = context.scope.window;
-  const t = getPageMessages(Astro, ["serverAlerts", "components"]);
-  const sa: any = t.serverAlerts;
-  const user = getSession(Astro.request);
-  const isAdmin = user?.kind === "admin";
-  const alertsView = Astro.url.searchParams.get("workspaceView");
-  const isolatedAlertsView =
-    Astro.url.searchParams.get("embed") === "1" &&
-    !Astro.url.searchParams.has("settingsOverlay") &&
-    ["prefs", "send", "scheduled", "rules", "history"].includes(
-      alertsView ?? "",
+  const context=useViewContext();
+  const slots=splitSlots(props.children);
+  const Astro=context.forView(props,slots);
+  const document=context.scope.document;
+  const window=context.scope.window;
+  const t=getPageMessages(Astro,["serverAlerts","components"]);
+  const sa: any=t.serverAlerts;
+  const user=getSession(Astro.request);
+  const isAdmin=user?.kind==="admin";
+  const alertsView=Astro.url.searchParams.get("workspaceView");
+  const isolatedAlertsView=
+    Astro.url.searchParams.get("embed")==="1"&&
+    !Astro.url.searchParams.has("settingsOverlay")&&
+    ["prefs","send","scheduled","rules","history"].includes(
+      alertsView??"",
     );
-  const showAlertsView = (view: string) =>
-    !isolatedAlertsView || alertsView === view;
-  const saTables = [
+  const showAlertsView=(view: string) =>
+    !isolatedAlertsView||alertsView===view;
+  const saTables=[
     {
       id: "sa-scheduled-table",
-      label: sa?.scheduled?.title ?? sa?.tabs?.scheduled ?? "Programadas",
-      actions: isAdmin ? buildScheduledTableRowActions(sa) : [],
+      label: sa?.scheduled?.title??sa?.tabs?.scheduled??"Programadas",
+      actions: isAdmin? buildScheduledTableRowActions(sa):[],
     },
     {
       id: "sa-rules-table",
-      label: sa?.rules?.title ?? sa?.tabs?.rules ?? "Reglas",
-      actions: isAdmin ? buildRulesTableRowActions(sa) : [],
+      label: sa?.rules?.title??sa?.tabs?.rules??"Reglas",
+      actions: isAdmin? buildRulesTableRowActions(sa):[],
     },
   ];
-  const dataTableI18n = (t.components as any).dataTable;
+  const dataTableI18n=(t.components as any).dataTable;
 
   return (
     <Fragment>
@@ -73,14 +73,8 @@ export default function pages_panel_server_alerts_index(props: any) {
         activeModule="server-alerts"
         titleInActions
       >
-        <div slot="title-actions" className="flex min-w-0 items-center gap-2">
-          <h1
-            id="panel-topbar-title"
-            data-panel-title
-            className="shrink-0 text-base font-semibold text-foreground"
-          >
-            {t.serverAlerts.pageTitle}
-          </h1>
+        <div slot="title-actions" className="contents">
+
           <ViewSettingsModal
             id="server-alerts-settings-modal"
             title={sa.settings.title}
@@ -217,7 +211,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                       id="sa-channel-status"
                       className="text-sm text-muted-foreground"
                     >
-                      {sa?.common?.loading ?? "Cargando…"}
+                      {sa?.common?.loading??"Cargando…"}
                     </p>
                     <label className="flex items-center justify-between gap-4 text-sm">
                       <span>{sa.settings.web}</span>
@@ -287,7 +281,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                               {t.components.dataTable.resultsPerPage}
                             </p>
                             <div className="inline-flex rounded-lg border border-border p-0.5">
-                              {[10, 25, 50, 100].map((n: any) => (
+                              {[10,25,50,100].map((n: any) => (
                                 <Fragment>
                                   <button
                                     type="button"
@@ -300,7 +294,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                               ))}
                             </div>
                           </div>
-                          {tbl.actions.length > 0 && (
+                          {tbl.actions.length>0&&(
                             <Fragment>
                               <div>
                                 <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -317,7 +311,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                                           className="h-4 w-4 rounded border-input"
                                         />
                                         <i
-                                          className={`ti ${a.icon ?? "ti-dots"} text-base text-muted-foreground`}
+                                          className={`ti ${a.icon??"ti-dots"} text-base text-muted-foreground`}
                                         ></i>
                                         <span>{a.label}</span>
                                       </label>
@@ -336,29 +330,21 @@ export default function pages_panel_server_alerts_index(props: any) {
             </div>
           </ViewSettingsModal>
         </div>
-        <div className="space-y-6 pt-5">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-xl font-semibold">
-              {t.serverAlerts.header.heading}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t.serverAlerts.header.subheading}
-            </p>
-          </div>
+        <div className="contents">
 
           {/** Tabs (estilo modules: underline + count badge) */}
           <div
             className={
               isolatedAlertsView
                 ? "sr-only"
-                : "flex gap-1 overflow-x-auto border-b border-border"
+                :"flex gap-1 overflow-x-auto border-b border-border"
             }
           >
             <button
               data-tab="prefs"
               className="tab-btn inline-flex items-center gap-2 border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-all hover:text-primary/80"
             >
-              <span>{sa?.tabs?.overview ?? "Resumen"}</span>
+              <span>{sa?.tabs?.overview??"Resumen"}</span>
             </button>
             <button
               data-tab="send"
@@ -394,18 +380,18 @@ export default function pages_panel_server_alerts_index(props: any) {
               data-tab="history"
               className="tab-btn inline-flex items-center gap-2 border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground transition-all hover:text-foreground"
             >
-              <span>{sa?.tabs?.history ?? "Historial"}</span>
+              <span>{sa?.tabs?.history??"Historial"}</span>
             </button>
           </div>
 
           {/** Operational summary */}
-          {showAlertsView("prefs") && (
+          {showAlertsView("prefs")&&(
             <Fragment>
-              <div id="sa-pane-prefs" className="flex flex-col gap-4 p-4">
+              <div id="sa-pane-prefs" role="tabpanel" className="flex flex-col gap-4 p-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-border bg-card p-4">
                     <p className="text-xs text-muted-foreground">
-                      {sa?.overview?.myAlerts ?? "Mis avisos"}
+                      {sa?.overview?.myAlerts??"Mis avisos"}
                     </p>
                     <p
                       id="sa-overview-prefs"
@@ -416,7 +402,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                   </div>
                   <div className="rounded-xl border border-border bg-card p-4">
                     <p className="text-xs text-muted-foreground">
-                      {sa?.overview?.devices ?? "Dispositivos registrados"}
+                      {sa?.overview?.devices??"Dispositivos registrados"}
                     </p>
                     <p
                       id="sa-overview-devices"
@@ -427,7 +413,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                   </div>
                   <div className="rounded-xl border border-border bg-card p-4">
                     <p className="text-xs text-muted-foreground">
-                      {sa?.overview?.last ?? "Último aviso"}
+                      {sa?.overview?.last??"Último aviso"}
                     </p>
                     <p
                       id="sa-overview-last"
@@ -439,7 +425,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/20 p-4">
                   <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-                    {sa?.overview?.help ??
+                    {sa?.overview?.help??
                       "Configura tus avisos y comprueba la entrega antes de crear una programación."}
                   </p>
                   <button
@@ -455,9 +441,9 @@ export default function pages_panel_server_alerts_index(props: any) {
           )}
 
           {/** Send now tab */}
-          {showAlertsView("send") && (
+          {showAlertsView("send")&&(
             <Fragment>
-              <div id="sa-pane-send" className="hidden flex-col gap-5 p-4">
+              <div id="sa-pane-send" role="tabpanel" className="hidden flex-col gap-5 p-4">
                 <p className="text-xs text-muted-foreground">
                   {t.serverAlerts.send.hint}
                 </p>
@@ -519,10 +505,10 @@ export default function pages_panel_server_alerts_index(props: any) {
                       <i className="ti ti-send text-base"></i>{" "}
                       {t.serverAlerts.send.submit}
                     </button>
-                    {!isAdmin && (
+                    {!isAdmin&&(
                       <Fragment>
                         <p className="mt-2 text-xs text-muted-foreground">
-                          {sa?.send?.adminOnly ??
+                          {sa?.send?.adminOnly??
                             "Solo un administrador puede enviar avisos a todos los usuarios."}
                         </p>
                       </Fragment>
@@ -534,14 +520,12 @@ export default function pages_panel_server_alerts_index(props: any) {
           )}
 
           {/** Scheduled tab */}
-          {showAlertsView("scheduled") && (
+          {showAlertsView("scheduled")&&(
             <Fragment>
-              <div id="sa-pane-scheduled" className="hidden p-4">
+              <div id="sa-pane-scheduled" role="tabpanel" className="hidden p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">
-                    {t.serverAlerts.scheduled.title}
-                  </h3>
-                  {isAdmin && (
+
+                  {isAdmin&&(
                     <Fragment>
                       <button
                         id="sa-sched-add"
@@ -559,7 +543,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                   title={t.serverAlerts.scheduled.title}
                   columns={buildScheduledTableColumns(sa)}
                   data={[]}
-                  rowActions={isAdmin ? buildScheduledTableRowActions(sa) : []}
+                  rowActions={isAdmin? buildScheduledTableRowActions(sa):[]}
                   selectable={false}
                 />
               </div>
@@ -567,14 +551,12 @@ export default function pages_panel_server_alerts_index(props: any) {
           )}
 
           {/** Rules tab */}
-          {showAlertsView("rules") && (
+          {showAlertsView("rules")&&(
             <Fragment>
-              <div id="sa-pane-rules" className="hidden p-4">
+              <div id="sa-pane-rules" role="tabpanel" className="hidden p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">
-                    {t.serverAlerts.rules.title}
-                  </h3>
-                  {isAdmin && (
+
+                  {isAdmin&&(
                     <Fragment>
                       <button
                         id="sa-rule-add"
@@ -592,22 +574,20 @@ export default function pages_panel_server_alerts_index(props: any) {
                   title={t.serverAlerts.rules.title}
                   columns={buildRulesTableColumns(sa)}
                   data={[]}
-                  rowActions={isAdmin ? buildRulesTableRowActions(sa) : []}
+                  rowActions={isAdmin? buildRulesTableRowActions(sa):[]}
                   selectable={false}
                 />
               </div>
             </Fragment>
           )}
-          {showAlertsView("history") && (
+          {showAlertsView("history")&&(
             <Fragment>
-              <div id="sa-pane-history" className="hidden p-4">
+              <div id="sa-pane-history" role="tabpanel" className="hidden p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-semibold">
-                      {sa?.history?.title ?? "Historial de entrega"}
-                    </h3>
+
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {sa?.history?.hint ??
+                      {sa?.history?.hint??
                         "Aceptado significa que el proveedor recibió el aviso; no confirma que el dispositivo lo haya mostrado."}
                     </p>
                   </div>
@@ -616,7 +596,7 @@ export default function pages_panel_server_alerts_index(props: any) {
                     type="button"
                     className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
                   >
-                    {sa?.history?.refresh ?? "Actualizar"}
+                    {sa?.history?.refresh??"Actualizar"}
                   </button>
                 </div>
                 <div
@@ -625,14 +605,14 @@ export default function pages_panel_server_alerts_index(props: any) {
                   aria-live="polite"
                   className="space-y-2 text-sm text-muted-foreground"
                 >
-                  {sa?.common?.loading ?? "Cargando…"}
+                  {sa?.common?.loading??"Cargando…"}
                 </div>
                 <button
                   id="sa-history-more"
                   type="button"
                   className="mt-4 hidden rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
                 >
-                  {sa?.history?.more ?? "Cargar más"}
+                  {sa?.history?.more??"Cargar más"}
                 </button>
               </div>
             </Fragment>
@@ -641,9 +621,9 @@ export default function pages_panel_server_alerts_index(props: any) {
       </PanelLayout>
 
       {/** Scheduled notification editor (create) */}
-      {showAlertsView("scheduled") && (
+      {showAlertsView("scheduled")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dlg-sa-sched"
             className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm h-fit"
           >
@@ -651,108 +631,110 @@ export default function pages_panel_server_alerts_index(props: any) {
               title={t.serverAlerts.scheduled.add}
               closeId="sa-sched-x"
             />
-            <div className="space-y-4 px-6 py-4">
-              <div>
-                <label
-                  htmlFor="sa-sched-title"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.scheduled.fieldTitle}
-                </label>
-                <input
-                  id="sa-sched-title"
-                  type="text"
-                  autoComplete="off"
-                  maxLength={200}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="sa-sched-body"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.scheduled.fieldBody}
-                </label>
-                <textarea
-                  id="sa-sched-body"
-                  rows={3}
-                  maxLength={2000}
-                  className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {t.serverAlerts.scheduled.mode}
-                </label>
-                <div className="flex gap-1 rounded-lg bg-muted p-0.5 text-xs">
-                  <button
-                    type="button"
-                    data-sched-mode="once"
-                    className="sa-sched-mode flex-1 rounded-md px-3 py-1.5 font-medium"
+            <div data-aux-body>
+              <div className="space-y-4 px-6 py-4">
+                <div>
+                  <label
+                    htmlFor="sa-sched-title"
+                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                   >
-                    {t.serverAlerts.scheduled.modeOnce}
-                  </button>
-                  <button
-                    type="button"
-                    data-sched-mode="cron"
-                    className="sa-sched-mode flex-1 rounded-md px-3 py-1.5 font-medium"
-                  >
-                    {t.serverAlerts.scheduled.modeCron}
-                  </button>
+                    {t.serverAlerts.scheduled.fieldTitle}
+                  </label>
+                  <input
+                    id="sa-sched-title"
+                    type="text"
+                    autoComplete="off"
+                    maxLength={200}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
-              </div>
+                <div>
+                  <label
+                    htmlFor="sa-sched-body"
+                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  >
+                    {t.serverAlerts.scheduled.fieldBody}
+                  </label>
+                  <textarea
+                    id="sa-sched-body"
+                    rows={3}
+                    maxLength={2000}
+                    className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  ></textarea>
+                </div>
 
-              <div id="sa-sched-once-wrap">
-                <label
-                  htmlFor="sa-sched-at"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.scheduled.scheduleAt}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t.serverAlerts.scheduled.mode}
+                  </label>
+                  <div className="flex gap-1 rounded-lg bg-muted p-0.5 text-xs">
+                    <button
+                      type="button"
+                      data-sched-mode="once"
+                      className="sa-sched-mode flex-1 rounded-md px-3 py-1.5 font-medium"
+                    >
+                      {t.serverAlerts.scheduled.modeOnce}
+                    </button>
+                    <button
+                      type="button"
+                      data-sched-mode="cron"
+                      className="sa-sched-mode flex-1 rounded-md px-3 py-1.5 font-medium"
+                    >
+                      {t.serverAlerts.scheduled.modeCron}
+                    </button>
+                  </div>
+                </div>
+
+                <div id="sa-sched-once-wrap">
+                  <label
+                    htmlFor="sa-sched-at"
+                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  >
+                    {t.serverAlerts.scheduled.scheduleAt}
+                  </label>
+                  <input
+                    id="sa-sched-at"
+                    type="datetime-local"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div id="sa-sched-cron-wrap" className="hidden">
+                  <label
+                    htmlFor="sa-sched-cron"
+                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  >
+                    {t.serverAlerts.scheduled.cron}
+                  </label>
+                  <input
+                    id="sa-sched-cron"
+                    type="text"
+                    spellCheck="false"
+                    autoComplete="off"
+                    placeholder={t.serverAlerts.scheduled.cronPlaceholder}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t.serverAlerts.scheduled.cronHint}
+                  </p>
+                </div>
+
+                <p
+                  id="sa-sched-timezone"
+                  className="text-xs text-muted-foreground"
+                ></p>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    id="sa-sched-enabled"
+                    type="checkbox"
+                    defaultChecked
+                    className="h-4 w-4 rounded border-input text-primary"
+                  />
+                  <span>{t.serverAlerts.scheduled.enabled}</span>
                 </label>
-                <input
-                  id="sa-sched-at"
-                  type="datetime-local"
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
               </div>
-
-              <div id="sa-sched-cron-wrap" className="hidden">
-                <label
-                  htmlFor="sa-sched-cron"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.scheduled.cron}
-                </label>
-                <input
-                  id="sa-sched-cron"
-                  type="text"
-                  spellCheck="false"
-                  autoComplete="off"
-                  placeholder={t.serverAlerts.scheduled.cronPlaceholder}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {t.serverAlerts.scheduled.cronHint}
-                </p>
-              </div>
-
-              <p
-                id="sa-sched-timezone"
-                className="text-xs text-muted-foreground"
-              ></p>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  id="sa-sched-enabled"
-                  type="checkbox"
-                  defaultChecked
-                  className="h-4 w-4 rounded border-input text-primary"
-                />
-                <span>{t.serverAlerts.scheduled.enabled}</span>
-              </label>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+            <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
               <button
                 id="sa-sched-cancel"
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -772,154 +754,156 @@ export default function pages_panel_server_alerts_index(props: any) {
       )}
 
       {/** Metric rule editor (create) */}
-      {showAlertsView("rules") && (
+      {showAlertsView("rules")&&(
         <Fragment>
-          <dialog
+          <dialog data-aux-drawer
             id="dlg-sa-rule"
             className="w-full max-w-lg rounded-2xl border border-border bg-card p-0 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm h-fit"
           >
             <ModalNavbar title={t.serverAlerts.rules.add} closeId="sa-rule-x" />
-            <div className="space-y-4 px-6 py-4">
-              <div>
-                <label
-                  htmlFor="sa-rule-name"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.rules.name}
-                </label>
-                <input
-                  id="sa-rule-name"
-                  type="text"
-                  autoComplete="off"
-                  maxLength={120}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div data-aux-body>
+              <div className="space-y-4 px-6 py-4">
                 <div>
                   <label
-                    htmlFor="sa-rule-metric"
+                    htmlFor="sa-rule-name"
                     className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                   >
-                    {t.serverAlerts.rules.metric}
+                    {t.serverAlerts.rules.name}
                   </label>
-                  <select
-                    id="sa-rule-metric"
+                  <input
+                    id="sa-rule-name"
+                    type="text"
+                    autoComplete="off"
+                    maxLength={120}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="cpu">
-                      {t.serverAlerts.rules.metricCpu}
-                    </option>
-                    <option value="ram">
-                      {t.serverAlerts.rules.metricRam}
-                    </option>
-                    <option value="disk">
-                      {t.serverAlerts.rules.metricDisk}
-                    </option>
-                    <option value="load">
-                      {t.serverAlerts.rules.metricLoad}
-                    </option>
-                    <option value="service-down">
-                      {t.serverAlerts.rules.metricServiceDown}
-                    </option>
-                  </select>
+                  />
                 </div>
-                <div>
-                  <label
-                    htmlFor="sa-rule-op"
-                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                  >
-                    {t.serverAlerts.rules.op}
-                  </label>
-                  <select
-                    id="sa-rule-op"
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value=">=">&ge;</option>
-                    <option value="<=">&le;</option>
-                    <option value="==">=</option>
-                    <option value="down">{t.serverAlerts.rules.opDown}</option>
-                  </select>
-                </div>
-              </div>
 
-              <div id="sa-rule-threshold-wrap">
-                <label
-                  htmlFor="sa-rule-threshold"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.rules.threshold}
-                </label>
-                <input
-                  id="sa-rule-threshold"
-                  type="number"
-                  min="0"
-                  step="1"
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {t.serverAlerts.rules.thresholdHint}
-                </p>
-              </div>
-
-              <div id="sa-rule-service-wrap" className="hidden">
-                <label
-                  htmlFor="sa-rule-service"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                >
-                  {t.serverAlerts.rules.service}
-                </label>
-                <input
-                  id="sa-rule-service"
-                  type="text"
-                  spellCheck="false"
-                  autoComplete="off"
-                  placeholder={t.serverAlerts.rules.servicePlaceholder}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {t.serverAlerts.rules.serviceHint}
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="sa-rule-cooldown"
-                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                  >
-                    {t.serverAlerts.rules.cooldown}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="sa-rule-cooldown"
-                      type="number"
-                      min="0"
-                      max="10080"
-                      step="1"
-                      defaultValue="15"
-                      className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      {t.serverAlerts.rules.minutes}
-                    </span>
+                <div className="grid gap-4 @sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="sa-rule-metric"
+                      className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                    >
+                      {t.serverAlerts.rules.metric}
+                    </label>
+                    <select
+                      id="sa-rule-metric"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="cpu">
+                        {t.serverAlerts.rules.metricCpu}
+                      </option>
+                      <option value="ram">
+                        {t.serverAlerts.rules.metricRam}
+                      </option>
+                      <option value="disk">
+                        {t.serverAlerts.rules.metricDisk}
+                      </option>
+                      <option value="load">
+                        {t.serverAlerts.rules.metricLoad}
+                      </option>
+                      <option value="service-down">
+                        {t.serverAlerts.rules.metricServiceDown}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="sa-rule-op"
+                      className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                    >
+                      {t.serverAlerts.rules.op}
+                    </label>
+                    <select
+                      id="sa-rule-op"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value=">=">&ge;</option>
+                      <option value="<=">&le;</option>
+                      <option value="==">=</option>
+                      <option value="down">{t.serverAlerts.rules.opDown}</option>
+                    </select>
                   </div>
                 </div>
-                <div className="flex items-end pb-1">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      id="sa-rule-enabled"
-                      type="checkbox"
-                      defaultChecked
-                      className="h-4 w-4 rounded border-input text-primary"
-                    />
-                    <span>{t.serverAlerts.rules.enabled}</span>
+
+                <div id="sa-rule-threshold-wrap">
+                  <label
+                    htmlFor="sa-rule-threshold"
+                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  >
+                    {t.serverAlerts.rules.threshold}
                   </label>
+                  <input
+                    id="sa-rule-threshold"
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t.serverAlerts.rules.thresholdHint}
+                  </p>
+                </div>
+
+                <div id="sa-rule-service-wrap" className="hidden">
+                  <label
+                    htmlFor="sa-rule-service"
+                    className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  >
+                    {t.serverAlerts.rules.service}
+                  </label>
+                  <input
+                    id="sa-rule-service"
+                    type="text"
+                    spellCheck="false"
+                    autoComplete="off"
+                    placeholder={t.serverAlerts.rules.servicePlaceholder}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t.serverAlerts.rules.serviceHint}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 @sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="sa-rule-cooldown"
+                      className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                    >
+                      {t.serverAlerts.rules.cooldown}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="sa-rule-cooldown"
+                        type="number"
+                        min="0"
+                        max="10080"
+                        step="1"
+                        defaultValue="15"
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {t.serverAlerts.rules.minutes}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <label className="inline-flex items-center gap-2 text-sm">
+                      <input
+                        id="sa-rule-enabled"
+                        type="checkbox"
+                        defaultChecked
+                        className="h-4 w-4 rounded border-input text-primary"
+                      />
+                      <span>{t.serverAlerts.rules.enabled}</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+            <div data-aux-footer className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
               <button
                 id="sa-rule-cancel"
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"

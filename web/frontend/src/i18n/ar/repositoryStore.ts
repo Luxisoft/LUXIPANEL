@@ -54,6 +54,7 @@ const repositoryStore = {
     "catalogoNote": "الكتالوج مقيّد بواجهة API العامة لـ GitHub"
   },
   "filters": {
+    "allCategories": "كل الفئات",
     "stackLabel": "Stack",
     "categoriaLabel": "الفئة",
     "estadoLabel": "الحالة",

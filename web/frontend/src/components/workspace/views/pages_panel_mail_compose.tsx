@@ -45,7 +45,7 @@ export default function pages_panel_mail_compose(props: any) {
               >
                 <i className="ti ti-arrow-left text-base"></i>
               </a>
-              <h1 id="compose-title" className="text-lg font-semibold">
+              <h1 id="compose-title" className="sr-only">
                 {replyTo
                   ? t.mail.compose.titleReply
                   : forward

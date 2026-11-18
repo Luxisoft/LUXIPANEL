@@ -35,65 +35,8 @@ export default function pages_panel_openclaw_index(props: any) {
   return (
     <Fragment>
       <PanelLayout title={t.openclaw.pageTitle} activeModule="openclaw">
-        <div className="space-y-6 max-w-3xl">
+        <div className="contents">
           {/** Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 120 120"
-                  width="1em"
-                  height="1em"
-                  fill="currentColor"
-                  className="text-2xl"
-                  aria-hidden="true"
-                >
-                  <mask id="oc-claw-eyes">
-                    <rect width="120" height="120" fill="#fff" />
-                    <circle cx="45" cy="35" r="5.5" fill="#000" />
-                    <circle cx="75" cy="35" r="5.5" fill="#000" />
-                  </mask>
-                  <g mask="url(#oc-claw-eyes)">
-                    <path d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z" />
-                    <path d="M20 45 C5 40 0 50 5 60 C10 70 20 65 25 55 C28 48 25 45 20 45Z" />
-                    <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z" />
-                  </g>
-                  <path
-                    d="M45 15 Q35 5 30 8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M75 15 Q85 5 90 8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">
-                  OpenClaw AI
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {t.openclaw.header.subtitle}
-                  <a
-                    href="https://openclaw.ai"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    openclaw.ai
-                  </a>
-                  {t.openclaw.header.subtitleSuffix}
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/** Status card */}
           <div
@@ -127,14 +70,6 @@ export default function pages_panel_openclaw_index(props: any) {
             id="oc-form"
             className="rounded-xl border border-border bg-card p-6 space-y-5"
           >
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                {t.openclaw.form.sectionTitle}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t.openclaw.form.sectionDesc}
-              </p>
-            </div>
 
             {/** Endpoint */}
             <div>

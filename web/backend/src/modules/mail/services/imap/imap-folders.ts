@@ -5,6 +5,7 @@
  * per-folder message-count + disk-usage summaries.
  */
 
+import { folderTreeProtected } from "../mail-folder-policy.js";
 import type { FetchMessageObject } from "imapflow";
 import { mailConfig } from "../../../../config/mail.js";
 import { AppError } from "../../../../shared/errors/errors.js";
@@ -26,6 +27,7 @@ export async function listFolders(
       },
     });
     return mailboxes.map((m) => ({
+      protected: folderTreeProtected({...m,name:m.name},mailboxes),
       path: m.path,
       name: m.name,
       delimiter: m.delimiter,
@@ -83,6 +85,7 @@ export async function renameFolder(
       throw new AppError("Folder not found", 404, "MAIL_FOLDER_NOT_FOUND");
     }
 
+    if(folderTreeProtected(folder,folders))throw new AppError("Esta carpeta está protegida y no se puede renombrar",403,"MAIL_FOLDER_PROTECTED");
     const parts = folder.path.split(folder.delimiter);
     parts[parts.length - 1] = name;
     const nextPath = parts.join(folder.delimiter);
@@ -109,6 +112,7 @@ export async function deleteFolder(
       throw new AppError("Folder not found", 404, "MAIL_FOLDER_NOT_FOUND");
     }
 
+    if(folderTreeProtected(target,mailboxes))throw new AppError("Esta carpeta está protegida y no se puede eliminar",403,"MAIL_FOLDER_PROTECTED");
     const descendantPrefix = `${target.path}${target.delimiter}`;
     const descendants = mailboxes
       .filter((item) => item.path.startsWith(descendantPrefix))

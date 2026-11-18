@@ -6,20 +6,46 @@ export * from "/scripts/extracted/lib/api-client.js?v=20260506a";
 const STORAGE_PREFIX = "lxp:mail:server:v1:";
 // Already-open inboxes/composers keep their original server. A settings change
 // in another workspace frame must never send their account ids to a new host.
+const storageFallback = new Map<string, string>();
 const pageSelections = new Map<string, string>();
+let restoreGeneration = 0;
+const restored = new Set<string>();
+const restoring = new Map<string, Promise<void>>();
+const selectionIdentity = () => `${panelTargetScope()}:${document.getElementById("messenger-link")?.getAttribute("data-me") ?? ""}`;
+export async function ensureMailServerSelection(): Promise<void> {
+  const identity = selectionIdentity();
+  if (restored.has(identity)) return;
+  const pending = restoring.get(identity);
+  if (pending) return pending;
+  const generation = restoreGeneration;
+  const load = (async () => {
+    const response = await panelApi.get<{selectedTargetId: string}>("/api/mail/server-settings", {fresh:true});
+    if (generation !== restoreGeneration || identity !== selectionIdentity()) throw new Error("TARGET_SCOPE_CHANGED");
+    if (!response.ok || typeof response.data?.selectedTargetId !== "string") throw new Error(response.error || "Could not restore mail server selection");
+    saveMailServer(response.data.selectedTargetId);
+  })();
+  restoring.set(identity, load);
+  try { await load; } finally { if (restoring.get(identity) === load) restoring.delete(identity); }
+}
+for (const event of ["luxipanel:logout", "luxipanel:session-ended", "lxp:session:ended"]) window.addEventListener(event, () => { restoreGeneration++; restored.clear(); restoring.clear(); pageSelections.clear(); storageFallback.clear(); });
 function requestSelection(): string {
-  const scope = panelTargetScope();
+  const scope = selectionIdentity();
   if (!pageSelections.has(scope)) pageSelections.set(scope, selectedMailServer());
   return pageSelections.get(scope)!;
 }
 export function selectedMailServer(): string {
-  try { return sessionStorage.getItem(STORAGE_PREFIX + panelTargetScope())?.trim() ?? ""; }
-  catch { return ""; }
+  const key = STORAGE_PREFIX + panelTargetScope();
+  try { return sessionStorage.getItem(key)?.trim() ?? storageFallback.get(key) ?? ""; }
+  catch { return storageFallback.get(key) ?? ""; }
 }
 export function saveMailServer(targetId: string): void {
   const key = STORAGE_PREFIX + panelTargetScope();
-  if (targetId) sessionStorage.setItem(key, targetId);
-  else sessionStorage.removeItem(key);
+  storageFallback.set(key, targetId);
+  try {
+    if (targetId) sessionStorage.setItem(key, targetId);
+    else sessionStorage.removeItem(key);
+  } catch { /* The durable server preference still works without browser storage. */ }
+  restored.add(selectionIdentity());
 }
 export function resolveTargetScope(): string {
   const selected = selectedMailServer();
@@ -38,7 +64,7 @@ function optionsFor(path: string, mutating: boolean, body: unknown, options: Opt
   const headers = new Headers(panelScopeHeaders(mutating));
   new Headers(options.headers).forEach((value, key) => headers.set(key, value));
   if (body !== undefined) headers.set("Content-Type", "application/json");
-  const targetId = requestSelection();
+  const targetId = isMailboxPath(path) ? requestSelection() : "";
   if (targetId && isMailboxPath(path)) headers.set("X-Mail-Target-Id", targetId);
   else headers.delete("X-Mail-Target-Id");
   // The base client spreads options after its default headers. Supply the full
@@ -54,6 +80,11 @@ async function scoped<T>(path: string, run: () => Promise<T>): Promise<T> {
     } catch { /* caller retains its existing localized error fallback */ }
     return { ok: false, error, code: "TARGET_SCOPE_CHANGED", status: 409 } as T;
   };
+  if (isMailboxPath(path) && !restored.has(selectionIdentity())) {
+    try { await ensureMailServerSelection(); } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "Could not restore mail server selection", status: 0 } as T;
+    }
+  }
   if (isMailboxPath(path) && requestSelection() !== selectedMailServer()) return stale();
   const scope = resolveTargetScope();
   const result = await run();

@@ -8,6 +8,8 @@
 import { z } from "zod";
 
 export interface UserPreferencesData {
+  /** Mail-only server override; empty string selects the primary panel server. */
+  mailServerTargetId?: string;
   theme?: "light" | "dark" | "system";
   /** i18n language code, e.g. "es", "en", "en-US". */
   language?: string;

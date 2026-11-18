@@ -54,6 +54,7 @@ const repositoryStore = {
     "catalogoNote": "GitHub পাবলিক API দ্বারা ক্যাটালগ সীমিত"
   },
   "filters": {
+    "allCategories": "সব বিভাগ",
     "stackLabel": "প্রযুক্তি স্ট্যাক",
     "categoriaLabel": "বিভাগ",
     "estadoLabel": "অবস্থা",

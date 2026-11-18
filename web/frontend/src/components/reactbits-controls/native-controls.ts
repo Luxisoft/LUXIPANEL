@@ -10,25 +10,19 @@ const segments = new Map<
   { update: () => void; destroy: () => void }
 >();
 const isTab = (node: Element) =>
-  node instanceof HTMLButtonElement &&
-  (node.getAttribute("role") === "tab" ||
-    node.getAttribute("aria-current") === "page" ||
-    (node.hasAttribute("aria-selected") &&
-      node.getAttribute("role") !== "option" &&
-      !node.closest('[role="listbox"]')) ||
-    node.classList.contains("tab-btn") ||
-    node.classList.contains("tab-button") ||
-    [...node.attributes].some((a) => /^data-(?:[\w-]+-)?tab$/.test(a.name)));
-function tabItems(group: HTMLElement): HTMLButtonElement[] {
-  const all = [...group.querySelectorAll<HTMLButtonElement>("button")].filter(
-    (b) => !b.disabled && b.getBoundingClientRect().width > 0,
+  node instanceof HTMLElement &&
+  (node.getAttribute("role") === "tab" || node instanceof HTMLButtonElement &&
+    (node.getAttribute("aria-current") === "page" ||
+      (node.hasAttribute("aria-selected") && node.getAttribute("role") !== "option" && !node.closest('[role="listbox"]')) ||
+      node.classList.contains("tab-btn") || node.classList.contains("tab-button") ||
+      [...node.attributes].some((a) => /^data-(?:[\w-]+-)?tab$/.test(a.name))));
+function tabItems(group: HTMLElement): HTMLElement[] {
+  const all = [...group.querySelectorAll<HTMLElement>('button,[role="tab"]')].filter(
+    b => !b.matches(':disabled,[aria-disabled="true"]') && b.getBoundingClientRect().width > 0,
   );
-  return all.filter(
-    (b) =>
-      (b.closest('[role="tablist"], [data-rubber-tabs]') === group &&
-        (isTab(b) || b.parentElement === group)) ||
-      (b.parentElement === group &&
-        (isTab(b) || group.hasAttribute("data-rubber-tabs"))),
+  return all.filter(b =>
+    (b.closest('[role="tablist"], [data-rubber-tabs]') === group && (isTab(b) || b.parentElement === group)) ||
+    (b.parentElement === group && (isTab(b) || group.hasAttribute("data-rubber-tabs"))),
   );
 }
 function attachSegment(group: HTMLElement) {
@@ -46,7 +40,7 @@ function attachSegment(group: HTMLElement) {
     crossSize = 0,
     previous = "",
     timer: ReturnType<typeof setTimeout> | undefined;
-  let active: HTMLButtonElement | undefined,
+  let active: HTMLElement | undefined,
     generation = 0;
   const paint = () => {
     const start = l.get(),
@@ -60,7 +54,7 @@ function attachSegment(group: HTMLElement) {
   };
   const unsubL = l.on("change", paint),
     unsubR = r.on("change", paint);
-  const selected = (b: HTMLButtonElement) => {
+  const selected = (b: HTMLElement) => {
     if (
       b.getAttribute("aria-selected") === "true" ||
       (b.hasAttribute("aria-current") &&
@@ -84,6 +78,14 @@ function attachSegment(group: HTMLElement) {
     // Legacy tab renderers replace their children; restore only our inert thumb.
     if (thumb.parentElement !== group) group.append(thumb);
     if (!items.length) {
+      if (!thumb.hidden) thumb.hidden = true;
+      return;
+    }
+    // Overflow splits one tab set into two visual groups. A subset without
+    // the selected tab must not highlight its first inactive entry.
+    if (items.every(b => b.getAttribute("aria-selected") === "false")) {
+      active = undefined;
+      for (const item of items) { item.dataset.rubberItem = ""; item.dataset.rubberActive = "false"; }
       if (!thumb.hidden) thumb.hidden = true;
       return;
     }
@@ -160,14 +162,14 @@ function attachSegment(group: HTMLElement) {
     paint();
   };
   const click = (e: Event) => {
-    const button = (e.target as Element).closest("button");
+    const button = (e.target as Element).closest<HTMLElement>('button,[role="tab"]');
     if (button && tabItems(group).includes(button))
       requestAnimationFrame(update);
   };
   const keydown = (e: KeyboardEvent) => {
     if (e.defaultPrevented) return;
     const items = tabItems(group),
-      from = items.indexOf(e.target as HTMLButtonElement);
+      from = items.indexOf(e.target as HTMLElement);
     if (from < 0 || e.altKey || e.ctrlKey || e.metaKey) return;
     const vertical =
       group.getAttribute("aria-orientation") === "vertical" ||
@@ -197,13 +199,13 @@ function attachSegment(group: HTMLElement) {
   const down = (e: PointerEvent) => {
     if (
       e.button !== 0 ||
-      !(e.target as Element).closest("button") ||
+      !tabItems(group).includes((e.target as Element).closest<HTMLElement>('button,[role="tab"]')!) ||
       (e.pointerType === "touch" && orientation === "vertical")
     )
       return;
     gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, live: false };
     (e.target as Element)
-      .closest<HTMLButtonElement>("button")!
+      .closest<HTMLElement>('button,[role="tab"]')!
       .setPointerCapture(e.pointerId);
   };
   const move = (e: PointerEvent) => {
@@ -248,7 +250,7 @@ function attachSegment(group: HTMLElement) {
     previous = "";
     const point = orientation === "vertical" ? e.clientY : e.clientX;
     const items = tabItems(group);
-    const nearest = items.reduce<HTMLButtonElement | undefined>((best, b) => {
+    const nearest = items.reduce<HTMLElement | undefined>((best, b) => {
       const r = b.getBoundingClientRect(),
         distance = Math.abs(
           (orientation === "vertical"
@@ -466,8 +468,10 @@ let scheduled = false;
 function scan() {
   scheduled = false;
   for (const [group, state] of segments) {
-    if (!group.isConnected) {
+    if (!group.isConnected || getComputedStyle(group).display === "contents") {
       state.destroy();
+      delete group.dataset.rubberSegment;
+      if (getComputedStyle(group).display === "contents") delete group.dataset.rubberTabs;
       segments.delete(group);
     }
   }
@@ -490,7 +494,7 @@ function scan() {
       )
         groups.add(b.parentElement);
     });
-  groups.forEach((g) => attachSegment(g));
+  groups.forEach((g) => { if (getComputedStyle(g).display !== "contents") attachSegment(g); });
   segments.forEach((s) => s.update());
 }
 function schedule() {

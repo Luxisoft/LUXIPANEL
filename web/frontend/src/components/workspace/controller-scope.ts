@@ -2,6 +2,9 @@ import { mountLegacyTablePages } from "@/lib/legacy-table-pages";
 // SPDX-License-Identifier: AGPL-3.0-only
 /** DOM controllers belong to one mounted module, never the workspace document. */
 export function createControllerScope(root: HTMLElement, initialUrl: URL) {
+  const ownedRoots = new Set<HTMLElement>();
+  const contains = (node: Node) => root.contains(node) || [...ownedRoots].some(owner => owner.contains(node));
+  const query = (selector: string) => root.querySelector(selector) || [...ownedRoots].map(owner => owner.querySelector(selector)).find(Boolean) || null;
   let url = initialUrl;
   let visible = true;
   let disposed = false;
@@ -18,7 +21,7 @@ export function createControllerScope(root: HTMLElement, initialUrl: URL) {
     const element = (event.target as Element | null)?.closest<HTMLElement>(
       `[data-lxp-handler-${event.type}], [on${event.type}]`,
     );
-    if (!element || !root.contains(element) || !visible || disposed) return;
+    if (!element || !contains(element) || !visible || disposed) return;
     const expression =
       element.getAttribute(`data-lxp-handler-${event.type}`) ||
       element.getAttribute(`on${event.type}`) ||
@@ -102,7 +105,7 @@ export function createControllerScope(root: HTMLElement, initialUrl: URL) {
     if (
       target instanceof Node &&
       target !== document &&
-      !root.contains(target)
+      !contains(target)
     )
       return false;
     const tableId = (event as CustomEvent).detail?.tableId;
@@ -171,14 +174,14 @@ export function createControllerScope(root: HTMLElement, initialUrl: URL) {
         return visible ? document.visibilityState : "hidden";
       if (key === "getElementById")
         return (id: string) =>
-          root.querySelector(`#${CSS.escape(id)}`) ||
+          query(`#${CSS.escape(id)}`) ||
           (globalIds.has(id) || /^(confirm|alert|prompt)-modal-/.test(id)
             ? document.getElementById(id)
             : null);
       if (key === "querySelector")
-        return (selector: string) => root.querySelector(selector);
+        return (selector: string) => query(selector);
       if (key === "querySelectorAll")
-        return (selector: string) => root.querySelectorAll(selector);
+        return (selector: string) => [...root.querySelectorAll(selector), ...[...ownedRoots].flatMap(owner => [...owner.querySelectorAll(selector)])];
       if (key === "addEventListener")
         return (
           type: string,
@@ -348,6 +351,18 @@ export function createControllerScope(root: HTMLElement, initialUrl: URL) {
   });
   const scope = {
     root,
+    registerOwnedRoot(node: HTMLElement) {
+      ownedRoots.add(node);
+      const types = ["click", "dblclick", "contextmenu", "change", "input"];
+      for (const type of types) node.addEventListener(type, dispatchRowAction, true);
+      const release = () => {
+        ownedRoots.delete(node);
+        for (const type of types) node.removeEventListener(type, dispatchRowAction, true);
+        cleanup.delete(release);
+      };
+      cleanup.add(release);
+      return release;
+    },
     vars: {} as Record<string, unknown>,
     document: doc,
     window: win,
@@ -387,6 +402,7 @@ export function createControllerScope(root: HTMLElement, initialUrl: URL) {
       for (const id of intervals) window.clearInterval(id);
       for (const fn of cleanup) fn();
       cleanup.clear();
+      ownedRoots.clear();
       localGlobals.clear();
     },
   };

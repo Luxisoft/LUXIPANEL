@@ -90,7 +90,7 @@ export default function pages_panel_docs_hosting_api(props: any) {
   return (
     <Fragment>
       <PanelLayout title={d.pageTitle} activeModule="hosting-docs">
-        <main className="mx-auto max-w-6xl space-y-9 px-4 pb-16 pt-5 sm:px-6">
+        <main className="mx-auto min-w-0 w-full max-w-6xl space-y-9 px-4 pb-16 pt-5 sm:px-6">
           <header className="border-b border-border pb-7">
             <a
               href="/panel/hosting"
@@ -99,17 +99,12 @@ export default function pages_panel_docs_hosting_api(props: any) {
               <i className="ti ti-arrow-left" aria-hidden="true"></i>{" "}
               {d.backToHosting}
             </a>
-            <div className="mt-5 flex flex-wrap items-end justify-between gap-5">
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-5">
               <div className="max-w-3xl">
                 <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                   {d.contractVersion}
                 </p>
-                <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                  {d.heading}
-                </h1>
-                <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                  {d.intro}
-                </p>
+
               </div>
               <code className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground">
                 /api/hosting/v1

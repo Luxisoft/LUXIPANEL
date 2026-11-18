@@ -6,7 +6,7 @@ import { initModuleDeps } from "/scripts/extracted/lib/module-deps.js?v=20260609
 import { DATATABLE_EVENTS } from "/scripts/extracted/lib/datatable-events.js";
 import { SCRIPT_INIT_COOLDOWN_MS } from "/scripts/extracted/lib/script-init.js";
 import { mountMailServerSettings } from "/scripts/extracted/lib/mail-server-settings.js?v=20260930b";
-import { selectedMailServer } from "/scripts/extracted/lib/mail-api-client.js?v=20260930a";
+import { selectedMailServer, ensureMailServerSelection } from "/scripts/extracted/lib/mail-api-client.js?v=20260930a";
 import type { MailMainTab } from "./state";
 import { MAIL_TABLE_IDS, S } from "./state";
 import { loadI18n } from "./dom";
@@ -67,6 +67,8 @@ async function init() {
   const root = document.querySelector('[data-mail-main-panel]');
   if (!root) return;
   void mountMailServerSettings();
+  try { await ensureMailServerSelection(); } catch { return; }
+  if (!root.isConnected) return;
   bindMailSettingsDomEvents();
   bindMailSpamDomEvents();
 
@@ -78,7 +80,7 @@ async function init() {
   // todas a un bindMailDomEvents() llamado desde aquí.
   if (root !== S.mailLastBoundRoot) {
     S.mailLastBoundRoot = root;
-    watchModuleData(["mail/accounts"], () => loadAccounts(true), root as HTMLElement);
+    watchModuleData(["mail/accounts"], () => loadAccounts(true), root as HTMLElement, { showStatus: false });
     mailBaseLoaded = false;
     document.querySelectorAll<HTMLButtonElement>("[data-mail-main-tab]").forEach((button) => {
       button.addEventListener("click", async () => {

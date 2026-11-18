@@ -105,3 +105,8 @@ describe("sanitizeEmailHtml — basic formatting survives", () => {
     expect(sanitizeEmailHtml(undefined)).toBe("");
   });
 });
+
+it('preserves safe class rules and document background through normalization',()=>{
+ const html=sanitizeEmailHtml('<html><head><style>body{background:#f0dabc;color:#123456}.card{font-size:18px;background-color:white}</style></head><body bgcolor="#fff"><div class="card">Hello</div></body></html>');
+ expect(html).toContain('data-lxp-email-body');expect(html).toContain('#f0dabc');expect(html).toContain('font-size:18px');expect(html).not.toContain('<style');
+});

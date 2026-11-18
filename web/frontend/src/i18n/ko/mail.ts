@@ -6,7 +6,7 @@ import mailPart2 from "./mail/part2";
 
 const mail = { ...mailPart1, ...mailPart2, serverConnection: {
   "title": "SMTP / IMAP 서버",
-  "intro": "저장된 다른 서버의 메일함을 사용합니다. 이 선택은 이 탭의 메일에 적용되며, 다른 모듈은 현재 서버를 유지합니다.",
+  "intro": "저장된 다른 서버의 사서함을 사용합니다. 선택은 이 패널의 사용자 설정에 저장되며 다른 모듈의 활성 서버는 유지됩니다.",
   "serverLabel": "메일 서버",
   "hint": "서버에 호환되는 Postfix/Dovecot과 접근 가능한 메일 포트가 필요합니다. 선택한 서버의 메일함과 인증 정보를 사용합니다.",
   "apply": "서버 적용",

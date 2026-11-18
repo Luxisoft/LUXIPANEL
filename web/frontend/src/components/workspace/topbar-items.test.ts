@@ -1,0 +1,52 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { TopbarItem, collectTopbarItems } from "./topbar-items";
+afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
+it("preserves React controls and handlers when their host moves, updates and unmounts", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  document.body.innerHTML = '<div id="app"></div><div id="group"><div id="inline"><div id="slot" data-module-header-search-slot></div></div><div id="popup"></div></div>';
+  const root = createRoot(document.getElementById("app")!);
+  const slot = document.getElementById("slot")!, popup = document.getElementById("popup")!;
+  const clicked = vi.fn();
+  const view = (label: string) => createElement(TopbarItem, { target: slot, children: [createElement("input", { key: "input", defaultValue: "saved" }), createElement("button", { key: "button", onClick: clicked }, label)] });
+  await act(() => root.render(view("Before")));
+  const [item] = collectTopbarItems(document.getElementById("inline")!);
+  const input = item.node.querySelector("input")!;
+  input.value = "kept"; popup.append(item.node);
+  await act(() => root.render(view("After")));
+  expect(popup.querySelector("input")).toBe(input);
+  expect(input.value).toBe("kept");
+  popup.querySelector("button")!.click();
+  expect(clicked).toHaveBeenCalledOnce();
+  expect(popup.textContent).toBe("After");
+  await act(() => root.unmount());
+  expect(popup.childElementCount).toBe(0);
+});
+it("does not reclaim native controls restored to a hidden module section", () => {
+  document.body.innerHTML = '<div id="group"><div id="inline"><div data-module-header-native-slot><select id="filter"><option>All</option></select></div></div><div id="popup"></div></div><section id="source" hidden></section>';
+  const inline = document.getElementById("inline")!, source = document.getElementById("source")!;
+  const [item] = collectTopbarItems(inline);
+  document.getElementById("popup")!.append(item.node);
+  expect(collectTopbarItems(inline)[0].node).toBe(item.node);
+  source.append(item.node);
+  expect(collectTopbarItems(inline)).toEqual([]);
+  expect(source.querySelector("#filter")).toBe(item.node);
+});
+it("re-registers a native control after its producer rebuilds the slot", () => {
+  document.body.innerHTML = '<div><div id="inline"><div id="slot" data-module-header-tabs-slot><button>Tab</button></div></div></div>';
+  const inline = document.getElementById("inline")!, slot = document.getElementById("slot")!;
+  const [first] = collectTopbarItems(inline);
+  slot.replaceChildren(first.node);
+  const items = collectTopbarItems(inline);
+  expect(items).toHaveLength(1);
+  expect(items[0].node).toBe(first.node);
+  expect(collectTopbarItems(inline)).toHaveLength(1);
+});
+it("ignores the React Bits indicator when collecting toolbar controls", () => {
+  document.body.innerHTML = '<div><div id="inline"><div data-module-header-tabs-slot><button>Tab</button></div><span class="lxp-rubber-thumb" aria-hidden="true"></span></div></div>';
+  const items = collectTopbarItems(document.getElementById("inline")!);
+  expect(items).toHaveLength(1);
+  expect(items[0].node.tagName).toBe("BUTTON");
+  expect(document.querySelector('.lxp-rubber-thumb')?.hasAttribute('data-topbar-item')).toBe(false);
+});
