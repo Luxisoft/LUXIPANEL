@@ -47,6 +47,17 @@ class PublicationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 m.validate({**self.request, 'hosts': [host]})
 
+    def test_private_preview_uses_a_separate_identity_and_authorization(self):
+        preview={**self.request,'environment':'preview','component':'web','hosts':['demo--v27.luxisoft.com'],'previewAuthorizationUrl':'http://141.193.23.85:3200/api/v1/deployment-frontend/authorize'}
+        self.assertNotEqual(m.validate(preview),m.validate(self.request))
+        with patch.object(m,'certificate',return_value=Path('/cert')):
+            generated=m.config(preview,preview['hosts'][0],Path('/public'))
+        self.assertIn('auth_request /__lxp_frontend_auth;',generated)
+        self.assertIn('internal;',generated)
+        self.assertIn('proxy_set_header X-Version-ID '+self.request['versionId'],generated)
+        with self.assertRaises(ValueError):
+            m.validate({**preview,'hosts':['public.example.com']})
+
     def test_preserves_existing_config_on_nginx_failure(self):
         for key in ['ROOT', 'STATE', 'AVAILABLE', 'ENABLED', 'BACKUPS']:
             directory = self.root / key

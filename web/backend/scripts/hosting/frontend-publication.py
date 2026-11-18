@@ -41,9 +41,32 @@ def validate(request):
         raise ValueError('invalid_hosts')
     if request.get('canonicalHost') and request['canonicalHost'] not in hosts:
         raise ValueError('invalid_canonical_host')
+    redirects = request.get('redirects', {})
+    if not isinstance(redirects, dict) or any(source not in hosts or target not in hosts or source == target for source, target in redirects.items()):
+        raise ValueError('invalid_redirect')
+    if request.get('versionNumber') is not None and (type(request['versionNumber']) is not int or request['versionNumber'] < 1):
+        raise ValueError('invalid_version_number')
+    routes = request.get('apiRoutes', [])
+    if not isinstance(routes, list) or len(routes) > 10 or any(not re.fullmatch(r'/[a-zA-Z0-9_/-]+', p) for p in routes):
+        raise ValueError('invalid_api_routes')
+    proxy_hosts = request.get('proxyHosts', [])
+    if not isinstance(proxy_hosts, list) or any(h not in hosts for h in proxy_hosts):
+        raise ValueError('invalid_proxy_hosts')
+    if (routes or proxy_hosts) and not re.fullmatch(r'http://(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\]):[1-9]\d{0,4}', request.get('backendOrigin', '')):
+        raise ValueError('backend_origin_required')
     if not isinstance(request.get('targetId'), str) or not re.fullmatch(r'[a-zA-Z0-9-]{1,100}', request['targetId']):
         raise ValueError('invalid_target')
-    return hashlib.sha256((':'.join(request[k] for k in ('providerId', 'accountId', 'projectId'))).encode()).hexdigest()
+    environment = request.get('environment', 'production')
+    if environment not in ('preview', 'production'):
+        raise ValueError('invalid_environment')
+    identity = ':'.join(request[k] for k in ('providerId', 'accountId', 'projectId'))
+    if environment == 'preview':
+        if not re.fullmatch(r'[a-z][a-z0-9-]{0,29}', request.get('component', '')) or any(not re.fullmatch(r'[a-z0-9-]+--v[0-9]+\.luxisoft\.com', host) for host in hosts):
+            raise ValueError('invalid_preview')
+        if not re.fullmatch(r'https?://[a-zA-Z0-9.:-]+/api/v1/deployment-frontend/authorize', request.get('previewAuthorizationUrl', '')):
+            raise ValueError('preview_authorization_required')
+        identity += ':preview:' + request['versionId']
+    return hashlib.sha256(identity.encode()).hexdigest()
 
 
 def extract(archive, destination):
@@ -93,6 +116,59 @@ def config(request, host, public):
     cert = certificate(host)
     marker = f"# LUXIPANEL_FRONTEND {request['providerId']}:{request['accountId']}:{request['projectId']}"
     redirect = f"    return 301 https://{request['canonicalHost']}$request_uri;" if request.get('canonicalHost') and host.startswith('www.') and host != request['canonicalHost'] else ''
+    if host in request.get('redirects', {}):
+        redirect = f"    return 307 https://{request['redirects'][host]}$request_uri;"
+    version_header = f"    add_header X-Luxi-Version {request['versionNumber']} always;" if request.get('versionNumber') else ''
+    api_locations = ''.join(f'''    location {prefix.rstrip('/')}/ {{
+        proxy_pass {request['backendOrigin']};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_hide_header X-Luxi-Project-Type;
+        proxy_hide_header X-Luxi-Version;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+    }}
+    location = {prefix.rstrip('/')} {{
+        proxy_pass {request['backendOrigin']};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_hide_header X-Luxi-Project-Type;
+        proxy_hide_header X-Luxi-Version;
+    }}
+''' for prefix in request.get('apiRoutes', []))
+    main_location = f'''    location / {{
+        proxy_pass {request['backendOrigin']};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_hide_header X-Luxi-Project-Type;
+        proxy_hide_header X-Luxi-Version;
+        proxy_buffering off;
+    }}''' if host in request.get('proxyHosts', []) else '    location / { try_files $uri $uri/ /index.html; }'
+    preview_auth = ''
+    if request.get('environment') == 'preview':
+        preview_auth = f'''    auth_request /__lxp_frontend_auth;
+    auth_request_set $lxp_preview_cookie $upstream_http_set_cookie;
+    add_header Set-Cookie $lxp_preview_cookie always;
+    add_header Cache-Control no-store always;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    location = /__lxp_frontend_auth {{
+        internal;
+        auth_request off;
+        proxy_pass {request['previewAuthorizationUrl']};
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-Host $host;
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header X-Project-ID {request['projectId']};
+        proxy_set_header X-Version-ID {request['versionId']};
+        proxy_set_header X-Component {request['component']};
+    }}'''
     return f'''{marker}
 server {{
     listen 80;
@@ -114,14 +190,18 @@ server {{
     index index.html;
     add_header X-Luxi-Frontend-Release "{request['versionId']}" always;
     add_header X-Luxi-Static-Sha256 "{request['sha256']}" always;
+    add_header X-Luxi-Project-Type repository always;
+{version_header}
     add_header X-Content-Type-Options nosniff always;
 {redirect}
+{api_locations}
+{preview_auth}
     location ~ ^/(sw|registerSW)\\.js$ {{
         try_files $uri =404;
         add_header Cache-Control "no-cache, no-store, must-revalidate, no-transform" always;
         add_header CDN-Cache-Control no-store always;
     }}
-    location / {{ try_files $uri $uri/ /index.html; }}
+{main_location}
 }}
 '''
 
@@ -189,6 +269,9 @@ def publication(request, archive=None, remove=False):
                 finally:
                     if stage.exists():
                         shutil.rmtree(stage)
+            headers = release / 'headers.conf'
+            if not headers.exists():
+                headers.write_text(f"add_header X-Luxi-Frontend-Release {request['versionId']} always;\nadd_header X-Luxi-Static-Sha256 {request['sha256']} always;\nadd_header X-Luxi-Project-Type repository always;\n")
             generated = {host: config(request, host, release / 'public') for host in request['hosts']}
         else:
             generated = {}
@@ -200,7 +283,15 @@ def publication(request, archive=None, remove=False):
                 shutil.copy2(file, backup / file.name)
         if record.exists():
             shutil.copy2(record, backup / 'publication.json')
+        active = ROOT / identity / 'current'
+        active_before = os.readlink(active) if active.is_symlink() else None
+        if active.exists() and not active.is_symlink():
+            raise ValueError('foreign_active_release')
         try:
+            if not remove:
+                next_link = active.with_name('.active-' + uuid.uuid4().hex)
+                next_link.symlink_to(release.name)
+                next_link.replace(active)
             for file, enabled in files:
                 if file.name in generated:
                     temp = file.with_suffix('.frontend-next')
@@ -219,6 +310,10 @@ def publication(request, archive=None, remove=False):
             else:
                 atomic_json(record, {**{k: v for k, v in request.items() if k != 'adoptionHashes'}, 'release': str(release), 'backup': str(backup)})
         except BaseException:
+            if not remove:
+                active.unlink(missing_ok=True)
+                if active_before is not None:
+                    active.symlink_to(active_before)
             for file, enabled, existed, was_enabled in saved:
                 enabled.unlink(missing_ok=True)
                 if existed:

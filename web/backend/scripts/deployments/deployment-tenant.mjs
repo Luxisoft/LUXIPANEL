@@ -555,7 +555,7 @@ try {
         HOST: "0.0.0.0",
         LUXISOFT_ENVIRONMENT: environment,
       };
-    const surface = part.surface === "mobile" ? "http" : part.surface;
+    const surface = part.surface === "mobile" ? (part.role === "frontend" ? "static" : "http") : part.surface;
     if (surface === "static") {
       // Export the immutable image's public tree. No web process or port runs
       // on BACKEND for a static component.

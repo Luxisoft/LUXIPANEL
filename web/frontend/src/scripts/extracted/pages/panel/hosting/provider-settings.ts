@@ -93,8 +93,8 @@ export function initProviderSettings(): void {
     modules = provider ? [...provider.allowedModules] : ["files", "mail", "dns", "backups", "cron"];
     template = provider ? structuredClone(provider.groupTemplate) : baseGroupTemplate();
     if (!provider) for (const surface of catalog!.modules.filter(m => modules.includes(m.module))) setModuleSelection(template,modules,surface,true,catalog!.modules);
-    for (const [key,value] of Object.entries({ name:"", target:"local", "panel-url":"", upstream:"http://127.0.0.1:3400", plan:"basic", ...quotaDefaults })) {
-      const map: Record<string,string> = { target:"targetId", "panel-url":"panelUrl", upstream:"upstreamUrl" };
+    for (const [key,value] of Object.entries({ name:"", target:"local", "frontend-target":provider?.targetId ?? "local", "panel-url":"", upstream:"http://127.0.0.1:3400", plan:"basic", ...quotaDefaults })) {
+      const map: Record<string,string> = { target:"targetId", "frontend-target":"frontendTargetId", "panel-url":"panelUrl", upstream:"upstreamUrl" };
       input(key).value = String(provider?.[map[key] || key] ?? value);
     }
     input("target").disabled = Boolean(provider);
@@ -146,8 +146,10 @@ export function initProviderSettings(): void {
       const [providers, cats, targets] = await Promise.all([request("/api/hosting/providers"),request("/api/hosting/providers/permission-catalog"),request("/api/servers")]);
       if (!root.isConnected || gen!==generation) return;
       catalog=cats;
-      const select = input("target") as HTMLSelectElement; select.replaceChildren(new Option(hs("localServer"),"local"));
-      for (const target of targets) if (target.id!=="local" && target.enabled && target.hostFingerprint) select.add(new Option(target.name,target.id));
+      for(const field of ["target", "frontend-target"]){
+        const select = input(field) as HTMLSelectElement; select.replaceChildren(new Option(hs("localServer"),"local"));
+        for (const target of targets) if (target.id!=="local" && target.enabled && target.hostFingerprint) select.add(new Option(target.name,target.id));
+      }
       loaded=true;renderProviders(providers);fill();status("");
     } catch(err) { status(err instanceof Error ? err.message : p("loadError"),true);el("provider-retry").classList.remove("hidden"); }
     finally { loading=false;fields.disabled=!loaded; }
@@ -169,6 +171,7 @@ export function initProviderSettings(): void {
     const body: Record<string,unknown>={name:value("name"),panelUrl:value("panel-url"),upstreamUrl:value("upstream"),plan:value("plan"),allowedModules:modules,groupTemplate:template,jailEnabled:(input("jailEnabled") as HTMLInputElement).checked,operations:[...root.querySelectorAll<HTMLInputElement>("[data-provider-operation]:checked")].map(node=>node.dataset.providerOperation)};
     for(const key of Object.keys(quotaDefaults))body[key]=Number(value(key));
     body.templateId = value("template-id") || null;
+    body.frontendTargetId = value("frontend-target");
     if (body.templateId) delete body.groupTemplate;
     if(!editing)body.targetId=value("target");
     busy=true;fields.disabled=true;status(p("saving"));
