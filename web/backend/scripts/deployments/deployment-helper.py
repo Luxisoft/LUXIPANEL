@@ -46,7 +46,7 @@ require(operation in ['run','activate','cleanup','retire','resume','data'], 'inv
 # Match installer lock ordering. A queued build must not hold the storage lease
 # while waiting for the global build slot; migrations may own that slot.
 if operation=='run':
-    heavy_build_lock=open('/run/lock/luxipanel-assistant-build.lock','a')
+    heavy_build_lock=open('/run/lock/luxipanel-assistant-build.lock','r')
     fcntl.flock(heavy_build_lock,fcntl.LOCK_EX)
 fcntl.flock(storage_lock,fcntl.LOCK_SH)
 budget = task.get('executionBudget') if operation == 'run' else None
