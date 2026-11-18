@@ -104,7 +104,9 @@ export const frontendPublicationService = {
     const id = identity(provider, account, project);
     const current = await this.get(provider, account, project);
     if (!current) throw new ConflictError("Publicación frontend ausente");
-    const bytes = await localExecutor.readFile(`${panelConfigDir()}/hosting/frontend-publications/${id}-${current.sha256}.zip`);
+    const executor = await providerService.frontendExecutor(provider, current.targetId);
+    const version = uuid.parse(current.versionId), digest = z.string().regex(/^[a-f0-9]{64}$/).parse(current.sha256);
+    const bytes = await executor.readFile(`/var/www/luxisoft/published/${id}/${version}-${digest}/artifact.zip`);
     if (!Buffer.isBuffer(bytes)) throw new ConflictError("Artefacto frontend ausente");
     return this.publish(provider, account, project, {
       versionId: current.versionId, versionNumber: current.versionNumber, sha256: current.sha256, hosts,
@@ -141,8 +143,6 @@ export const frontendPublicationService = {
           ...(input.canonicalHost ? { canonicalHost: input.canonicalHost } : {}) };
         await executor.writeFile(directory + "/request.json", JSON.stringify(request), { mode: 0o600 });
         if (bytes) {
-          await localExecutor.mkdir(`${panelConfigDir()}/hosting/frontend-publications`, { recursive: true });
-          await localExecutor.writeFile(`${panelConfigDir()}/hosting/frontend-publications/${id}-${input.sha256}.zip`, bytes, { mode: 0o600 });
           await executor.writeFile(directory + "/artifact.zip", bytes, { mode: 0o600 });
         }
         const command = `/usr/bin/sudo -n /usr/lib/luxipanel/frontend-publication ${bytes ? (stageOnly ? "stage" : "publish") : "remove"} ${quoteArg(directory + "/request.json")}${bytes ? " " + quoteArg(directory + "/artifact.zip") : ""}`;

@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   record: null as Record<string, unknown> | null,
   ownedAccount: vi.fn(async () => ({account:{status:'active'}})), frontendExecutor: vi.fn(),
   localWrite: vi.fn(), localUnlink: vi.fn(), exec: vi.fn(),
-  remoteWrite: vi.fn(), remoteExec: vi.fn(), set: vi.fn(async () => "OK"), eval: vi.fn(),
+  remoteRead: vi.fn(), remoteWrite: vi.fn(), remoteExec: vi.fn(), set: vi.fn(async () => "OK"), eval: vi.fn(),
 }));
 vi.mock("./provider.service.js", () => ({ providerService: { ownedAccount: mocks.ownedAccount, frontendExecutor: mocks.frontendExecutor } }));
 vi.mock("../../../shared/redis/index.js", () => ({ getRedis: () => ({ set: mocks.set, eval: mocks.eval }) }));
@@ -23,7 +23,8 @@ beforeEach(() => {
   vi.clearAllMocks(); mocks.record = null; mocks.ownedAccount.mockResolvedValue({account:{status:'active'}});
   mocks.set.mockResolvedValue("OK"); mocks.exec.mockResolvedValue({ exitCode: 0 });
   mocks.remoteExec.mockResolvedValue({ exitCode: 0, stdout: JSON.stringify({ removed: true }) });
-  mocks.frontendExecutor.mockResolvedValue({ mkdir: vi.fn(), writeFile: mocks.remoteWrite, exec: mocks.remoteExec });
+  mocks.remoteRead.mockResolvedValue(bytes);
+  mocks.frontendExecutor.mockResolvedValue({ readFile:mocks.remoteRead, mkdir: vi.fn(), writeFile: mocks.remoteWrite, exec: mocks.remoteExec });
 });
 describe("frontend publication target ownership", () => {
   it("validates archive bytes before reaching another server", async () => {
@@ -52,6 +53,12 @@ describe("frontend publication target ownership", () => {
     mocks.record = {...request, targetId:'front', active:true};
     await expect(service.stage(provider, account, project, request, bytes)).rejects.toThrow('activa');
     expect(mocks.frontendExecutor).not.toHaveBeenCalled();
+  });
+  it('retains no interface ZIP on the panel and reads reconfiguration from the pinned frontend', async () => {
+    mocks.record={...request, targetId:'front', active:true};
+    await service.reconfigure(provider,account,project,['site.example.com']);
+    expect(mocks.remoteRead).toHaveBeenCalledWith(expect.stringMatching(/^\/var\/www\/luxisoft\/published\/[a-f0-9]{64}\/[a-f0-9-]+-[a-f0-9]{64}\/artifact\.zip$/));
+    expect(mocks.localWrite.mock.calls.some(([file])=>String(file).endsWith('.zip'))).toBe(false);
   });
   it("removes from the recorded server after the preference changes", async () => {
     mocks.record = { ...request, targetId: "previous-front" };

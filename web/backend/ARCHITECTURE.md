@@ -174,3 +174,15 @@ recibos de salud del operador, fija qué componentes de esa versión quedaron
 como API. La reactivación de esa misma versión conserva su estático en FRONTEND
 y restaura solo sus rutas `/api` en BACKEND. La confirmación se conserva al cambiar
 dominios, nunca se acepta en datos HTTP y se descarta al cambiar de versión.
+
+### Artefactos de interfaz fuera de BACKEND (2026-11-18)
+
+Los ZIP de publicaciones y previews se conservan en el target FRONTEND fijado,
+fuera de `public/`, con modo 0600 para el transporte administrativo. El panel
+conserva solamente los metadatos de propiedad y versión. `reconfigure` obtiene
+el ZIP del servidor fijado y valida nuevamente su hash; no crea copias locales.
+El helper `frontend-publication retain` migra archivos de publicaciones existentes
+sin modificar nginx ni activar/desactivar proyectos. Migrar y verificar todos los
+registros antes de retirar los ZIP antiguos del panel. Los archivos sin registro
+se conservan en el archivo privado de FRONTEND. Eliminar un proyecto conserva
+releases y respaldos retirados, sin dejarlos publicados.

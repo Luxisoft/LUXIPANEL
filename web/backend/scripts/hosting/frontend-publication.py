@@ -236,7 +236,35 @@ def atomic_json(file, value):
     staged.replace(file)
 
 
-def publication(request, archive=None, remove=False, stage_only=False):
+def retain_archive(request, archive, release):
+    if not archive or archive.is_symlink() or not archive.is_file() or archive.stat().st_size > 32 * 1024**2:
+        raise ValueError('invalid_archive')
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != request['sha256']:
+        raise ValueError('archive_hash_mismatch')
+    uid = int(os.environ.get('SUDO_UID', os.getuid()))
+    if uid < 1000:
+        raise ValueError('administrative_transport_user_required')
+    target = release / 'artifact.zip'
+    if target.is_symlink():
+        raise ValueError('unsafe_retained_archive')
+    if target.exists():
+        if hashlib.sha256(target.read_bytes()).hexdigest() != request['sha256']:
+            raise ValueError('retained_archive_conflict')
+    else:
+        stage = release / ('.archive-' + uuid.uuid4().hex)
+        try:
+            shutil.copyfile(archive, stage)
+            stage.chmod(0o600)
+            stage.replace(target)
+        finally:
+            stage.unlink(missing_ok=True)
+    # Only the authenticated administrative transport user may read private
+    # preview archives. They are outside public/, never reachable by nginx.
+    os.chown(target, uid, -1)
+    target.chmod(0o600)
+
+
+def publication(request, archive=None, remove=False, stage_only=False, retain_only=False):
     identity = validate(request)
     for directory in (ROOT, STATE, BACKUPS):
         directory.mkdir(parents=True, exist_ok=True)
@@ -250,6 +278,14 @@ def publication(request, archive=None, remove=False, stage_only=False):
             raise ValueError('publication_target_conflict')
         if stage_only and previous and previous.get('active', True):
             raise ValueError('publication_already_active')
+        if retain_only:
+            if not previous or previous['versionId'] != request['versionId'] or previous['sha256'] != request['sha256']:
+                raise ValueError('retained_publication_conflict')
+            release = ROOT / identity / (request['versionId'] + '-' + request['sha256'])
+            if release.is_symlink() or not (release / 'public').is_dir():
+                raise ValueError('release_missing')
+            retain_archive(request, archive, release)
+            return {'retained': True, 'versionId': request['versionId'], 'sha256': request['sha256']}
         if remove and not previous:
             return {'removed': True, 'alreadyRemoved': True}
         marker = f"# LUXIPANEL_FRONTEND {request['providerId']}:{request['accountId']}:{request['projectId']}"
@@ -290,6 +326,7 @@ def publication(request, archive=None, remove=False, stage_only=False):
                 finally:
                     if stage.exists():
                         shutil.rmtree(stage)
+            retain_archive(request, archive, release)
             headers = release / 'headers.conf'
             if not headers.exists():
                 headers.write_text(f"add_header X-Luxi-Frontend-Release {request['versionId']} always;\nadd_header X-Luxi-Static-Sha256 {request['sha256']} always;\nadd_header X-Luxi-Project-Type repository always;\n")
@@ -360,9 +397,9 @@ def main():
     if request_file.is_symlink() or not request_file.is_file() or request_file.stat().st_size > 32768:
         raise ValueError('invalid_request')
     request = json.loads(request_file.read_text())
-    if operation not in ('publish', 'remove', 'stage'):
+    if operation not in ('publish', 'remove', 'stage', 'retain'):
         raise ValueError('invalid_operation')
-    result = publication(request, Path(sys.argv[3]) if len(sys.argv) == 4 else None, operation == 'remove', operation == 'stage')
+    result = publication(request, Path(sys.argv[3]) if len(sys.argv) == 4 else None, operation == 'remove', operation == 'stage', operation == 'retain')
     print(json.dumps(result))
 
 

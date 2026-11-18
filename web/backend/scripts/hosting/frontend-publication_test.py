@@ -109,6 +109,7 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(list(m.AVAILABLE.iterdir()), [])
         self.assertEqual(list(m.ENABLED.iterdir()), [])
         self.assertTrue(list(m.ROOT.rglob('index.html')))
+        self.assertEqual(len(list(m.ROOT.rglob('artifact.zip'))), 1)
         self.assertFalse((m.ROOT / m.validate(self.request) / 'current').exists())
         record = m.STATE / (m.validate(self.request) + '.json')
         self.assertFalse(json.loads(record.read_text())['active'])
@@ -128,6 +129,15 @@ class PublicationTests(unittest.TestCase):
         with patch.object(m, 'certificate', return_value=Path('/cert')), patch.object(m, 'run'):
             m.publication(self.request, archive)
             m.publication(self.request, archive)
+            retained = list(m.ROOT.rglob('artifact.zip'))
+            self.assertEqual(retained[0].read_bytes(), archive.read_bytes())
+            self.assertEqual(retained[0].stat().st_mode & 0o777, 0o600)
+            record = m.STATE / (m.validate(self.request) + '.json')
+            before = record.read_bytes()
+            with patch.object(m, 'run') as check:
+                m.publication(self.request, archive, retain_only=True)
+                check.assert_not_called()
+            self.assertEqual(record.read_bytes(), before)
             m.publication(self.request, remove=True)
             self.assertTrue(m.publication(self.request, remove=True)['alreadyRemoved'])
         self.assertFalse((m.ENABLED / 'site.example.com').exists())
