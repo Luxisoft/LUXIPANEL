@@ -30,10 +30,10 @@ def main():
  def podman(args,**kw):return subprocess.run(command+args,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120,**kw).stdout
  if action=='export':
   if not image:raise ValueError('image_missing')
-  name='luxi-frontend-archive-'+uuid.uuid4().hex
+  container='luxi-frontend-archive-'+uuid.uuid4().hex
   try:
-   podman(['create','--network=none','--name',name,image])
-   packed=podman(['cp',name+':/srv/public/.','-'])
+   podman(['create','--network=none','--name',container,image])
+   packed=podman(['cp',container+':/srv/public/.','-'])
    if len(packed)>140*1024*1024:raise ValueError('archive_too_large')
    archive=io.BytesIO();count=total=0;names=set()
    with tarfile.open(fileobj=io.BytesIO(packed)) as source,zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED) as target:
@@ -49,7 +49,7 @@ def main():
    if len(data)>33554432:raise ValueError('archive_limit')
    print(json.dumps({'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'data':base64.b64encode(data).decode()}))
   finally:
-   podman(['rm','--force',name])
+   podman(['rm','--force',container])
  elif action=='retire':
   receipts=json.load(sys.stdin);allowed=set(receipts['verifiedRemoteDigests'])
   if not allowed or any(not re.fullmatch(r'[a-f0-9]{64}',sha) for sha in allowed):raise ValueError('remote_receipts_required')
