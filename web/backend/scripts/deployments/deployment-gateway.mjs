@@ -168,15 +168,39 @@ async function serveStatic(req, res, url, route, component, routesRoot, cacheRoo
   sendJson(res, 404, { ok: false, error: "not_found" }, { "x-luxi-project-type": "repository" });
 }
 
-function proxyRequest(req, res, route, component) {
+const reservedCookie = /^(?:store_session|luxisoft_session|__Host-store_session|__Host-luxisoft_session|luxi_deployment_preview|luxi_analytics)$/i;
+
+function projectRequestHeaders(req, host) {
+  const headers = { ...req.headers, host, "x-forwarded-host": host, "x-forwarded-proto": "https" };
+  for (const key of ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade", "forwarded"]) delete headers[key];
+  if (typeof headers.cookie === "string") {
+    const cookies = headers.cookie.split(";").map(value => value.trim())
+      .filter(value => !reservedCookie.test((value.split("=", 1)[0] ?? "").trim()));
+    if (cookies.length) headers.cookie = cookies.join("; ");
+    else delete headers.cookie;
+  }
+  return headers;
+}
+
+function projectResponseHeaders(response) {
+  const headers = { ...response.headers };
+  if (headers["set-cookie"]) {
+    const cookies = headers["set-cookie"].filter(value => !reservedCookie.test((value.split("=", 1)[0] ?? "").trim()))
+      .map(value => value.replace(/;\s*domain\s*=[^;]*/gi, ""));
+    if (cookies.length) headers["set-cookie"] = cookies;
+    else delete headers["set-cookie"];
+  }
+  return headers;
+}
+
+function proxyRequest(req, res, host, route, component) {
   return new Promise((resolve) => {
-    const headers = { ...req.headers, host: normalizeHost(req.headers.host), "x-forwarded-host": normalizeHost(req.headers.host), "x-forwarded-proto": "https" };
-    for (const key of ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"]) delete headers[key];
+    const headers = projectRequestHeaders(req, host);
     const upstream = http.request({ host: "127.0.0.1", port: component.port, method: req.method, path: req.url, headers }, (response) => {
       if (component.role === "backend" && /(?:text\/html|application\/xhtml\+xml)/i.test(String(response.headers['content-type'] ?? ''))) {
         response.resume(); sendJson(res, 502, {ok:false,error:'backend_interface_forbidden'}); resolve(); return;
       }
-      const outgoing = { ...response.headers, "x-luxi-project-type": "repository", "x-luxi-version": String(route.versionNumber) };
+      const outgoing = { ...projectResponseHeaders(response), "x-luxi-project-type": "repository", "x-luxi-version": String(route.versionNumber) };
       delete outgoing.connection; delete outgoing["transfer-encoding"];
       res.writeHead(response.statusCode ?? 502, outgoing); response.pipe(res);
       response.on("end", resolve); response.on("error", () => { res.destroy(); resolve(); });
@@ -198,7 +222,7 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
     void (async () => {
       const ip = normalizeIp(req.socket.remoteAddress);
       if (trustedIps.size && !trustedIps.has(ip)) return sendJson(res, 403, { ok: false, error: "forbidden" });
-      const url = new URL(req.url ?? "/", "http://project.local"), host = normalizeHost(req.headers["x-forwarded-host"] ?? req.headers.host);
+      const url = new URL(req.url ?? "/", "http://project.local"), host = normalizeHost(req.headers.host);
       if (url.pathname === "/_health") return sendJson(res, 200, { ok: true, service: "luxisoft-project-gateway", routes: catalog.size, revision });
       const route = catalog.get(host);
       if (!route) return sendJson(res, 421, { ok: false, error: "unmanaged_host" });
@@ -209,14 +233,14 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
       const component = chooseComponent(route, url.pathname);
       if (!component) return sendJson(res, 503, { ok: false, error: "project_route_invalid" });
       if (component.surface === "static") return sendJson(res, 410, {ok:false,error:"frontend_served_on_frontend"});
-      await proxyRequest(req, res, route, component);
+      await proxyRequest(req, res, host, route, component);
     })().catch((error) => {
       process.stderr.write(`project_gateway_request_failed ${String(error.message).slice(0, 180)}\n`);
       if (!res.headersSent) sendJson(res, 503, { ok: false, error: "project_temporarily_unavailable" }); else res.destroy();
     });
   });
   server.on("upgrade", (req, socket, head) => {
-    const ip = normalizeIp(req.socket.remoteAddress), host = normalizeHost(req.headers["x-forwarded-host"] ?? req.headers.host);
+    const ip = normalizeIp(req.socket.remoteAddress), host = normalizeHost(req.headers.host);
     if ((trustedIps.size && !trustedIps.has(ip)) || !catalog.has(host)) {
       socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n"); return;
     }
@@ -224,10 +248,12 @@ export function createGateway({ routesRoot, cacheRoot, trustedIps, initialRoutes
     if (route.redirectTo || !component || component.surface !== "http") {
       socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n"); return;
     }
-    const headers = { ...req.headers, host, "x-forwarded-host": host, "x-forwarded-proto": "https", connection: "Upgrade", upgrade: req.headers.upgrade };
+    const headers = { ...projectRequestHeaders(req, host), connection: "Upgrade", upgrade: req.headers.upgrade };
     const upstream = http.request({ host: "127.0.0.1", port: component.port, method: req.method, path: req.url, headers });
     upstream.on("upgrade", (response, remote, buffer) => {
-      socket.write(`HTTP/1.1 101 Switching Protocols\r\n${Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join("\r\n")}\r\n\r\n`);
+      const lines = Object.entries(projectResponseHeaders(response))
+        .flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).map(item => `${key}: ${item}`));
+      socket.write(["HTTP/1.1 101 Switching Protocols", ...lines, "", ""].join("\r\n"));
       if (head.length) remote.write(head); if (buffer.length) socket.write(buffer);
       remote.pipe(socket); socket.pipe(remote);
       remote.on("error", () => socket.destroy()); socket.on("error", () => remote.destroy());
