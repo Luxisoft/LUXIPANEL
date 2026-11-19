@@ -17,6 +17,7 @@ es `local` y el frontend es el target FRONTEND (`198.252.105.131`).
 
 Instalar `scripts/hosting/frontend-publication.py` publicado, como root y modo
 0755, en `/usr/lib/luxipanel/frontend-publication` del servidor frontend. Necesita
+un directorio físico en `/var/www/luxisoft/clients/published-sites/`,
 Python 3, nginx y certificados previamente aprovisionados por SSL; no instala
 software ni modifica DNS al publicar. El ejecutor administrativo usa sudo. Las
 cuentas cliente y la clave de proveedor no reciben shell, rutas ni credenciales

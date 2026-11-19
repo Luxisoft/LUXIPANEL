@@ -67,13 +67,13 @@ export const frontendPublicationService = {
     uuid.parse(versionId);z.number().int().min(1).max(32*1024*1024).parse(meta.bytes);z.string().regex(/^[a-z][a-z0-9-]{0,29}$/).parse(component);z.string().regex(/^[a-f0-9]{64}$/).parse(meta.sha256);
     const id=identity(provider,account,project),executor=await providerService.frontendExecutor(provider);
     let encoded:string|Buffer;
-    try {encoded=await executor.readFile(`/var/www/luxisoft/published/${id}/artifacts/${versionId}/${component}-${meta.sha256}.zip`,'base64');}
+    try {encoded=await executor.readFile(`/var/www/luxisoft/clients/published-sites/${id}/artifacts/${versionId}/${component}-${meta.sha256}.zip`,'base64');}
     catch {
       const rows=await Promise.all([readPublication(id),readPublication(identity(provider,account,project,versionId))]);
       const row=rows.find(p=>p?.versionId===versionId&&p.sha256===meta.sha256&&(!p.component||p.component===component));
       if(!row)throw new ConflictError('frontend_artifact_missing');
       const pinned=await providerService.frontendExecutor(provider,row.targetId);
-      encoded=await pinned.readFile(`/var/www/luxisoft/published/${identity(provider,account,project,row.environment==='preview'?versionId:undefined)}/${versionId}-${meta.sha256}/artifact.zip`,'base64');
+      encoded=await pinned.readFile(`/var/www/luxisoft/clients/published-sites/${identity(provider,account,project,row.environment==='preview'?versionId:undefined)}/${versionId}-${meta.sha256}/artifact.zip`,'base64');
     }
     if(typeof encoded!=='string')throw new ConflictError('frontend_artifact_invalid');
     const bytes=Buffer.from(encoded,'base64');if(bytes.length!==meta.bytes||createHash('sha256').update(bytes).digest('hex')!==meta.sha256)throw new ConflictError('frontend_artifact_invalid');
@@ -148,7 +148,7 @@ export const frontendPublicationService = {
     if (!current) throw new ConflictError("Publicación frontend ausente");
     const executor = await providerService.frontendExecutor(provider, current.targetId);
     const version = uuid.parse(current.versionId), digest = z.string().regex(/^[a-f0-9]{64}$/).parse(current.sha256);
-    const encoded = await executor.readFile(`/var/www/luxisoft/published/${id}/${version}-${digest}/artifact.zip`, "base64");
+    const encoded = await executor.readFile(`/var/www/luxisoft/clients/published-sites/${id}/${version}-${digest}/artifact.zip`, "base64");
     if (typeof encoded !== "string") throw new ConflictError("Artefacto frontend ausente");
     const bytes = Buffer.from(encoded, "base64");
     if (!Buffer.isBuffer(bytes)) throw new ConflictError("Artefacto frontend ausente");
