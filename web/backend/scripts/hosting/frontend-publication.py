@@ -19,7 +19,7 @@ import tempfile
 import uuid
 import zipfile
 
-ROOT = Path('/var/www/luxisoft/published')
+ROOT = Path('/var/www/luxisoft/clients/published-sites')
 STATE = Path('/etc/luxipanel/hosting/frontend-publications')
 AVAILABLE = Path('/etc/nginx/sites-available')
 ENABLED = Path('/etc/nginx/sites-enabled')
