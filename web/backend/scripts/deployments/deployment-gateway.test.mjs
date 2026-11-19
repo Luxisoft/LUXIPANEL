@@ -115,3 +115,33 @@ test('serves temporary redirects with path and query, and stops at expiry withou
   assert.equal((await ask()).status,421);
  }finally{await new Promise(resolve=>gateway.server.close(resolve));await rm(root,{recursive:true,force:true});}
 });
+
+test("uses the validated host and confines project cookies to their host", async () => {
+  const upstream = http.createServer((req, res) => {
+    res.setHeader("Set-Cookie", ["cart=1; Domain=example.test; Path=/", "store_session=discard; Path=/"]);
+    res.end(JSON.stringify({ host: req.headers.host, forwardedHost: req.headers["x-forwarded-host"], cookie: req.headers.cookie }));
+  });
+  await new Promise(resolve => upstream.listen(0, "127.0.0.1", resolve));
+  const fixture = { versionNumber: 1, defaultComponent: "web", components: [{ name: "web", surface: "http", port: upstream.address().port }] };
+  const gateway = createGateway({ trustedIps: new Set(["127.0.0.1"]), initialRoutes: new Map([["project.example.test", fixture]]) });
+  await new Promise(resolve => gateway.server.listen(0, "127.0.0.1", resolve));
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const req = http.get({
+        host: "127.0.0.1", port: gateway.server.address().port,
+        headers: { host: "project.example.test", "x-forwarded-host": "other.example.test", cookie: "store_session=fixture; cart=1" },
+      }, res => {
+        let body = "";
+        res.on("data", chunk => { body += chunk; });
+        res.on("end", () => resolve({ status: res.statusCode, cookies: res.headers["set-cookie"], body: JSON.parse(body) }));
+      });
+      req.on("error", reject);
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body, { host: "project.example.test", forwardedHost: "project.example.test", cookie: "cart=1" });
+    assert.deepEqual(response.cookies, ["cart=1; Path=/"]);
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await new Promise(resolve => upstream.close(resolve));
+  }
+});
