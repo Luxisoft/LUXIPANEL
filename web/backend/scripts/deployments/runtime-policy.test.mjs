@@ -50,3 +50,24 @@ test('native quota below 2 GiB is not exhausted host capacity', () => {
     assert.throws(()=>assertRuntimeDiskCapacity(24 * 1024 ** 3,invalid));
   }
 });
+
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { buildCommandEnvironment } from './runtime-policy.mjs';
+test('frontend subprocesses can create temporary files when inherited temp storage is unavailable', async () => {
+  const temporary = await mkdtemp(join(tmpdir(), 'frontend-build-env-'));
+  const parent = { ...process.env, TMPDIR: join(temporary, 'missing'), MARKER: 'preserved' };
+  try {
+    const env = buildCommandEnvironment(parent, temporary);
+    const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e',
+      "import {mkdtemp} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';console.log(await mkdtemp(join(tmpdir(),'image-')));console.log(process.env.MARKER);"], { env });
+    assert.ok(stdout.startsWith(join(temporary, 'image-')));
+    assert.ok(stdout.includes('preserved'));
+    assert.equal(parent.TMPDIR, join(temporary, 'missing'));
+    assert.equal(buildCommandEnvironment(parent).TMPDIR, parent.TMPDIR);
+    assert.equal(buildCommandEnvironment(parent).CI, '1');
+  } finally { await rm(temporary, {recursive:true, force:true}); }
+});
