@@ -58,3 +58,8 @@ export function assertRuntimeDiskCapacity(hostAvailableBytes, tenantAvailableByt
   if (!Number.isSafeInteger(tenantAvailableBytes) || tenantAvailableBytes <= 0)
     throw new Error('disk_quota_exceeded');
 }
+
+/** Frontend image downloads share the owned, disposable build workspace. */
+export function buildCommandEnvironment(parent, frontendTemporaryDirectory) {
+  return { ...parent, CI: '1', ...(frontendTemporaryDirectory ? { TMPDIR: frontendTemporaryDirectory } : {}) };
+}

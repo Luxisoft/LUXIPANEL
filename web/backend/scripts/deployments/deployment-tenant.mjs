@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import net from "node:net";
-import { optionalDirectoryEntries, finalizePreview, discardCandidate, runtimeCapacity, assertRuntimeDiskCapacity } from "./runtime-policy.mjs";
+import { optionalDirectoryEntries, finalizePreview, discardCandidate, runtimeCapacity, assertRuntimeDiskCapacity, buildCommandEnvironment } from "./runtime-policy.mjs";
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 const job = JSON.parse(input),
@@ -19,6 +19,7 @@ if (
 const root = path.join(job.home, ".luxisoft", "deployments", project),
   quadlet = path.join(job.home, ".config", "containers", "systemd");
 let frontendPodman = [];
+let frontendTemporaryDirectory;
 const scratch = path.join(root, "scratch", job.requestId ?? "lifecycle");
 let logs = "",
   started = [],
@@ -55,7 +56,7 @@ async function command(
   return new Promise((resolve, reject) => {
     const child = spawn(bin, bin === "/usr/bin/podman" ? [...frontendPodman, ...args] : args, {
       cwd,
-      env: { ...process.env, CI: "1" },
+      env: buildCommandEnvironment(process.env, frontendTemporaryDirectory),
       stdio: ["pipe", "pipe", "pipe"],
     });
     let output = "",
@@ -484,6 +485,7 @@ try {
     if (surface === "static") {
       if (environment === "production") throw new Error("frontend_artifact_missing_rebuild_preview");
       const storage = await secureDir(path.join(scratch, "frontend-"+part.name));
+      frontendTemporaryDirectory = await secureDir(path.join(storage, "tmp"));
       frontendPodman = ["--root",path.join(storage,"store"),"--runroot",path.join(storage,"run"),"--storage-driver=vfs","--network-config-dir",path.join(storage,"networks")];
     }
     let image = surface === "static" ? null : images[part.name];
@@ -599,6 +601,7 @@ try {
       }
       const [sha256, bytes] = summary.split(" ");
       frontendPodman = [];
+      frontendTemporaryDirectory = undefined;
       components.push({ name: part.name, port: null, image:null, surface, staticArchive: { sha256, bytes: Number(bytes) } });
       continue;
     }
@@ -652,6 +655,7 @@ try {
 
 finally {
   frontendPodman = [];
+  frontendTemporaryDirectory = undefined;
   if (!job.operation) {
     // vfs storage has no overlay mounts; unshare handles subordinate owners.
     await command("/usr/bin/podman",["unshare","/usr/bin/rm","-rf","--",scratch],{cwd:root,record:false,timeout:120000}).catch(()=>{});
