@@ -100,9 +100,10 @@ test('redirects require a local non-redirecting target and a finite expiry', () 
  assert.throws(()=>parseRouteRecord({...value,hosts:[{...value.hosts[0],redirectTo:value.hosts[0].hostname},value.hosts[1]]},'test'),/redirect/);
 });
 
-test('serves temporary redirects with path and query, and stops at expiry without a control-plane call', async () => {
- const base=path.join(process.cwd(),'.cache','gateway-tests');await mkdir(base,{recursive:true});
- const root=await mkdtemp(path.join(base,'redirect-'));const folder=path.join(root,'f'.repeat(64));await mkdir(folder);
+test('serves temporary redirects with path and query, and stops at expiry without a control-plane call', async t => {
+ const root=await mkdtemp(path.join(os.tmpdir(),'gateway-redirect-'));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ const folder=path.join(root,'f'.repeat(64));await mkdir(folder);
  const value=record();value.hosts.push({hostname:'own.example',defaultComponent:'web'});
  value.hosts[0]={...value.hosts[0],redirectTo:'own.example',expiresAt:new Date(Date.now()+60000).toISOString()};
  const file=path.join(folder,'routes.json');await writeFile(file,JSON.stringify(value));
@@ -113,7 +114,7 @@ test('serves temporary redirects with path and query, and stops at expiry withou
   const first=await ask();assert.equal(first.status,307);assert.equal(first.headers.location,'https://own.example/shop/item?ref=old');assert.equal(first.headers['cache-control'],'no-store');
   value.hosts[0].expiresAt='2020-01-01T00:00:00.000Z';await writeFile(file,JSON.stringify(value));await gateway.reload();
   assert.equal((await ask()).status,421);
- }finally{await new Promise(resolve=>gateway.server.close(resolve));await rm(root,{recursive:true,force:true});}
+ }finally{await new Promise(resolve=>gateway.server.close(resolve));}
 });
 
 test("uses the validated host and confines project cookies to their host", async () => {
