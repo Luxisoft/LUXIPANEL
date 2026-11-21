@@ -289,6 +289,12 @@ interface StoreCredsData {
 }
 
 export const expoApiService = {
+  async projectOwner(token: string, id: string) {
+    const data = await gql<{app:{byId:{ownerAccount:{name:string}} | null}}>(
+      token, "query AppOwner($id: String!) { app { byId(appId:$id) { ownerAccount { name } } } }", {id}
+    );
+    return data.app.byId?.ownerAccount.name;
+  },
   /**
    * Store-account credentials configured on the EAS account that owns this app
    * (Google Play service-account keys + App Store Connect API keys). Read via

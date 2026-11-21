@@ -59,8 +59,8 @@ try{
   // It is outside the consumer's home and never executes application source.
   const work=path.join(job.root,'source');workspace=work;await fs.mkdir(work,{recursive:true,mode:0o700});
   for(const [name,body] of Object.entries(job.files)){const dest=path.join(work,name);await fs.mkdir(path.dirname(dest),{recursive:true});await fs.writeFile(dest,/\.(png|jpe?g|webp|ttf|otf|woff2?)$/.test(name)?Buffer.from(body,'base64'):body,{mode:0o600});}
-  const app=JSON.parse(await fs.readFile(path.join(work,'app.json'),'utf8'));delete app.expo.owner;app.expo.slug=job.expoSlug;app.expo.extra={...app.expo.extra,eas:{projectId:job.projectId}};await fs.writeFile(path.join(work,'app.json'),JSON.stringify(app));
-  if(job.sourceMode!=='repository'){const runtime=JSON.parse(await fs.readFile(path.join(work,'runtime-config.json'),'utf8'));runtime.environment=job.kind==='build'&&job.profile!=='production'?'preview':'production';await fs.writeFile(path.join(work,'runtime-config.json'),JSON.stringify(runtime));}
+  const app=JSON.parse(await fs.readFile(path.join(work,'app.json'),'utf8'));if(job.expoOwner)app.expo.owner=job.expoOwner;else delete app.expo.owner;app.expo.slug=job.expoSlug;app.expo.extra={...app.expo.extra,eas:{projectId:job.projectId}};await fs.writeFile(path.join(work,'app.json'),JSON.stringify(app));
+  if(job.sourceMode!=='repository'){const runtime=JSON.parse(await fs.readFile(path.join(work,'runtime-config.json'),'utf8'));runtime.environment=job.kind==='build'&&!['production','production-apk'].includes(job.profile)?'preview':'production';await fs.writeFile(path.join(work,'runtime-config.json'),JSON.stringify(runtime));}
   const pkg=JSON.parse(await fs.readFile(path.join(work,'package.json'),'utf8'));pkg.scripts={};await fs.writeFile(path.join(work,'package.json'),JSON.stringify(pkg));
   await fs.writeFile(path.join(work,'.easignore'),'node_modules\n.expo\ndist\ncredentials*\n*.p8\nservice-account.json\n');
   const easEnv={EXPO_TOKEN:job.token,EAS_NO_VCS:'1'};
@@ -68,6 +68,12 @@ try{
   if(job.kind==='build'){
    await fs.copyFile(path.join(job.versionRoot,'package-lock.json'),path.join(work,'package-lock.json'));
    await command('/usr/bin/npm',['ci','--ignore-scripts','--no-audit','--no-fund'],work);
+   if(job.profile==='production-apk'){
+    if(job.platform!=='android')throw new Error('android_required');
+    const file=path.join(work,'eas.json'),config=JSON.parse(await fs.readFile(file,'utf8'));
+    config.build['production-apk']={extends:'production',android:{buildType:'apk'}};
+    await fs.writeFile(file,JSON.stringify(config));
+   }
    const raw=await command('/usr/bin/eas',['build','--platform',job.platform,'--profile',job.profile,'--non-interactive','--no-wait','--json'],work,easEnv);
    const parsed=json(raw),build=Array.isArray(parsed)?parsed[0]:parsed;
    if(!build?.id)throw new Error('eas_build_id_missing');

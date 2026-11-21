@@ -160,6 +160,15 @@ const expoRefs = (req: { params: Record<string, unknown> }) => [String(req.param
 providerRouter.put(expoBase, asyncHandler(async (req,res) => { allowed(res,"expo.write");res.json({ok:true,data:await expoProviderService.register(current(res),...expoRefs(req))}); }));
 providerRouter.get(expoBase, asyncHandler(async (req,res) => { allowed(res,"expo.read");res.json({ok:true,data:await expoProviderService.status(current(res),...expoRefs(req))}); }));
 providerRouter.put(expoBase+"/versions/:versionId", asyncHandler(async(req,res)=>{allowed(res,"expo.write");res.json({ok:true,data:await expoProviderService.snapshot(current(res),...expoRefs(req),String(req.params.versionId),snapshotSchema.parse(req.body))});}));
+providerRouter.put(expoBase+"/versions/:versionId/dependency-lock",asyncHandler(async(req,res)=>{
+ allowed(res,"expo.build");
+ res.json({ok:true,data:await expoProviderService.dependencyLock(current(res),...expoRefs(req),String(req.params.versionId))});
+}));
+providerRouter.post(expoBase+"/expo-account", asyncHandler(async(req,res)=>{
+ allowed(res,"expo.write");
+ const input=z.object({mode:z.enum(["inspect","connect","managed"]),token:z.string().min(1).max(4096).optional(),owner:z.string().max(128).optional()}).strict().parse(req.body);
+ res.set("cache-control","no-store").json({ok:true,data:await expoProviderService.expoAccount(current(res),...expoRefs(req),input)});
+}));
 providerRouter.put(expoBase+"/connections/:store", asyncHandler(async(req,res)=>{allowed(res,"expo.write");const store=z.enum(["google","apple"]).parse(req.params.store);res.set("cache-control","no-store");res.json({ok:true,data:await expoProviderService.credentials(current(res),...expoRefs(req),store,z.object({config:z.record(z.string(),z.unknown())}).parse(req.body).config)});}));
 providerRouter.post(expoBase+"/jobs", asyncHandler(async(req,res)=>{const body=jobSchema.parse(req.body);allowed(res,body.kind==="build"?"expo.build":body.kind==="submit"?"expo.submit":"expo.write");res.status(202).json({ok:true,data:await expoProviderService.enqueue(current(res),...expoRefs(req),body)});}));
 providerRouter.get(expoBase+"/jobs/:jobId", asyncHandler(async(req,res)=>{allowed(res,"expo.read");res.json({ok:true,data:await expoProviderService.job(current(res),...expoRefs(req),String(req.params.jobId))});}));

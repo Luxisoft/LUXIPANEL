@@ -1,3 +1,4 @@
+import { expoApiService } from "../../expo/services/expo-api.service.js";
 import { verifyExpoStore } from "./expo-store-auth.js";
 import { createHash, createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:crypto";
 import path from "node:path";
@@ -16,8 +17,8 @@ import { getRedis } from "../../../shared/redis/index.js";
 import { repositoryExpoFiles } from "./expo-repository-policy.js";
 
 export const snapshotSchema = z.union([z.object({files:repositoryExpoFiles,sourceDigest:z.string().regex(/^[a-f0-9]{64}$/),sourceMode:z.literal("repository")}).strict(),z.object({ files: filesSchema, sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),sourceMode:z.literal("foundation").optional() }).strict()]);
-export const jobSchema = z.object({ requestId: z.string().uuid(), versionId: z.string().uuid(), kind: z.enum(["validate", "build", "submit"]), platform: z.enum(["android", "ios"]).default("android"), profile: z.enum(["preview", "production", "development"]).default("preview"), easBuildId: z.string().uuid().optional(), track: z.enum(["internal", "alpha", "beta", "production"]).default("internal"), storeAppId: z.string().max(100).optional() });
-type AppRecord = { id: string; accountRef: string; appRef: string; projectId: string | null; androidPackage?:string; bundleIdentifier?:string; google?: string; apple?: string; createdAt?: string };
+export const jobSchema = z.object({ requestId: z.string().uuid(), versionId: z.string().uuid(), expectedExpoOwner:z.string().max(128).nullable().optional(), kind: z.enum(["validate", "build", "submit"]), platform: z.enum(["android", "ios"]).default("android"), profile: z.enum(["preview", "production", "production-apk", "development"]).default("preview"), easBuildId: z.string().uuid().optional(), track: z.enum(["internal", "alpha", "beta", "production"]).default("internal"), storeAppId: z.string().max(100).optional() });
+type AppRecord = { id: string; accountRef: string; appRef: string; projectId: string | null; androidPackage?:string; bundleIdentifier?:string; expoSecret?:string|null; expoOwner?:string|null; google?: string; apple?: string; createdAt?: string };
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const ref = (value: string) => z.string().uuid().parse(value);
 function cryptKey() { if (!/^[a-f0-9]{64}$/i.test(env.CREDENTIAL_VAULT_KEY ?? "")) throw new ConflictError("Configura la clave de bóveda antes de conectar tiendas"); return Buffer.from(env.CREDENTIAL_VAULT_KEY!, "hex"); }
@@ -35,7 +36,7 @@ async function context(provider: HostingProvider, accountRef: string, appRef: st
 async function locked<T>(key: string, fn:()=>Promise<T>) { const redis=getRedis(),owner=randomUUID(),k="lxp:expo:"+hash(key);if(await redis.set(k,owner,"EX",180,"NX")!=="OK")throw new ConflictError("Operación en curso");const heartbeat=setInterval(()=>{void redis.eval("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('EXPIRE',KEYS[1],180) else return 0 end",1,k,owner).catch(()=>{});},30000);try{return await fn();}finally{clearInterval(heartbeat);await redis.eval("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end",1,k,owner);} }
 async function readJson(executor: Executor, file: string) { return JSON.parse(String(await executor.readFile(file,"utf8"))); }
 async function optionalJson(executor:Executor,file:string) { if(!await pathExists(executor,file))return null;return readJson(executor,file); }
-const safe = (row: AppRecord) => ({ projectId:row.projectId, connections:{google:Boolean(row.google),apple:Boolean(row.apple)} });
+const safe = (row: AppRecord) => ({ projectId:row.projectId, expoOwner:row.expoOwner??null, connections:{google:Boolean(row.google),apple:Boolean(row.apple)} });
 
 export const expoProviderService = {
  async register(provider: HostingProvider, accountRef: string, appRef: string) {
@@ -50,6 +51,58 @@ export const expoProviderService = {
   if(appRow.androidPackage&&appRow.androidPackage!==expo.android.package||appRow.bundleIdentifier&&appRow.bundleIdentifier!==expo.ios.bundleIdentifier)throw new ConflictError("Los identificadores de la app son inmutables");
   if(!appRow.androidPackage)await c.records.update(c.id,{androidPackage:expo.android.package,bundleIdentifier:expo.ios.bundleIdentifier});
   const root=path.join(c.root,"versions",versionId);await c.executor.mkdir(root,{recursive:true});const file=path.join(root,"source.json");const old=await optionalJson(c.executor,file);if(old&&old.sourceDigest!==input.sourceDigest)throw new ConflictError("Una versión existente es inmutable");if(!old)await c.executor.writeFile(file,JSON.stringify(input),{mode:0o600});return {versionId,sourceDigest:input.sourceDigest};});
+ },
+ async dependencyLock(provider:HostingProvider,accountRef:string,appRef:string,versionId:string) {
+  ref(versionId);
+  const c=await context(provider,accountRef,appRef);
+  return locked(c.id,async()=>{
+   const root=path.join(c.root,"versions",versionId);
+   const snapshot=await readJson(c.executor,path.join(root,"source.json"));
+   validateExpoSource(snapshot.files,snapshot.sourceMode);
+   const lockFile=path.join(root,"package-lock.json");
+   if(!await pathExists(c.executor,lockFile)){
+    const directory=path.join(root,"dependency-resolution");
+    await c.executor.mkdir(directory,{recursive:true});
+    const source=JSON.parse(snapshot.files["package.json"]);
+    const manifest={name:source.name,version:source.version,dependencies:source.dependencies,devDependencies:source.devDependencies,peerDependencies:source.peerDependencies};
+    await c.executor.writeFile(path.join(directory,"package.json"),JSON.stringify(manifest),{mode:0o600});
+    if(snapshot.files["package-lock.json"]){
+     const original=JSON.parse(snapshot.files["package-lock.json"]);
+     if(![2,3].includes(original.lockfileVersion)||!original.packages)throw new ConflictError("Formato de lockfile incompatible");
+     for(const [name,entry] of Object.entries(original.packages) as [string,any][]){
+      if(!name)continue;
+      if(!name.startsWith("node_modules/")||name.split("/").includes("..")||entry.link||typeof entry.resolved!=="string"||!entry.resolved.startsWith("https://registry.npmjs.org/")||!entry.integrity)throw new ConflictError("Dependencia fuera del registro npm");
+     }
+     await c.executor.writeFile(path.join(directory,"package-lock.json"),JSON.stringify(original),{mode:0o600});
+    }
+    const result=await c.executor.exec("/usr/bin/npm install --package-lock-only --ignore-scripts --no-audit --no-fund",{cwd:directory,timeoutMs:120000});
+    if(result.exitCode!==0)throw new ConflictError("No se pudieron resolver las dependencias de esta versión");
+    const content=String(await c.executor.readFile(path.join(directory,"package-lock.json"),"utf8"));
+    if(Buffer.byteLength(content)>850000)throw new ConflictError("El lockfile supera el límite");
+    await c.executor.writeFile(lockFile+".tmp",content,{mode:0o600});
+    await c.executor.rename(lockFile+".tmp",lockFile);
+   }
+   return {lock:await readJson(c.executor,lockFile)};
+  });
+ },
+ async expoAccount(provider:HostingProvider, accountRef:string, appRef:string, input:{mode:"inspect"|"connect"|"managed";token?:string;owner?:string}) {
+  const c=await context(provider,accountRef,appRef);
+  return locked(c.id,async()=>{
+   const row=await c.records.get(c.id);
+   if(!row)throw new NotFoundError("App Expo");
+   const token=input.mode==="managed"?await expoProviderToken(c.executor):input.token;
+   if(!token)throw new ConflictError("Introduce un token Expo");
+   const {accounts}=await expoApiService.viewer(token);
+   if(input.mode==="inspect")return {accounts};
+   const owner=input.mode==="managed"?null:input.owner;
+   if(input.mode==="connect"&&(!owner||!accounts.includes(owner)))throw new ForbiddenError("Cuenta Expo no disponible");
+   if(row.projectId){
+    const currentOwner=await expoApiService.projectOwner(token,row.projectId);
+    if(!currentOwner||!accounts.includes(currentOwner)||(owner&&owner!==currentOwner))throw new ConflictError("La cuenta debe tener acceso al proyecto EAS existente");
+   }
+   await c.records.update(c.id,{expoOwner:owner??null,expoSecret:owner?seal({token}):null});
+   return {expoOwner:owner??null};
+  });
  },
  async credentials(provider:HostingProvider,accountRef:string,appRef:string,store:"google"|"apple",config:Record<string,unknown>) {
   const c=await context(provider,accountRef,appRef),row=await c.records.get(c.id);if(!row)throw new NotFoundError("App Expo");
@@ -68,12 +121,13 @@ export const expoProviderService = {
    const row=await c.records.get(c.id);if(!row)throw new NotFoundError("App Expo");
    const root=path.join(c.root,"jobs",input.requestId),stateFile=path.join(root,"state.json");
    const old=await optionalJson(c.executor,stateFile);const digest=hash(JSON.stringify(input));if(old){if(old.requestDigest!==digest)throw new ConflictError("Referencia de trabajo reutilizada");return old;}
+   if(input.expectedExpoOwner!==undefined&&input.expectedExpoOwner!==(row.expoOwner??null))throw new ForbiddenError("La conexión Expo cambió. Solicita el build de nuevo.");
    const versionRoot=path.join(c.root,"versions",input.versionId);const snapshot=await readJson(c.executor,path.join(versionRoot,"source.json"));validateExpoSource(snapshot.files,snapshot.sourceMode);
-   const token=input.kind==="validate"?"":await expoProviderToken(c.executor);
+   const token=input.kind==="validate"?"":row.expoSecret?String(open(row.expoSecret).token):await expoProviderToken(c.executor);
    let projectId=row.projectId;
    if(input.kind!=="validate"&&!projectId){
     const initRoot=path.join(c.root,"init");await c.executor.mkdir(initRoot,{recursive:true});
-    const app=JSON.parse(snapshot.files["app.json"]);app.expo.slug="app-"+appRef.slice(0,12);delete app.expo.owner;delete app.expo.extra?.eas;
+    const app=JSON.parse(snapshot.files["app.json"]);app.expo.slug="app-"+appRef.slice(0,12);if(row.expoOwner)app.expo.owner=row.expoOwner;else delete app.expo.owner;delete app.expo.extra?.eas;
     delete app.expo.plugins;
     await c.executor.writeFile(path.join(initRoot,"app.json"),JSON.stringify(app),{mode:0o600});
     await c.executor.writeFile(path.join(initRoot,"package.json"),JSON.stringify({name:"luxisoft-expo-broker",version:"1.0.0",private:true}),{mode:0o600});
@@ -100,7 +154,7 @@ export const expoProviderService = {
    await c.executor.mkdir(root,{recursive:true});
    const state={id:input.requestId,status:"queued",kind:input.kind,versionId:input.versionId,sourceDigest:snapshot.sourceDigest,requestDigest:digest,projectId,createdAt:new Date().toISOString()};
    await c.executor.writeFile(stateFile,JSON.stringify(state),{mode:0o600});
-   const manifest={...input,root,versionRoot,home:c.account.homeRoot,runnerLock:path.join(path.dirname(c.root),"runner.lock"),username:c.account.username,expoSlug:"app-"+appRef.slice(0,12),public:state,files:snapshot.files,sourceMode:snapshot.sourceMode,token,projectId,credentials};
+   const manifest={...input,expoOwner:row.expoOwner,root,versionRoot,home:c.account.homeRoot,runnerLock:path.join(path.dirname(c.root),"runner.lock"),username:c.account.username,expoSlug:"app-"+appRef.slice(0,12),public:state,files:snapshot.files,sourceMode:snapshot.sourceMode,token,projectId,credentials};
    const manifestPath=path.join(root,"input.json"),runner=path.join(root,"runner.mjs");
    await c.executor.writeFile(manifestPath,JSON.stringify(manifest),{mode:0o600});await c.executor.writeFile(runner,EXPO_PROVIDER_RUNNER,{mode:0o600});
    const result=await c.executor.exec(`sh -lc ${quoteArg(`nohup /usr/bin/node ${quoteArg(runner)} ${quoteArg(manifestPath)} </dev/null >${quoteArg(path.join(root,"launch.log"))} 2>&1 &`)}`,{timeoutMs:10000});
@@ -112,5 +166,5 @@ export const expoProviderService = {
   return locked(c.id,async()=>{const root=path.join(c.root,"jobs",jobId),state=await optionalJson(c.executor,path.join(root,"state.json"));if(!state)throw new NotFoundError("Trabajo Expo");if(state.kind!=="validate")throw new ConflictError("Solo se puede cancelar una validación local");if(["finished","failed","cancelled"].includes(state.status))return state;await c.executor.writeFile(path.join(root,"cancel.json"),"{}",{mode:0o600});return {id:jobId,status:"cancelling"};});
  },
  async job(provider:HostingProvider,accountRef:string,appRef:string,jobId:string,preview=false) {ref(jobId);const c=await context(provider,accountRef,appRef);const root=path.join(c.root,"jobs",jobId);const state=await readJson(c.executor,path.join(root,"state.json")).catch(()=>null);if(!state)throw new NotFoundError("Trabajo Expo");if(preview&&state.status==="finished"&&state.kind==="validate")return readJson(c.executor,path.join(root,"preview.json"));if(state.result?.lock)delete state.result.lock;return state;},
- async buildStatus(provider:HostingProvider,accountRef:string,appRef:string,buildId:string) {ref(buildId);const c=await context(provider,accountRef,appRef),row=await c.records.get(c.id);const token=await expoProviderToken(c.executor);const response=await fetch("https://api.expo.dev/graphql",{method:"POST",headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},body:JSON.stringify({query:"query($id: ID!){builds{byId(buildId:$id){id status platform artifacts{buildUrl applicationArchiveUrl} project{id}}}}",variables:{id:buildId}}),signal:AbortSignal.timeout(20000)});const result=await response.json() as any;const build=result.data?.builds?.byId;if(!build||build.project?.id!==row?.projectId)throw new NotFoundError("Build de la app");return {...build,artifactUrl:build.artifacts?.applicationArchiveUrl||build.artifacts?.buildUrl||null};},
+ async buildStatus(provider:HostingProvider,accountRef:string,appRef:string,buildId:string) {ref(buildId);const c=await context(provider,accountRef,appRef),row=await c.records.get(c.id);const token=row?.expoSecret?String(open(row.expoSecret).token):await expoProviderToken(c.executor);const response=await fetch("https://api.expo.dev/graphql",{method:"POST",headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},body:JSON.stringify({query:"query($id: ID!){builds{byId(buildId:$id){id status platform artifacts{buildUrl applicationArchiveUrl} project{id}}}}",variables:{id:buildId}}),signal:AbortSignal.timeout(20000)});const result=await response.json() as any;const build=result.data?.builds?.byId;if(!build||build.project?.id!==row?.projectId)throw new NotFoundError("Build de la app");return {...build,artifactUrl:build.artifacts?.applicationArchiveUrl||build.artifacts?.buildUrl||null};},
 };
