@@ -57,7 +57,7 @@ describe("frontend publication target ownership", () => {
   it('retains no interface ZIP on the panel and reads reconfiguration from the pinned frontend', async () => {
     mocks.record={...request, targetId:'front', active:true};
     await service.reconfigure(provider,account,project,['site.example.com']);
-    expect(mocks.remoteRead).toHaveBeenCalledWith(expect.stringMatching(/^\/var\/www\/luxisoft\/published\/[a-f0-9]{64}\/[a-f0-9-]+-[a-f0-9]{64}\/artifact\.zip$/), "base64");
+    expect(mocks.remoteRead).toHaveBeenCalledWith(expect.stringMatching(/^\/var\/www\/luxisoft\/clients\/published-sites\/[a-f0-9]{64}\/[a-f0-9-]+-[a-f0-9]{64}\/artifact\.zip$/), "base64");
     expect(mocks.localWrite.mock.calls.some(([file])=>String(file).endsWith('.zip'))).toBe(false);
   });
   it("removes from the recorded server after the preference changes", async () => {
