@@ -15,7 +15,7 @@ def healthy_components(parts, manifest, attempts=30, delay=1):
         raise RuntimeError('invalid_result_components')
     client = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     for part, expected in zip(parts, manifest):
-        surface = 'http' if expected['surface'] == 'mobile' else expected['surface']
+        surface = ('static' if expected.get('role') == 'frontend' else 'http') if expected['surface'] == 'mobile' else expected['surface']
         if part['name'] != expected['name'] or part['surface'] != surface:
             raise RuntimeError('invalid_result_component')
         if surface != 'http':
@@ -31,6 +31,8 @@ def healthy_components(parts, manifest, attempts=30, delay=1):
         for attempt in range(attempts):
             try:
                 with client.open(address, timeout=3) as response:
+                    if expected.get('role') == 'backend' and response.headers.get_content_type() in ('text/html', 'application/xhtml+xml'):
+                        raise RuntimeError('backend_interface_forbidden')
                     ready = 200 <= response.status < 300
             except (OSError, urllib.error.URLError):
                 pass

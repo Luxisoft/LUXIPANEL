@@ -12,12 +12,12 @@ const runner = await readFile(process.env.DEPLOYMENT_RUNNER_PATH ?? new URL('./d
 const policy = await readFile(new URL('./runtime-policy.mjs', import.meta.url), 'utf8');
 const missing = () => Object.assign(new Error('missing'), { code: 'ENOENT' });
 async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
-  surface = 'http', disk = 10, maxDatabases = 4, digest, home = '/home/fixture' } = {}) {
+  surface = 'http', disk = 10, maxDatabases = 4, digest, home = '/home/fixture', hostMib = 4500, usedMib = 110, hostDiskBytes = 10 * 1024 ** 3, tenantDiskBytes = 128 * 1024 ** 2 } = {}) {
   const commands = [], reads = [], archive = Buffer.from('owned source');
   const job = { projectId: 'a'.repeat(32), home, versionId: 'v1', requestId: 'r1',
-    environment: 'preview', archive: archive.toString('base64'), limits: { diskMb: 100, maxDatabases },
+    frontendPolicyVersion:2,environment: 'preview', archive: archive.toString('base64'), limits: { diskMb: 100, maxDatabases },
     snapshot: { sourceDigest: digest ?? crypto.createHash('sha256').update(archive).digest('hex'),
-      manifest: { resources, components: [{ name: 'application', surface, context: '.',
+      manifest: { resources, components: [{ name: 'application', surface, role:'backend', context: '.',
         recipe: 'FROM node:22', port: surface === 'http' ? 8080 : null }] } } };
   let output = '';
   const process = { getuid: () => 1003, env: { HOME: '/home/fixture' },
@@ -25,10 +25,13 @@ async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
     stdout: { write: value => { output += value; } }, exitCode: 0 };
   const fs = { mkdir: async () => {}, realpath: async value => value,
     stat: async () => { throw missing(); }, writeFile: async () => {},
-    statfs: async () => ({ bavail: 1, bsize: 1 }),
+    statfs: async file => ({ bavail: file==='/' ? hostDiskBytes : tenantDiskBytes, bsize: 1 }),
     readFile: async file => {
       reads.push(file);
-      if (file === '/proc/meminfo') return 'MemAvailable: 102400 kB\n';
+      if (file === '/proc/self/stat') return '1 (node) S '+Array(30).fill('1').join(' ');
+      if (file === '/proc/meminfo') return `MemAvailable: ${hostMib * 1024} kB\n`;
+      if (file.endsWith('/memory.current')) return String(usedMib * 1024 ** 2);
+      if (file.endsWith('/memory.max')) return String(4096 * 1024 ** 2);
       throw missing();
     } };
   const spawn = (bin, args) => {
@@ -38,7 +41,7 @@ async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
     const child = new EventEmitter();
     child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
     child.kill = () => {}; child.stdin = { end: () => setImmediate(() => {
-      const out = args.includes('/usr/bin/du') ? String(disk) :
+      const out = bin === '/usr/bin/du' ? String(disk) :
         args[0] === 'ps' ? Array.from({ length: 4 }, (_, i) => 'running-' + i).join('\n') : '';
       if (out) child.stdout.emit('data', Buffer.from(out));
       child.emit('close', 0);
@@ -47,7 +50,7 @@ async function admit({ resources = [{ name: 'database', engine: 'postgres' }],
   };
   const context = createContext({ process, Buffer, setTimeout, clearTimeout, setImmediate });
   const modules = new Map();
-  const dependencies = { 'node:fs/promises': { default: fs }, 'node:path': { default: path },
+  const dependencies = { 'node:fs/promises': { default: fs, readdir: async () => [] }, 'node:path': { default: path },
     'node:child_process': { spawn }, 'node:crypto': { createHash: crypto.createHash, randomBytes: crypto.randomBytes },
     'node:http': { default: {} }, 'node:net': { default: {} } };
   const main = new SourceTextModule(runner, { context });
@@ -74,12 +77,12 @@ for (const [name, resources, surface] of [
   ['service with Redis', [{ name: 'cache', engine: 'redis' }], 'http'],
   ['background worker', [], 'worker'],
   ['CLI with SQLite', [{ name: 'database', engine: 'sqlite' }], 'command'],
-]) test(`${name}: starts allocation despite existing containers and low free-memory estimate`, async () => {
+]) test(`${name}: starts allocation with measured headroom despite existing containers`, async () => {
   const { result, commands, reads } = await admit({ resources, surface });
   assert.equal(result.error, 'fixture_allocation_started');
   assert.ok(commands.some(cmd => cmd[1] === 'pull' || cmd[1] === 'build'));
   assert.ok(!commands.some(cmd => cmd[1] === 'ps'));
-  assert.ok(!reads.includes('/proc/meminfo'));
+  assert.ok(reads.includes('/proc/meminfo'));
 });
 
 test('disk and database quotas still reject before allocation', async () => {
@@ -89,4 +92,18 @@ test('disk and database quotas still reject before allocation', async () => {
 test('source integrity and runtime identity still reject before allocation', async () => {
   assert.equal((await admit({ digest: '0'.repeat(64) })).result.error, 'source_digest_mismatch');
   await assert.rejects(admit({ home: '/home/another-account' }), /invalid_runtime_identity/);
+});
+
+
+test('real host or account pressure rejects before allocation and never stops existing units', async () => {
+  for (const input of [{hostMib:2000}, {usedMib:3000}]) {
+    const {result,commands} = await admit(input);
+    assert.equal(result.error,'runtime_memory_capacity');
+    assert.ok(!commands.some(cmd => ['pull','build','stop','rm','rmi'].includes(cmd[1])));
+  }
+});
+
+test('physical host reserve and exhausted tenant quota remain enforced before allocation',async()=>{
+ assert.equal((await admit({hostDiskBytes:1024 ** 3})).result.error,'runtime_disk_capacity');
+ assert.equal((await admit({tenantDiskBytes:0})).result.error,'disk_quota_exceeded');
 });

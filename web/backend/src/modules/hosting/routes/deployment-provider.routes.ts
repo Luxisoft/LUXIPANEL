@@ -5,6 +5,7 @@ import { Router, raw } from "express";
 import { asyncHandler } from "../../../shared/types/index.js";
 import { AuthError } from "../../../shared/errors/index.js";
 import { providerService } from "../services/provider.service.js";
+import { frontendPublicationService } from "../services/frontend-publication.service.js";
 import type {
   HostingProvider,
   ProviderOperation,
@@ -13,6 +14,7 @@ import {
   deploymentProviderService as service,
   deploymentSnapshotSchema,
   deploymentJobSchema,
+  deploymentProductionRoutesSchema,
 } from "../services/deployment-provider.service.js";
 export const deploymentProviderRouter = Router();
 const base = "/api/hosting/v1/accounts/:account/deployments/:project";
@@ -35,6 +37,21 @@ const provider = (res: any, operation: ProviderOperation) => {
 };
 const refs = (req: any) =>
   [String(req.params.account), String(req.params.project)] as const;
+deploymentProviderRouter.get(base + "/frontend-publication", asyncHandler(async (req, res) => {
+  res.json({ ok: true, data: await frontendPublicationService.get(provider(res, "deployments.read"), ...refs(req)) });
+}));
+deploymentProviderRouter.put(base + "/frontend-publication/:version", raw({ type: "application/octet-stream", limit: "32mb" }), asyncHandler(async (req, res) => {
+  const metadata = { versionId: String(req.params.version), sha256: req.header("x-artifact-sha256"),
+    ...(req.header("x-publication-number") ? { versionNumber: Number(req.header("x-publication-number")) } : {}),
+    ...(req.header("x-publication-environment") === 'preview' ? { environment: 'preview', component: req.header('x-publication-component') } : {}),
+    ...(req.header('x-publication-api-routes') ? { apiRoutes: JSON.parse(req.header('x-publication-api-routes')!) } : {}),
+    hosts: JSON.parse(req.header("x-publication-hosts") ?? "[]"),
+    ...(req.header("x-canonical-host") ? { canonicalHost: req.header("x-canonical-host") } : {}) };
+  res.json({ ok: true, data: await frontendPublicationService.publish(provider(res, "deployments.publish"), ...refs(req), metadata, req.body) });
+}));
+deploymentProviderRouter.delete(base + "/frontend-publication", asyncHandler(async (req, res) => {
+  res.json({ ok: true, data: await frontendPublicationService.remove(provider(res, "deployments.publish"), ...refs(req)) });
+}));
 deploymentProviderRouter.put(
   base,
   asyncHandler(async (req, res) => {
@@ -110,6 +127,31 @@ deploymentProviderRouter.post(
       });
   }),
 );
+deploymentProviderRouter.put(
+  base + "/routes/production",
+  asyncHandler(async (req, res) => {
+    res.json({
+      ok: true,
+      data: await service.replaceProductionRoutes(
+        provider(res, "deployments.publish"),
+        ...refs(req),
+        deploymentProductionRoutesSchema.parse(req.body),
+      ),
+    });
+  }),
+);
+deploymentProviderRouter.delete(
+  base + "/routes/production",
+  asyncHandler(async (req, res) => {
+    res.json({
+      ok: true,
+      data: await service.removeProductionRoutes(
+        provider(res, "deployments.publish"),
+        ...refs(req),
+      ),
+    });
+  }),
+);
 deploymentProviderRouter.get(
   base + "/jobs/:job",
   asyncHandler(async (req, res) => {
@@ -148,6 +190,15 @@ deploymentProviderRouter.get(
     res.setHeader("Content-Length", artifact.bytes.length);
     res.setHeader("X-Luxi-Static-Sha256", artifact.sha256);
     res.send(artifact.bytes);
+  }),
+);
+deploymentProviderRouter.put(
+  base + "/jobs/:job/static/:component/retained",
+  raw({ type: "application/octet-stream", limit: "32mb" }),
+  asyncHandler(async (req, res) => {
+    res.json({ ok: true, data: await service.retainStaticArtifact(
+      provider(res, "deployments.publish"), ...refs(req), String(req.params.job), String(req.params.component), req.body,
+    ) });
   }),
 );
 deploymentProviderRouter.delete(
