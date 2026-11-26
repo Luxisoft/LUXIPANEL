@@ -121,6 +121,14 @@ try:
         if metadata.exists():
             task['frontendArtifacts']=json.loads(regular(metadata,[0,service.pw_uid]).read_text())
             file.write_text(json.dumps(task))
+        build_env = env
+        if task.get('frontendScratchVersion') == 1:
+            manifest = task['snapshot']['manifest']
+            require(task['environment'] == 'preview' and manifest['components'] and not manifest['resources']
+                    and all(part['surface'] == 'static' for part in manifest['components']), 'invalid_frontend_scratch_scope')
+            payload['frontendScratchVersion'] = 1
+            build_env = ['/usr/bin/unshare', '--mount', '--propagation', 'private', '--pid', '--fork', '--kill-child=KILL', '--',
+                   '/usr/bin/python3', '-I', '/usr/lib/luxipanel/static-build-scratch.py', *env]
         payload['frontendPolicyVersion']=2
         payload['frontendArtifacts']=task.get('frontendArtifacts',{})
         payload['archive']=base64.b64encode(archive).decode()
@@ -130,7 +138,7 @@ try:
             fcntl.flock(lock,fcntl.LOCK_EX)
             execution_started = time.monotonic()
             try:
-                result=run(env,input=json.dumps(payload),text=True,capture_output=True,
+                result=run(build_env,input=json.dumps(payload),text=True,capture_output=True,
                            timeout=budget['maxExecutionSeconds'] if budget else 1900)
             except subprocess.TimeoutExpired:
                 raise RuntimeError('deployment_time_budget_exceeded')

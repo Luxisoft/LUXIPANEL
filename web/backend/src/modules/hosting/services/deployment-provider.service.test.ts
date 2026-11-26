@@ -124,6 +124,21 @@ describe("repository provider ownership and immutable snapshots", () => {
     await service.snapshot(provider, account, project, version, input);
     expect(JSON.parse(m.write.mock.calls[0]![1])).toEqual(input);
   });
+  it.each([
+    {environment:'preview' as const, surface:'http', expected:'invalid_frontend_scratch_scope'},
+    {environment:'production' as const, surface:'static', expected:'invalid_frontend_scratch_scope'},
+    {environment:'preview' as const, surface:'static', expected:'frontend_build_scratch_unavailable'},
+  ])('rejects invalid or unavailable build storage before accepting $environment $surface', async ({environment,surface,expected}) => {
+    const data = snapshot();
+    const component = data.manifest.components[0]!;
+    if (surface === 'static') Object.assign(component, {surface:'static',role:'frontend'});
+    m.read.mockResolvedValue(JSON.stringify(data));
+    m.exec.mockResolvedValue({exitCode:1});
+    await expect(service.enqueue(provider, account, project, {
+      requestId:project, versionId:version, environment, variables:{}, frontendScratchVersion:1,
+    })).rejects.toThrow(expected);
+    expect(m.write).not.toHaveBeenCalled();
+  });
   it("checks provider ownership before creating runtime metadata", async () => {
     m.owned.mockRejectedValue(new Error("foreign account"));
     await expect(service.register(provider, account, project)).rejects.toThrow(

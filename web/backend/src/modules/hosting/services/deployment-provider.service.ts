@@ -98,8 +98,10 @@ export const deploymentSnapshotSchema = z
       .strict(),
   })
   .strict();
+const scratchProbe = "test -x /usr/lib/luxipanel/static-build-scratch.py && grep -Fq LUXISOFT_BUILD_SCRATCH /usr/lib/luxipanel/deployment-tenant.mjs && test -x /usr/sbin/mkfs.ext4 && test -x /usr/bin/unshare && test -c /dev/loop-control";
 export const deploymentJobSchema = z
   .object({
+    frontendScratchVersion: z.literal(1).optional(),
     requestId: uuid,
     versionId: uuid,
     environment: z.enum(["preview", "production"]),
@@ -303,7 +305,8 @@ export const deploymentProviderService = {
       await c.executor.unlink(path.join(c.root, "retire.json"));
       await c.executor.unlink(resume);
     }
-    return { id: c.id, runtimeInstalled: probe.exitCode === 0 };
+    const scratch = await c.executor.exec(scratchProbe, {timeoutMs:5000});
+    return { id:c.id, runtimeInstalled:probe.exitCode === 0, frontendScratchVersion:scratch.exitCode === 0 ? 1 : 0 };
   },
   async snapshot(
     provider: HostingProvider,
@@ -395,6 +398,13 @@ export const deploymentProviderService = {
         snapshot = deploymentSnapshotSchema.parse(
           await readJson(c.executor, path.join(versionRoot, "manifest.json")),
         );
+      if (input.frontendScratchVersion === 1) {
+        const {components, resources} = snapshot.manifest;
+        if (input.environment !== 'preview' || !components.length || resources.length || components.some(part => part.surface !== 'static'))
+          throw new ConflictError('invalid_frontend_scratch_scope');
+        if ((await c.executor.exec(scratchProbe, {timeoutMs:5000})).exitCode !== 0)
+          throw new ConflictError('frontend_build_scratch_unavailable');
+      }
       const frontend = snapshot.manifest.components.filter(p=>p.surface==='static'||p.surface==='mobile'&&p.role==='frontend');
       for(const part of snapshot.manifest.components)if(part.surface==='http'&&part.role!=='backend')throw new ConflictError('backend_role_required');
       if(frontend.length)await frontendPublicationService.requireTarget(provider);

@@ -23,7 +23,15 @@ export class DemandCoordinator {
         clearTimeout(this.timers.get(job.id)); this.timers.delete(job.id);
         const blocked = this.blockedUntil.get(job.id) || 0;
         if (blocked > Date.now()) { this.schedule(job.id, blocked - Date.now()); continue; }
-        const result = await this.query(job);
+        let result;
+        try {
+          result = await this.query(job);
+        } catch {
+          console.warn('demand_queue_check_failed', job.id);
+          this.blockedUntil.set(job.id, Date.now() + this.retryMs);
+          this.schedule(job.id, this.retryMs);
+          continue;
+        }
         if (result.ready) {
           const pending = Promise.resolve().then(() => this.run(job));
           this.running.set(job.id, pending);
@@ -46,6 +54,7 @@ export class DemandCoordinator {
     }
   }
   schedule(id, delay) {
+    if (this.closed || (id === '_notify' && this.timers.has(id))) return;
     clearTimeout(this.timers.get(id));
     const timer = setTimeout(() => { this.timers.delete(id); void this.scan().catch(() => this.schedule(id, this.retryMs)); }, Math.min(delay, 2_147_000_000));
     timer.unref?.(); this.timers.set(id, timer);

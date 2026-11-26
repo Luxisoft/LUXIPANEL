@@ -17,11 +17,8 @@ fi
 gateway_trusted_ips=${LUXISOFT_PROJECT_GATEWAY_TRUSTED_IPS:-${previous_gateway_ips:-127.0.0.1,::1}}
 getent passwd "$service_user" >/dev/null
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y podman uidmap passt slirp4netns fuse-overlayfs
+DEBIAN_FRONTEND=noninteractive apt-get install -y podman uidmap passt slirp4netns fuse-overlayfs e2fsprogs util-linux
 install -d -m 0755 /usr/lib/luxipanel
-install -m 0755 "$script_dir/deployment-helper.py" /usr/lib/luxipanel/deployment-helper
-install -m 0755 "$script_dir/deployment-tenant.mjs" /usr/lib/luxipanel/deployment-tenant.mjs
-install -m 0755 "$script_dir/deployment-gateway.mjs" /usr/lib/luxipanel/deployment-gateway.mjs
 install -d -m 0755 /etc/luxipanel
 install -d -o "$service_user" -g "$service_user" -m 0700 /var/lib/luxipanel/project-gateway
 DEPLOY_SERVICE_USER="$service_user" DEPLOY_CONFIG_ROOT="$config_root" python3 - <<'PY'

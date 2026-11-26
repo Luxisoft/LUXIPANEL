@@ -27,6 +27,8 @@ if guard.exists():
 else:
  shutil.copyfile(source/'deployment-helper.py',lib/'deployment-helper');os.chmod(lib/'deployment-helper',0o755)
 shutil.copyfile(source/'deployment-tenant.mjs',lib/'deployment-tenant.mjs');os.chmod(lib/'deployment-tenant.mjs',0o755);os.chown(lib/'deployment-tenant.mjs',0,0)
+scratch=lib/'static-build-scratch.py'
+shutil.copyfile(source/'static-build-scratch.py',scratch);os.chmod(scratch,0o755);os.chown(scratch,0,0)
 shutil.copyfile(source/'storage-helper.py',helper);os.chmod(helper,0o755);os.chown(helper,0,0)
 subprocess.run([helper,'init'],check=True)
 unit=pathlib.Path('/etc/systemd/system/luxipanel-storage.service')

@@ -20,7 +20,7 @@ const root = path.join(job.home, ".luxisoft", "deployments", project),
   quadlet = path.join(job.home, ".config", "containers", "systemd");
 let frontendPodman = [];
 let frontendTemporaryDirectory;
-const scratch = path.join(root, "scratch", job.requestId ?? "lifecycle");
+const scratch = process.env.LUXISOFT_BUILD_SCRATCH || path.join(root, "scratch", job.requestId ?? "lifecycle");
 let logs = "",
   started = [],
   workers = [];
@@ -321,6 +321,7 @@ try {
       job.environment === "production" ? "production" : "preview",
     versionRoot = await secureDir(path.join(root, "versions", job.versionId)),
     workspace = path.join(scratch, "source");
+  if (job.frontendScratchVersion === 1 && !process.env.LUXISOFT_BUILD_SCRATCH) throw new Error("frontend_build_scratch_unavailable");
   if (job.frontendPolicyVersion !== 2) throw new Error("frontend_policy_upgrade_required");
   for (const part of job.snapshot.manifest.components) {
     if ((part.surface === "http" || (part.surface === "mobile" && part.role !== "frontend")) && part.role !== "backend") throw new Error("frontend_runtime_forbidden");
@@ -356,13 +357,10 @@ try {
     components = [],
     network = `luxi-${project}-${environment}`,
     resourceEnv = {};
-  await command("/usr/bin/podman", ["network", "exists", network], {
-    record: false,
-  }).catch(() =>
-    command("/usr/bin/podman", ["network", "create", network], {
-      record: false,
-    }),
-  );
+  if (manifest.resources.length || manifest.components.some(part => part.surface !== "static")) {
+    await command("/usr/bin/podman", ["network", "exists", network], {record: false})
+      .catch(() => command("/usr/bin/podman", ["network", "create", network], {record: false}));
+  }
   if (manifest.resources.length > job.limits.maxDatabases)
     throw new Error("database_quota_exceeded");
   // The hosting slice still enforces its hard limit. Reserve room for the
@@ -656,7 +654,7 @@ try {
 finally {
   frontendPodman = [];
   frontendTemporaryDirectory = undefined;
-  if (!job.operation) {
+  if (!job.operation && !process.env.LUXISOFT_BUILD_SCRATCH) {
     // vfs storage has no overlay mounts; unshare handles subordinate owners.
     await command("/usr/bin/podman",["unshare","/usr/bin/rm","-rf","--",scratch],{cwd:root,record:false,timeout:120000}).catch(()=>{});
   }

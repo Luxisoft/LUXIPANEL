@@ -51,7 +51,7 @@ const createProvider = z.object({
   enabled: z.boolean().default(true),
 });
 const updateProvider = createProvider.omit({ targetId: true }).partial();
-const accountInput = z.object({ displayName: z.string().trim().min(1).max(128).optional(), email: emailSchema.optional() });
+const accountInput = z.object({ displayName: z.string().trim().min(1).max(128).optional(), email: z.preprocess(value => typeof value === "string" && !value.trim() ? undefined : value, emailSchema.optional()) });
 const accountPatch = accountInput.extend({ status: z.enum(["active", "suspended"]).optional() });
 const siteInput = z.object({ domain: z.string().min(1).max(253) });
 

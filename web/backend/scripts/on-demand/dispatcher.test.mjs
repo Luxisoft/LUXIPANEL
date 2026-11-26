@@ -22,6 +22,33 @@ test('notifications during execution coalesce and accepted new work is drained',
   coordinator.close();
 });
 
+test('consecutive notifications keep the original wake time', () => {
+  const coordinator = new DemandCoordinator({ jobs: [], query: async () => ({}), run: async () => {} });
+  try {
+    coordinator.schedule('_notify', 50);
+    const first = coordinator.timers.get('_notify');
+    coordinator.schedule('_notify', 50);
+    assert.equal(coordinator.timers.get('_notify'), first);
+  } finally { coordinator.close(); }
+});
+
+test('a failing queue cannot prevent a subsequent deployment from starting', async () => {
+  const started = [];
+  const coordinator = new DemandCoordinator({
+    jobs: [{id:'unavailable'}, {id:'deployments'}],
+    query: async job => {
+      if (job.id === 'unavailable') throw new Error('unavailable');
+      return {ready:true};
+    },
+    run: async job => { started.push(job.id); },
+  });
+  try {
+    await coordinator.scan();
+    assert.deepEqual(started, ['deployments']);
+    assert.ok(coordinator.blockedUntil.has('unavailable'));
+  } finally { coordinator.close(); }
+});
+
 test('runner failures back off rather than repeatedly starting a process', async () => {
   let runs = 0;
   const coordinator = new DemandCoordinator({ jobs: [{ id: 'test' }], query: async () => ({ ready: true }), retryMs: 1000, run: async () => { runs++; throw new Error('offline'); } });
