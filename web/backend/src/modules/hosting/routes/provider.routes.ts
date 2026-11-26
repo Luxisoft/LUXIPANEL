@@ -1,3 +1,4 @@
+import {providerStorageInventory,purgeProviderStorage} from '../services/provider-storage-inventory.js';
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 LUXISOFT
 import { Router, type RequestHandler, type Response } from "express";
@@ -29,6 +30,10 @@ const upstreamUrl = z.string().regex(/^http:\/\/(?:127\.0\.0\.1|\[::1\]):(?:[1-9
 const createProvider = z.object({
   name: z.string().trim().min(2).max(120),
   targetId: z.string().min(1),
+  frontendTargetId: z.string().min(1).max(100).optional(),
+  backendGatewayUrl: z.string().regex(/^http:\/\/(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\]):[1-9]\d{0,4}$/).optional(),
+  previewAuthorizationUrl: z.string().regex(/^https?:\/\/[a-zA-Z0-9.:-]+\/api\/v1\/deployment-frontend\/authorize$/).optional(),
+  previewBackendGatewayUrl: z.string().regex(/^http:\/\/[a-zA-Z0-9.:-]+$/).optional(),
   panelUrl,
   upstreamUrl,
   operations: z.array(z.enum(PROVIDER_OPERATIONS)).default(PROVIDER_OPERATIONS.filter((op) => op !== "accounts.delete" && !op.startsWith("expo."))),
@@ -46,7 +51,7 @@ const createProvider = z.object({
   enabled: z.boolean().default(true),
 });
 const updateProvider = createProvider.omit({ targetId: true }).partial();
-const accountInput = z.object({ displayName: z.string().trim().min(1).max(128).optional(), email: emailSchema.optional() });
+const accountInput = z.object({ displayName: z.string().trim().min(1).max(128).optional(), email: z.preprocess(value => typeof value === "string" && !value.trim() ? undefined : value, emailSchema.optional()) });
 const accountPatch = accountInput.extend({ status: z.enum(["active", "suspended"]).optional() });
 const siteInput = z.object({ domain: z.string().min(1).max(253) });
 
@@ -97,8 +102,19 @@ const current = (res: Response) => (res.locals as unknown as { hostingProvider: 
 const allowed = (res: Response, op: (typeof PROVIDER_OPERATIONS)[number]) => providerService.assertOperation(current(res), op);
 providerRouter.get("/api/hosting/v1/capabilities", asyncHandler(async (_req, res) => {
   const p = current(res);
-  res.json({ ok: true, data: { version: 1, executionMeteringVersion: 1, operations: p.operations, allowedModules: p.allowedModules, targetId: p.targetId } });
+  res.json({ ok: true, data: { version: 1, storageMeteringVersion: 1, storageInventoryVersion: 1, executionMeteringVersion: 1, frontendArtifactsVersion: 2, frontendRuntimeAllowed: false, operations: p.operations, allowedModules: p.allowedModules, targetId: p.targetId, frontendTargetId: p.frontendTargetId ?? null } });
 }));
+providerRouter.get("/api/hosting/v1/accounts/:externalId/storage", asyncHandler(async(req,res)=>{
+  allowed(res,"usage.read");res.set("cache-control","no-store");
+  res.json({ok:true,data:await providerService.storage(current(res),ref.parse(req.params.externalId))});
+}));
+providerRouter.put("/api/hosting/v1/accounts/:externalId/storage", asyncHandler(async(req,res)=>{
+  allowed(res,"accounts.write");
+  const input=z.object({revision:z.number().int().min(0),capacityBytes:z.number().int().min(1024).max(Number.MAX_SAFE_INTEGER).refine(n=>n%1024===0)}).strict().parse(req.body);
+  res.json({ok:true,data:await providerService.setStorage(current(res),ref.parse(req.params.externalId),input)});
+}));
+providerRouter.get("/api/hosting/v1/accounts/:externalId/storage/items",asyncHandler(async(req,res)=>{const q=z.object({page:z.coerce.number().int().min(1).default(1),limit:z.coerce.number().int().min(1).max(100).default(100)}).parse(req.query);res.set("cache-control","no-store");const inventory=await providerStorageInventory(current(res),String(req.params.externalId));res.json({ok:true,data:{version:1,total:inventory.items.length,page:q.page,limit:q.limit,items:inventory.items.slice((q.page-1)*q.limit,q.page*q.limit)}});}));
+providerRouter.post("/api/hosting/v1/accounts/:externalId/storage/purge",asyncHandler(async(req,res)=>{const body=z.object({projectId:z.string().uuid(),revision:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);res.json({ok:true,data:await purgeProviderStorage(current(res),String(req.params.externalId),body.projectId,body.revision)});}));
 providerRouter.put("/api/hosting/v1/accounts/:externalId", asyncHandler(async (req, res) => {
   allowed(res, "accounts.write");
   const externalId = ref.parse(req.params.externalId);

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Restricted supervisor: metadata and systemd only; customer code runs as its
 hosting identity in rootless containers. Installed root-owned by install.sh."""
-import base64, fcntl, hashlib, json, math, os, pathlib, pwd, re, stat, subprocess, sys, time, signal
+import shutil, contextlib, base64, fcntl, hashlib, json, math, os, pathlib, pwd, re, stat, subprocess, sys, time, signal
 sys.path.insert(0, '/usr/lib/luxipanel')
 from deployment_policy import healthy_components
 
@@ -28,6 +28,10 @@ def run(argv, **kwargs):
     if process.returncode: raise subprocess.CalledProcessError(process.returncode,argv,output,error)
     return subprocess.CompletedProcess(argv,process.returncode,output,error)
 require(os.geteuid() == 0, 'supervisor_requires_root')
+# Migrations take the exclusive lock; accepted deployment/data operations keep
+# their shared lock for their entire lifetime, including finite subprocesses.
+storage_lock=os.open('/run/lock/luxipanel-storage.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+
 regular(POLICY, [0])
 policy = json.loads(pathlib.Path(POLICY).read_text())
 service = pwd.getpwnam(policy['serviceUser'])
@@ -39,6 +43,12 @@ require(re.fullmatch(r'[a-f0-9]{64}/(?:jobs/[a-f0-9-]{36}/(?:input|state)\.json|
 task = json.loads(file.read_text())
 operation = sys.argv[2] if len(sys.argv) == 3 else 'run'
 require(operation in ['run','activate','cleanup','retire','resume','data'], 'invalid_operation')
+# Match installer lock ordering. A queued build must not hold the storage lease
+# while waiting for the global build slot; migrations may own that slot.
+if operation=='run':
+    heavy_build_lock=open('/run/lock/luxipanel-assistant-build.lock','r')
+    fcntl.flock(heavy_build_lock,fcntl.LOCK_EX)
+fcntl.flock(storage_lock,fcntl.LOCK_SH)
 budget = task.get('executionBudget') if operation == 'run' else None
 if budget is not None:
     require(isinstance(budget, dict) and set(budget) == {'version', 'maxExecutionSeconds'}, 'invalid_execution_budget')
@@ -96,7 +106,10 @@ try:
          '/usr/bin/node','/usr/lib/luxipanel/deployment-tenant.mjs']
     if operation == 'run':
         require(not (file.parent.parent.parent/'retire.json').exists(),'deployment_retired')
-        save({'status':'running'})
+        save({'status':'running','supervisorPid':os.getpid(),'startedAt':time.time()})
+        require(task.get('frontendPolicyVersion') == 2, 'frontend_policy_upgrade_required')
+        for component in task['snapshot']['manifest']['components']:
+            require(component.get('surface') not in ['http','mobile'] or component.get('role') in (['backend','frontend'] if component.get('surface')=='mobile' else ['backend']), 'frontend_runtime_forbidden')
         version_root = file.parent.parent.parent / 'versions' / task['versionId']
         require(pathlib.Path(task['versionRoot']) == version_root, 'invalid_version_path')
         archive=regular(version_root/'source.zip',[0,service.pw_uid]).read_bytes()
@@ -104,14 +117,28 @@ try:
         # The client never chooses a host path or host command. Only the owned
         # source archive and validated application manifest cross the boundary.
         payload={key:task[key] for key in ['projectId','versionId','environment','username','home','snapshot','limits','variables','requestId']}
+        metadata=version_root/'frontend-artifacts.json'
+        if metadata.exists():
+            task['frontendArtifacts']=json.loads(regular(metadata,[0,service.pw_uid]).read_text())
+            file.write_text(json.dumps(task))
+        build_env = env
+        if task.get('frontendScratchVersion') == 1:
+            manifest = task['snapshot']['manifest']
+            require(task['environment'] == 'preview' and manifest['components'] and not manifest['resources']
+                    and all(part['surface'] == 'static' for part in manifest['components']), 'invalid_frontend_scratch_scope')
+            payload['frontendScratchVersion'] = 1
+            build_env = ['/usr/bin/unshare', '--mount', '--propagation', 'private', '--pid', '--fork', '--kill-child=KILL', '--',
+                   '/usr/bin/python3', '-I', '/usr/lib/luxipanel/static-build-scratch.py', *env]
+        payload['frontendPolicyVersion']=2
+        payload['frontendArtifacts']=task.get('frontendArtifacts',{})
         payload['archive']=base64.b64encode(archive).decode()
         # One lock across all accounts. Runner holds it through installation,
         # compilation and validation; platform build adapters share this lock.
-        with open('/run/lock/luxisoft-heavy-build.lock','a') as lock:
+        with contextlib.nullcontext(heavy_build_lock) as lock:
             fcntl.flock(lock,fcntl.LOCK_EX)
             execution_started = time.monotonic()
             try:
-                result=run(env,input=json.dumps(payload),text=True,capture_output=True,
+                result=run(build_env,input=json.dumps(payload),text=True,capture_output=True,
                            timeout=budget['maxExecutionSeconds'] if budget else 1900)
             except subprocess.TimeoutExpired:
                 raise RuntimeError('deployment_time_budget_exceeded')
@@ -127,10 +154,6 @@ try:
             cleanup={'operation':'discard','home':user.pw_dir,'username':user.pw_name,'projectId':task['projectId'],'requestId':task['requestId']}
             run(env,input=json.dumps(cleanup),text=True,capture_output=True,timeout=120)
             raise
-        if task['environment'] == 'preview':
-            finalize={'operation':'finalize-preview','home':user.pw_dir,'username':user.pw_name,'projectId':task['projectId'],'requestId':task['requestId']}
-            previous=run(env,input=json.dumps(finalize),text=True,capture_output=True,timeout=120)
-            output['result']['evictedVersionIds']=json.loads(previous.stdout)['result']['evictedVersionIds']
         static_parts=[part for part in output['result']['components'] if part.get('surface')=='static']
         if static_parts:
             target=file.parent/'static'
@@ -141,6 +164,7 @@ try:
                 require(re.fullmatch(r'[a-z][a-z0-9-]{0,29}',name),'invalid_static_component')
                 require(re.fullmatch(r'[a-f0-9]{64}',meta['sha256']),'invalid_static_digest')
                 require(isinstance(meta['bytes'],int) and 0<meta['bytes']<=33554432,'invalid_static_size')
+                if name in task.get('frontendArtifacts',{}): continue
                 source=regular(pathlib.Path(user.pw_dir)/'.luxisoft/deployments'/task['projectId'].replace('-','')/'versions'/task['versionId']/('static-'+name+'-'+task['requestId']+'.zip'),[user.pw_uid])
                 fd=os.open(source,os.O_RDONLY|os.O_NOFOLLOW)
                 try:
@@ -154,6 +178,17 @@ try:
                 temporary.write_bytes(data);os.chmod(temporary,0o600);os.chown(temporary,service.pw_uid,service.pw_gid)
                 os.replace(temporary,destination)
                 source.unlink()
+        if static_parts:
+            bridge=['/usr/sbin/runuser','-u',service.pw_name,'--','/usr/bin/env','-i',
+                    'HOME='+service.pw_dir,'PATH=/usr/local/bin:/usr/bin:/bin','LANG=C.UTF-8',
+                    '/usr/bin/node','--env-file=/var/www/LUXIPANEL/web/backend/.env',
+                    '/usr/lib/luxipanel/frontend-handoff.mjs',str(file)]
+            try: run(bridge,input=json.dumps(output['result']),text=True,capture_output=True,timeout=180)
+            except Exception: raise RuntimeError('frontend_artifact_handoff_failed')
+        if task['environment'] == 'preview':
+            finalize={'operation':'finalize-preview','home':user.pw_dir,'username':user.pw_name,'projectId':task['projectId'],'requestId':task['requestId']}
+            previous=run(env,input=json.dumps(finalize),text=True,capture_output=True,timeout=120)
+            output['result']['evictedVersionIds']=json.loads(previous.stdout)['result']['evictedVersionIds']
         save({'status':'finished','result':output['result'],'logs':output.get('logs',''),'usage':measured_usage()})
     else:
         payload={'operation':operation,'home':user.pw_dir,'username':user.pw_name,'projectId':task['projectId'],'requestId':task.get('id','')}
@@ -167,9 +202,24 @@ except Exception as error:
         try:
             output=json.loads(error.stdout or '{}');code=output.get('error','deployment_process_failed');logs=output.get('logs','')
         except Exception: code='deployment_process_failed'
+    if operation=='run' and 'env' in locals():
+        try:
+            cleanup={'operation':'discard','home':user.pw_dir,'username':user.pw_name,'projectId':task['projectId'],'requestId':task['requestId']}
+            run(env,input=json.dumps(cleanup),text=True,capture_output=True,timeout=120)
+        except Exception: pass
     if operation=='run': save({'status':'failed','error':code[:500],'logs':logs[-24000:],'usage':measured_usage()})
     sys.exit(1)
 finally:
     if operation=='run':
+        # No compiled UI or layers survive success or failure.
+        scratch=pathlib.Path(user.pw_dir)/'.luxisoft/deployments'/task['projectId'].replace('-','')/'scratch'/task['requestId']
+        if scratch.exists() and scratch.resolve() == scratch and not scratch.is_symlink(): shutil.rmtree(scratch)
+        staging=file.parent/'static'
+        if staging.exists() and staging.resolve() == staging and not staging.is_symlink(): shutil.rmtree(staging)
+        native_version=pathlib.Path(user.pw_dir)/'.luxisoft/deployments'/task['projectId'].replace('-','')/'versions'/task['versionId']
+        for component in task['snapshot']['manifest']['components']:
+            name=component['name']
+            if re.fullmatch(r'[a-z][a-z0-9-]{0,29}',name):
+                (native_version/('static-'+name+'-'+task['requestId']+'.zip')).unlink(missing_ok=True)
         try: file.unlink()
         except FileNotFoundError: pass

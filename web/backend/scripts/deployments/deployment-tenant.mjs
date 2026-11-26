@@ -4,8 +4,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import http from "node:http";
 import net from "node:net";
+import { optionalDirectoryEntries, finalizePreview, discardCandidate, runtimeCapacity, assertRuntimeDiskCapacity, buildCommandEnvironment } from "./runtime-policy.mjs";
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 const job = JSON.parse(input),
@@ -18,6 +18,9 @@ if (
   throw new Error("invalid_runtime_identity");
 const root = path.join(job.home, ".luxisoft", "deployments", project),
   quadlet = path.join(job.home, ".config", "containers", "systemd");
+let frontendPodman = [];
+let frontendTemporaryDirectory;
+const scratch = process.env.LUXISOFT_BUILD_SCRATCH || path.join(root, "scratch", job.requestId ?? "lifecycle");
 let logs = "",
   started = [],
   workers = [];
@@ -51,9 +54,9 @@ async function command(
   { cwd = root, timeout = 120000, record = true, stdin } = {},
 ) {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, {
+    const child = spawn(bin, bin === "/usr/bin/podman" ? [...frontendPodman, ...args] : args, {
       cwd,
-      env: { ...process.env, CI: "1" },
+      env: buildCommandEnvironment(process.env, frontendTemporaryDirectory),
       stdio: ["pipe", "pipe", "pipe"],
     });
     let output = "",
@@ -116,11 +119,15 @@ async function startContainer(
     "DropCapability=all",
     "NoNewPrivileges=true",
     `Network=${network ?? "slirp4netns:allow_host_loopback=false"}`,
-    "ReadOnly=false",
-    "Tmpfs=/tmp:rw,size=128m",
-    "Tmpfs=/run:rw,size=32m",
+    "ReadOnly=true",
+    "SeccompProfile=/usr/lib/luxipanel/storage-seccomp.json",
+    "Tmpfs=/root/.npm:rw,size=32m,notmpcopyup",
+    "Tmpfs=/tmp:rw,size=128m,notmpcopyup",
+    "Tmpfs=/run:rw,size=32m,notmpcopyup",
     `PodmanArgs=--memory=${memory}m --cpus=1 --pids-limit=128`,
   ];
+  const imageConfig=JSON.parse(await command("/usr/bin/podman",["image","inspect","--format","{{json .Config}}",image],{record:false}));
+  if ([...(imageConfig.Entrypoint??[]),...(imageConfig.Cmd??[])].some(token=>path.basename(token)==="caddy")) lines.push("Tmpfs=/config:rw,size=16m,notmpcopyup", "Tmpfs=/data:rw,size=16m,notmpcopyup");
   if (await fs.stat(path.join(root, "retired")).catch(() => null))
     throw new Error("deployment_retired");
   if (resource)
@@ -178,27 +185,6 @@ async function startContainer(
     throw new Error("runtime_port_not_loopback");
   return Number(match[1]);
 }
-async function healthy(port, healthPath) {
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const ready = await new Promise((resolve) => {
-      const req = http.get(
-        { host: "127.0.0.1", port, path: healthPath, timeout: 3000 },
-        (response) => {
-          response.resume();
-          resolve(response.statusCode >= 200 && response.statusCode < 500);
-        },
-      );
-      req.on("timeout", () => {
-        req.destroy();
-        resolve(false);
-      });
-      req.on("error", () => resolve(false));
-    });
-    if (ready) return;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  throw new Error("runtime_health_failed");
-}
 async function stopUnit(unit) {
   if (!/^luxi-[a-f0-9-]+-[a-z0-9-]+$/.test(unit) || !unit.includes(project))
     throw new Error("invalid_owned_unit");
@@ -207,6 +193,14 @@ async function stopUnit(unit) {
   }).catch(() => {});
   await fs.unlink(path.join(quadlet, unit + ".container")).catch(() => {});
 }
+const jobIo = {
+  read: id => json(path.join(root, "jobs", id + ".json"), null),
+  list: async () => (await optionalDirectoryEntries(path.join(root, "jobs"))).filter(name => name.endsWith(".json")).map(name => name.slice(0, -5)),
+  write: (id, value) => fs.writeFile(path.join(root, "jobs", id + ".json"), JSON.stringify(value), {mode: 0o600}),
+  remove: id => fs.unlink(path.join(root, "jobs", id + ".json")),
+  stop: stopUnit,
+  activeUnits: async () => [...(await json(path.join(root, "active.json"), {units:[]})).units, ...(await json(path.join(root, "pending.json"), {units:[]})).units],
+};
 try {
   await secureDir(root);
   await secureDir(path.join(root, "jobs"));
@@ -297,11 +291,17 @@ try {
       await fs.unlink(path.join(root, "retired")).catch((error) => {
         if (error.code !== "ENOENT") throw error;
       });
+    } else if (job.operation === "finalize-preview") {
+      const result = await finalizePreview(jobIo, job.requestId);
+      process.stdout.write(JSON.stringify({ ok: true, result }));
+      process.exit(0);
+    } else if (job.operation === "discard") {
+      await discardCandidate(jobIo, job.requestId);
     } else if (job.operation === "retire") {
       await fs.writeFile(path.join(root, "retired"), "retired", {
         mode: 0o600,
       });
-      for (const filename of await fs.readdir(quadlet))
+      for (const filename of await optionalDirectoryEntries(quadlet))
         if (
           filename.startsWith("luxi-" + project + "-") &&
           filename.endsWith(".container")
@@ -310,34 +310,31 @@ try {
       await fs.writeFile(activeFile, JSON.stringify({ units: [] }), {
         mode: 0o600,
       });
+    } else {
+      throw new Error("invalid_lifecycle_operation");
     }
     process.stdout.write(JSON.stringify({ ok: true }));
     process.exit(0);
   }
   const evictedVersionIds = [];
-  if (job.environment === "preview") {
-    for (const filename of await fs.readdir(path.join(root, "jobs"))) {
-      if (!filename.endsWith(".json") || filename === job.requestId + ".json")
-        continue;
-      const previous = await json(path.join(root, "jobs", filename), null);
-      if (previous?.environment === "preview") {
-        for (const unit of previous.units ?? []) await stopUnit(unit);
-        if (previous.result?.versionId)
-          evictedVersionIds.push(previous.result.versionId);
-        await fs.unlink(path.join(root, "jobs", filename));
-      }
-    }
-  }
   const environment =
       job.environment === "production" ? "production" : "preview",
     versionRoot = await secureDir(path.join(root, "versions", job.versionId)),
-    workspace = path.join(versionRoot, "source");
+    workspace = path.join(scratch, "source");
+  if (job.frontendScratchVersion === 1 && !process.env.LUXISOFT_BUILD_SCRATCH) throw new Error("frontend_build_scratch_unavailable");
+  if (job.frontendPolicyVersion !== 2) throw new Error("frontend_policy_upgrade_required");
+  for (const part of job.snapshot.manifest.components) {
+    if ((part.surface === "http" || (part.surface === "mobile" && part.role !== "frontend")) && part.role !== "backend") throw new Error("frontend_runtime_forbidden");
+  }
   const archive = Buffer.from(job.archive, "base64");
   if (
     createHash("sha256").update(archive).digest("hex") !==
     job.snapshot.sourceDigest
   )
     throw new Error("source_digest_mismatch");
+  await secureDir(scratch);
+  const ticks=(await fs.readFile('/proc/self/stat','utf8')).slice((await fs.readFile('/proc/self/stat','utf8')).lastIndexOf(')')+2).split(' ')[19];
+  await fs.writeFile(path.join(scratch,'lease.json'),JSON.stringify({pid:process.pid,startTicks:ticks}),{mode:0o600});
   await secureDir(workspace);
   // Python's stdlib extracts only regular files beneath the owned workspace.
   const extract = `import io,os,stat,sys,zipfile\nroot=sys.argv[1]; total=0\nwith zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())) as z:\n if len(z.infolist())>20000: raise Exception('too_many_files')\n for f in z.infolist():\n  if f.is_dir(): continue\n  p=f.filename\n  if p.startswith('/') or '\\\\' in p or any(x in ('','..','.') for x in p.split('/')) or stat.S_ISLNK(f.external_attr>>16): raise Exception('unsafe_archive')\n  total+=f.file_size\n  if total>134217728 or f.file_size>16777216: raise Exception('archive_too_large')\n  destination=os.path.join(root,p); os.makedirs(os.path.dirname(destination),exist_ok=True)\n  if os.path.realpath(destination)!=destination: raise Exception('unsafe_archive_path')\n  with open(destination,'wb') as o: o.write(z.read(f))\n  os.chmod(destination,0o755 if f.external_attr>>16&0o111 else 0o644)\n`;
@@ -346,54 +343,38 @@ try {
     record: false,
   });
   const disk = Number(
-    await command("/usr/bin/du", ["-sm", job.home], {
+    await command("/usr/bin/du", ["-sm", "--exclude=.local/share/containers/storage", job.home], {
       cwd: job.home,
       record: false,
     }).then((output) => output.split(/\s/)[0]),
   );
   if (disk > job.limits.diskMb) throw new Error("disk_quota_exceeded");
-  const space = await fs.statfs(root);
-  if (space.bavail * space.bsize < 2 * 1024 ** 3)
-    throw new Error("runtime_disk_capacity");
+  const hostSpace = await fs.statfs('/');
+  const tenantSpace = await fs.statfs(root);
+  assertRuntimeDiskCapacity(hostSpace.bavail * hostSpace.bsize, tenantSpace.bavail * tenantSpace.bsize);
   const manifest = job.snapshot.manifest,
     images = await json(path.join(versionRoot, "images.json"), {}),
     components = [],
     network = `luxi-${project}-${environment}`,
     resourceEnv = {};
-  await command("/usr/bin/podman", ["network", "exists", network], {
-    record: false,
-  }).catch(() =>
-    command("/usr/bin/podman", ["network", "create", network], {
-      record: false,
-    }),
-  );
+  if (manifest.resources.length || manifest.components.some(part => part.surface !== "static")) {
+    await command("/usr/bin/podman", ["network", "exists", network], {record: false})
+      .catch(() => command("/usr/bin/podman", ["network", "create", network], {record: false}));
+  }
   if (manifest.resources.length > job.limits.maxDatabases)
     throw new Error("database_quota_exceeded");
-  // Reserve against configured limits, so a candidate/build cannot exhaust the
-  // account slice and kill the current production services.
-  const running = (
-    await command("/usr/bin/podman", ["ps", "--format", "{{.Names}}"], {
-      record: false,
-    })
-  )
-    .split("\n")
-    .filter(Boolean);
-  const newResources = manifest.resources.filter(
-    (resource) =>
-      resource.engine !== "sqlite" &&
-      !running.includes(`luxi-${project}-${environment}-data-${resource.name}`),
-  ).length;
-  if (
-    (running.length + newResources + manifest.components.length) * 512 > 3584 ||
-    (running.length + newResources) * 512 + 1536 > 3584
-  )
-    throw new Error("runtime_memory_capacity");
-  const available = Number(
-    (await fs.readFile("/proc/meminfo", "utf8")).match(
-      /MemAvailable:\s+(\d+)/,
-    )?.[1] ?? 0,
-  );
-  if (available < 2 * 1024 * 1024) throw new Error("runtime_host_capacity");
+  // The hosting slice still enforces its hard limit. Reserve room for the
+  // bounded build and candidate without treating idle services as full RAM.
+  const accountCgroup = `/sys/fs/cgroup/user.slice/user-${process.getuid()}.slice`;
+  const [used, maximum, meminfo] = await Promise.all([
+    fs.readFile(accountCgroup + '/memory.current', 'utf8'),
+    fs.readFile(accountCgroup + '/memory.max', 'utf8'), fs.readFile('/proc/meminfo', 'utf8'),
+  ]);
+  const hostAvailableMib = Number(meminfo.match(/MemAvailable:\s+(\d+)/)?.[1] ?? 0) / 1024;
+  const accountMaxMib = maximum.trim() === 'max' ? hostAvailableMib : Number(maximum) / 1024 ** 2;
+  if (!runtimeCapacity({ hostAvailableMib, accountUsedMib: Number(used) / 1024 ** 2,
+    accountMaxMib, candidateMib: manifest.components.length * 512 + manifest.resources.length * 512 }))
+    throw new Error('runtime_memory_capacity');
   // Resources have stable names and volumes per environment. A new application
   // version never replaces the database or copies production data to previews.
   for (const resource of manifest.resources) {
@@ -458,11 +439,12 @@ try {
       timeout: 180000,
       record: false,
     });
-    const image = await command(
+    let image = await command(
       "/usr/bin/podman",
       ["image", "inspect", "--format", "{{.Id}}", recipe.image],
       { record: false },
     );
+    if (/^[a-f0-9]{64}$/.test(image)) image = "sha256:" + image;
     await startContainer(unit, image, {
       environment: recipe.environment,
       network,
@@ -492,7 +474,19 @@ try {
       await secureDir(path.dirname(file));
       await fs.writeFile(file, body, { mode: 0o600 });
     }
-    let image = images[part.name];
+    const surface = part.surface === "mobile" ? (part.role === "frontend" ? "static" : "http") : part.surface;
+    const retained = job.frontendArtifacts?.[part.name];
+    if (surface === "static" && retained) {
+      components.push({name:part.name,port:null,image:null,surface,staticArchive:retained});
+      continue;
+    }
+    if (surface === "static") {
+      if (environment === "production") throw new Error("frontend_artifact_missing_rebuild_preview");
+      const storage = await secureDir(path.join(scratch, "frontend-"+part.name));
+      frontendTemporaryDirectory = await secureDir(path.join(storage, "tmp"));
+      frontendPodman = ["--root",path.join(storage,"store"),"--runroot",path.join(storage,"run"),"--storage-driver=vfs","--network-config-dir",path.join(storage,"networks")];
+    }
+    let image = surface === "static" ? null : images[part.name];
     if (!image) {
       if (environment === "production")
         throw new Error("immutable_image_missing");
@@ -545,6 +539,7 @@ try {
         [
           "build",
           "--network=slirp4netns:allow_host_loopback=false",
+          "--security-opt=seccomp=/usr/lib/luxipanel/storage-seccomp.json",
           "--memory=1536m",
           "--cpu-quota=100000",
           "--cpu-period=100000",
@@ -562,9 +557,10 @@ try {
         ["image", "inspect", "--format", "{{.Id}}", tag],
         { record: false },
       );
+      if (/^[a-f0-9]{64}$/.test(image)) image = "sha256:" + image;
       if (!/^sha256:[a-f0-9]{64}$/.test(image))
         throw new Error("image_digest_invalid");
-      images[part.name] = image;
+      if (surface !== "static") images[part.name] = image;
       await fs.writeFile(
         path.join(versionRoot, "images.json"),
         JSON.stringify(images),
@@ -579,17 +575,16 @@ try {
         HOST: "0.0.0.0",
         LUXISOFT_ENVIRONMENT: environment,
       };
-    const surface = part.surface === "mobile" ? "http" : part.surface;
     if (surface === "static") {
       // Export the immutable image's public tree. No web process or port runs
       // on BACKEND for a static component.
-      const exportDir = await secureDir(path.join(versionRoot, "static-export-" + part.name + "-" + randomBytes(5).toString("hex")));
+      const exportDir = await secureDir(path.join(scratch, "static-export-" + part.name + "-" + randomBytes(5).toString("hex")));
       const container = `luxi-export-${project}-${part.name}-${randomBytes(5).toString("hex")}`;
       const archiveFile = path.join(versionRoot, `static-${part.name}-${job.requestId}.zip`);
       const pack = `import hashlib,os,stat,sys,zipfile\nroot,out=sys.argv[1:]\nfiles=[];total=0\nfor base,dirs,names in os.walk(root,followlinks=False):\n for name in dirs+names:\n  p=os.path.join(base,name); s=os.lstat(p)\n  if stat.S_ISLNK(s.st_mode): raise Exception('static_symlink')\n  if not (stat.S_ISDIR(s.st_mode) or stat.S_ISREG(s.st_mode)): raise Exception('static_special_file')\n for name in names:\n  p=os.path.join(base,name); rel=os.path.relpath(p,root).replace(os.sep,'/')\n  if any(part in ('','.','..') for part in rel.split('/')): raise Exception('static_bad_path')\n  size=os.lstat(p).st_size;total+=size\n  if size>16777216 or total>134217728: raise Exception('static_too_large')\n  files.append((p,rel))\n  if len(files)>10000: raise Exception('static_too_many_files')\nif 'index.html' not in [rel for _,rel in files]: raise Exception('static_index_missing')\nwith zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:\n for p,rel in sorted(files,key=lambda x:x[1]): z.write(p,rel)\nif os.path.getsize(out)>33554432: raise Exception('static_archive_too_large')\nprint(hashlib.sha256(open(out,'rb').read()).hexdigest()+' '+str(os.path.getsize(out)))\n`;
       let summary;
       try {
-        await command("/usr/bin/podman", ["create", "--name", container, image], { record: false });
+        await command("/usr/bin/podman", ["create", "--network=none", "--name", container, image], { record: false });
         try {
           await command("/usr/bin/podman", ["cp", `${container}:/srv/public/.`, exportDir], { record: false, timeout: 120000 });
         } finally {
@@ -603,7 +598,9 @@ try {
         await fs.rm(exportDir, { recursive: true, force: true });
       }
       const [sha256, bytes] = summary.split(" ");
-      components.push({ name: part.name, port: null, image, surface, staticArchive: { sha256, bytes: Number(bytes) } });
+      frontendPodman = [];
+      frontendTemporaryDirectory = undefined;
+      components.push({ name: part.name, port: null, image:null, surface, staticArchive: { sha256, bytes: Number(bytes) } });
       continue;
     }
     const port = await startContainer(unit, image, {
@@ -616,8 +613,9 @@ try {
       ]),
       deferred: surface === "worker" && environment === "production",
     });
-    if (port) await healthy(port, part.healthPath);
-    else if (!workers.includes(unit)) {
+    // The root supervisor validates HTTP health before accepting this result.
+    // Tenant identities cannot initiate connections to host loopback.
+    if (!port && !workers.includes(unit)) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       const state = await command(
         "/usr/bin/podman",
@@ -630,6 +628,7 @@ try {
   }
   const result = {
     components,
+    frontendArtifactsVersion: 2,
     environment,
     versionId: job.versionId,
     evictedVersionIds,
@@ -641,7 +640,7 @@ try {
   );
   process.stdout.write(JSON.stringify({ ok: true, result, logs: clean(logs) }));
 } catch (error) {
-  for (const unit of started) await stopUnit(unit).catch(() => {});
+  if (!job.operation) await discardCandidate(jobIo, job.requestId, started).catch(() => {});
   process.stdout.write(
     JSON.stringify({
       ok: false,
@@ -650,4 +649,13 @@ try {
     }),
   );
   process.exitCode = 1;
+}
+
+finally {
+  frontendPodman = [];
+  frontendTemporaryDirectory = undefined;
+  if (!job.operation && !process.env.LUXISOFT_BUILD_SCRATCH) {
+    // vfs storage has no overlay mounts; unshare handles subordinate owners.
+    await command("/usr/bin/podman",["unshare","/usr/bin/rm","-rf","--",scratch],{cwd:root,record:false,timeout:120000}).catch(()=>{});
+  }
 }
