@@ -75,6 +75,7 @@ def main(previous):
                 fixture = stage/'verify.mjs'
                 fixture.write_text("""import fs from 'node:fs';
 const dir=process.env.LUXISOFT_BUILD_SCRATCH, volume=fs.statfsSync(dir);
+if(fs.readlinkSync('/proc/self')!==String(process.pid) || fs.statSync('/proc/self').uid!==process.getuid())throw Error('wrong_build_procfs');
 if(process.getuid()===0 || volume.type!==0xef53 || volume.bsize*volume.blocks>4*1024**3 ||
   fs.statSync(dir).uid!==process.getuid())throw Error('wrong_build_volume');
 fs.writeFileSync(dir+'/probe','ok',{flag:'wx'});console.log('static-build-volume-ok');""")
