@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import staticForm from "./__fixtures__/luxisoft-static-form.json";
+vi.mock("../../../config/env.js", () => ({ env: { NODE_ENV: "test" } }));
+vi.mock("../../../shared/logger/index.js", () => ({ createModuleLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }) }));
 const m = vi.hoisted(() => ({
   owned: vi.fn(),
   read: vi.fn(),
@@ -10,14 +12,18 @@ const m = vi.hoisted(() => ({
   exists: vi.fn(),
   exec: vi.fn(),
   stat: vi.fn(),
+  frontendTarget:vi.fn(),frontendRead:vi.fn(),frontendPut:vi.fn(),
+  frontendGet: vi.fn(), frontendPublish: vi.fn(), frontendReconfigure: vi.fn(), frontendRemove: vi.fn(), sites: vi.fn(), unbind: vi.fn(),
   redis: { set: vi.fn(), eval: vi.fn() },
 }));
 vi.mock("../../../config/paths.js", () => ({
   panelConfigDir: () => "/test/config",
 }));
 vi.mock("../../../shared/redis/index.js", () => ({ getRedis: () => m.redis }));
+vi.mock("./frontend-publication.service.js", () => ({ frontendPublicationService: { requireTarget:m.frontendTarget,readArtifact:m.frontendRead,putArtifact:m.frontendPut,get: m.frontendGet, remove: m.frontendRemove, withdraw: m.frontendRemove, publish: m.frontendPublish, reconfigure: m.frontendReconfigure } }));
+vi.mock("../repositories/provider.repository.js", () => ({ providerRepository: { listSitesForAccount: m.sites } }));
 vi.mock("./provider.service.js", () => ({
-  providerService: { ownedAccount: m.owned },
+  providerService: { ownedAccount: m.owned, unbindSite: m.unbind },
 }));
 vi.mock("../../../shared/executor/index.js", () => ({
   pathExists: m.exists,
@@ -40,6 +46,7 @@ const contents = {
       name: "app",
       context: ".",
       surface: "http",
+      role: "backend",
       port: 8080,
       healthPath: "/",
       stack: "static",
@@ -77,7 +84,10 @@ beforeEach(() => {
     m.redis.eval,
   ])
     mock.mockReset();
+  m.frontendTarget.mockReset().mockResolvedValue({});m.frontendRead.mockReset();m.frontendPut.mockReset();
   m.redis.set.mockResolvedValue("OK");
+  m.frontendGet.mockReset().mockResolvedValue(null);m.frontendRemove.mockReset().mockResolvedValue({removed:true});
+  m.frontendPublish.mockReset();m.frontendReconfigure.mockReset();m.sites.mockReset().mockResolvedValue([]);m.unbind.mockReset();
   m.exists.mockResolvedValue(false);
   m.owned.mockResolvedValue({
     account: {
@@ -96,11 +106,38 @@ beforeEach(() => {
   });
 });
 describe("repository provider ownership and immutable snapshots", () => {
+  it('refuses an unclassified HTTP interface on a provider with a separate frontend',async()=>{
+    const invalid=snapshot();delete invalid.manifest.components[0]!.role;const {digest,...body}=invalid.manifest;invalid.manifest.digest=hash(canonical(body));
+    await expect(service.snapshot({...provider,frontendTargetId:'front'} as never,account,project,version,invalid)).rejects.toThrow('Separa la interfaz');
+    expect(m.write).not.toHaveBeenCalled();
+  });
+  it('accepts an explicitly independent backend API',async()=>{
+    const input=snapshot();input.manifest.components[0]!.role='backend';
+    const {digest:_digest,...rest}=input.manifest;input.manifest.digest=hash(canonical(rest));
+    await service.snapshot({...provider,frontendTargetId:'front'} as never,account,project,version,input);
+    expect(m.write).toHaveBeenCalledOnce();
+  });
   it("accepts and preserves the actual Luxisoft static form + API deployment contract", async () => {
     const input = deploymentSnapshotSchema.parse(staticForm);
-    expect(input).toEqual(staticForm);
+    for(const part of input.manifest.components) {part.role=part.surface==='static'?'frontend':'backend';if(part.surface==='http')part.routePrefix='/api';}
+    const {digest,...body}=input.manifest;input.manifest.digest=hash(canonical(body));
     await service.snapshot(provider, account, project, version, input);
-    expect(JSON.parse(m.write.mock.calls[0]![1])).toEqual(staticForm);
+    expect(JSON.parse(m.write.mock.calls[0]![1])).toEqual(input);
+  });
+  it.each([
+    {environment:'preview' as const, surface:'http', expected:'invalid_frontend_scratch_scope'},
+    {environment:'production' as const, surface:'static', expected:'invalid_frontend_scratch_scope'},
+    {environment:'preview' as const, surface:'static', expected:'frontend_build_scratch_unavailable'},
+  ])('rejects invalid or unavailable build storage before accepting $environment $surface', async ({environment,surface,expected}) => {
+    const data = snapshot();
+    const component = data.manifest.components[0]!;
+    if (surface === 'static') Object.assign(component, {surface:'static',role:'frontend'});
+    m.read.mockResolvedValue(JSON.stringify(data));
+    m.exec.mockResolvedValue({exitCode:1});
+    await expect(service.enqueue(provider, account, project, {
+      requestId:project, versionId:version, environment, variables:{}, frontendScratchVersion:1,
+    })).rejects.toThrow(expected);
+    expect(m.write).not.toHaveBeenCalled();
   });
   it("checks provider ownership before creating runtime metadata", async () => {
     m.owned.mockRejectedValue(new Error("foreign account"));
@@ -207,17 +244,19 @@ describe("repository provider ownership and immutable snapshots", () => {
 
 describe("private static artifact transfer", () => {
   const bytes = Buffer.from("fixture static ZIP bytes"), sha256 = createHash("sha256").update(bytes).digest("hex");
-  const state = () => ({ status: "finished", result: { components: [
+  const state = () => ({ status: "finished", versionId: version, result: { components: [
     { name: "forms", surface: "static", port: null, staticArchive: { sha256, bytes: bytes.length } },
   ] } });
   beforeEach(() => {
     m.exists.mockResolvedValue(true);
     m.read.mockImplementation(async (file: string) => file.endsWith("state.json") ? JSON.stringify(state()) : bytes);
     m.stat.mockResolvedValue({ type: "file", size: bytes.length });
+    m.frontendRead.mockResolvedValue(bytes);
   });
   it("returns only verified staged bytes and never reads the tenant home", async () => {
     expect(await service.staticArtifact(provider, account, project, version, "forms")).toEqual({ bytes, sha256 });
-    expect(m.read).toHaveBeenLastCalledWith(expect.stringMatching(/\/jobs\/[a-f0-9-]+\/static\/forms\.zip$/));
+    expect(m.frontendRead).toHaveBeenCalledWith(provider,account,project,version,"forms",{sha256,bytes:bytes.length});
+    expect(m.stat).not.toHaveBeenCalled();
     expect(m.exec).not.toHaveBeenCalled();
   });
   it("enforces provider/account ownership before reading", async () => {
@@ -244,14 +283,29 @@ describe("private static artifact transfer", () => {
     await expect(service.staticArtifact(provider, account, project, version, "forms")).rejects.toThrow("no disponible");
     expect(m.stat).not.toHaveBeenCalled();
   });
-  it.each([{ type: "symlink", size: bytes.length }, { type: "file", size: 33554433 }])("rejects unsafe staged files %j", async stat => {
-    m.stat.mockResolvedValue(stat);
-    await expect(service.staticArtifact(provider, account, project, version, "forms")).rejects.toThrow("inválido");
-    expect(m.read).toHaveBeenCalledTimes(1);
+  it("propagates remote artifact integrity failures without local fallback",async()=>{
+    m.frontendRead.mockRejectedValue(new Error("frontend_artifact_invalid"));
+    await expect(service.staticArtifact(provider,account,project,version,"forms")).rejects.toThrow('frontend_artifact_invalid');
+    expect(m.stat).not.toHaveBeenCalled();
   });
   it("rejects bytes that changed after staging", async () => {
-    m.read.mockImplementation(async (file: string) => file.endsWith("state.json") ? JSON.stringify(state()) : Buffer.alloc(bytes.length));
+    m.frontendRead.mockRejectedValue(new Error("Artefacto inválido"));
     await expect(service.staticArtifact(provider, account, project, version, "forms")).rejects.toThrow("inválido");
+  });
+  it("retains verified recovery bytes atomically for a published release", async () => {
+    m.exists.mockImplementation(async (_executor: unknown, file: string) => file.endsWith("state.json"));
+    m.exec.mockResolvedValue({ exitCode: 0 });
+    expect(await service.retainStaticArtifact(provider, account, project, version, "forms", bytes)).toEqual({
+      retained: true, versionId: version, component: "forms", sha256,
+    });
+    expect(m.frontendPut).toHaveBeenCalledWith(provider,account,project,version,"forms",bytes);
+    expect(m.write).toHaveBeenCalledWith(expect.stringMatching(/frontend-artifacts.json$/),expect.stringContaining(sha256),{mode:0o600});
+    expect(m.write.mock.calls.some(([file])=>String(file).includes('.zip'))).toBe(false);
+  });
+  it("rejects recovery bytes that do not match immutable job metadata", async () => {
+    await expect(service.retainStaticArtifact(provider, account, project, version, "forms", Buffer.from("other")))
+      .rejects.toThrow("inválido");
+    expect(m.write).not.toHaveBeenCalled();
   });
   it("removes only the requested owned staged artifact, idempotently", async () => {
     expect(await service.deleteStaticArtifact(provider, account, project, version, "forms")).toEqual({ removed: true });
@@ -260,6 +314,88 @@ describe("private static artifact transfer", () => {
     m.exists.mockImplementation(async (_e, file: string) => file.endsWith("state.json"));
     expect(await service.deleteStaticArtifact(provider, account, project, version, "forms")).toEqual({ removed: true });
     expect(m.unlink).not.toHaveBeenCalled();
+  });
+});
+
+describe("durable production routes", () => {
+  const requestId = "00000000-0000-4000-8000-000000000004";
+  beforeEach(() => {
+    m.exists.mockResolvedValue(false);
+    m.exec.mockResolvedValue({ exitCode: 0 });
+    m.read.mockImplementation(async (file: string) => file.endsWith("state.json")
+      ? JSON.stringify({ status: "finished", environment: "production", versionId: version,
+          result: { versionId: version, components: [{ name: "app", surface: "http", port: 18080 }] } })
+      : JSON.stringify(snapshot()));
+  });
+  it("atomically materializes only provider-local routing metadata", async () => {
+    const result = await service.replaceProductionRoutes(provider, account, project, {
+      requestId, versionId: version, versionNumber: 4,
+      hosts: [{ hostname: "demo.luxisoft.com", defaultComponent: "app" }],
+    });
+    expect(result).toMatchObject({ versionId: version, hosts: 1 });
+    const write = m.write.mock.calls.find(([file]) => String(file).endsWith("routes.json.next"));
+    expect(write).toBeTruthy();
+    const route = JSON.parse(String(write![1]));
+    expect(route.components).toEqual([{ name: "app", surface: "http", port: 18080, routePrefix: null,role:"backend" }]);
+    expect(JSON.stringify(route)).not.toMatch(/password|secret|database_url/i);
+    expect(m.exec).toHaveBeenCalledWith(expect.stringContaining("routes.json.next"), { timeoutMs: 5000 });
+  });
+  it('keeps a migrated version on its recorded frontend when hosts are reconfigured',async()=>{
+    m.frontendGet.mockResolvedValue({versionId:version,targetId:'front',sha256:'a'.repeat(64)});
+    await service.replaceProductionRoutes(provider,account,project,{requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]});
+    expect(m.frontendReconfigure).toHaveBeenCalledWith(provider,account,project,['demo.luxisoft.com'],{});
+    expect(m.write).not.toHaveBeenCalled();
+  });
+  it('restores API routes as well as frontend hosts for a migrated form', async () => {
+    const bytes = Buffer.from('static form'), sha256 = hash(bytes.toString());
+    m.frontendRead.mockResolvedValue(bytes);
+    const input = structuredClone(staticForm);
+    input.manifest.components[1]!.routePrefix = '/api';
+    m.frontendGet.mockResolvedValue({versionId:version, targetId:'front', apiRoutes:['/api'], sha256});
+    m.read.mockImplementation(async (file: string) => file.endsWith('state.json')
+      ? JSON.stringify({status:'finished', environment:'production', versionId:version, result:{versionId:version, components:[
+          {name:'forms',surface:'static',port:null,staticArchive:{sha256,bytes:bytes.length}},
+          {name:'forms-api',surface:'http',port:18081}]}})
+      : file.endsWith('manifest.json') ? JSON.stringify(input) : bytes);
+    await service.replaceProductionRoutes({...provider, frontendTargetId:'front'} as never, account, project, {
+      requestId, versionId:version, versionNumber:4, hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'forms'}]});
+    expect(m.frontendPublish).toHaveBeenCalled();
+    expect(m.frontendReconfigure).not.toHaveBeenCalled();
+    const write = m.write.mock.calls.find(([file]) => String(file).endsWith('routes.json.next'));
+    const route = JSON.parse(String(write![1]));
+    expect(route.components).toEqual([{name:'forms-api',surface:'http',port:18081,routePrefix:'/api'}]);
+    expect(route.hosts[0].defaultComponent).toBe('forms-api');
+  });
+  it('blocks old unclassified HTTP versions from returning to BACKEND', async () => {
+    const invalid=snapshot();delete invalid.manifest.components[0]!.role;
+    m.read.mockImplementation(async(file:string)=>file.endsWith('state.json')?JSON.stringify({status:'finished',environment:'production',versionId:version,result:{versionId:version,components:[{name:'app',surface:'http',port:18080}]}}):JSON.stringify(invalid));
+    await expect(service.replaceProductionRoutes({...provider,frontendTargetId:'front'} as never,account,project,{
+      requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]
+    })).rejects.toThrow('Separa la interfaz');
+    expect(m.write).not.toHaveBeenCalled();
+  });
+  it('resumes a verified legacy split with frontend pages and only API routes', async () => {
+    m.frontendGet.mockResolvedValue({versionId:version,targetId:'front',apiRoutes:['/api'],backendOnlyComponents:['app']});
+    await service.replaceProductionRoutes({...provider,frontendTargetId:'front'} as never,account,project,{requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]});
+    expect(m.frontendReconfigure).toHaveBeenCalledWith(expect.anything(),account,project,['demo.luxisoft.com'],{});
+    const write=m.write.mock.calls.find(([file])=>String(file).endsWith('routes.json.next'));
+    expect(JSON.parse(String(write![1])).components).toEqual([{name:'app',surface:'http',port:18080,routePrefix:'/api',role:'backend'}]);
+  });
+  it('retires only the legacy nginx bindings owned by this project',async()=>{
+    m.sites.mockResolvedValue([{externalSiteId:`gh:${project}:app:hash`},{externalSiteId:'gh:another-project:app:hash'}]);
+    await service.retire(provider,account,project);
+    expect(m.frontendRemove).toHaveBeenCalledWith(provider,account,project);
+    expect(m.unbind).toHaveBeenCalledExactlyOnceWith(provider,account,`gh:${project}:app:hash`);
+  });
+  it("does not replace the active route for an unfinished publication", async () => {
+    m.read.mockImplementation(async (file: string) => file.endsWith("state.json")
+      ? JSON.stringify({ status: "running", environment: "production", versionId: version })
+      : JSON.stringify(snapshot()));
+    await expect(service.replaceProductionRoutes(provider, account, project, {
+      requestId, versionId: version, versionNumber: 4,
+      hosts: [{ hostname: "demo.luxisoft.com", defaultComponent: "app" }],
+    })).rejects.toThrow("no preparada");
+    expect(m.write).not.toHaveBeenCalled();
   });
 });
 

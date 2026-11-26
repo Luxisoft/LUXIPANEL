@@ -17,6 +17,12 @@ export interface HostingProvider {
   name: string;
   /** `local` is explicit; other IDs refer to a pinned SSH vault target. */
   targetId: string;
+  /** Public interfaces and nginx live here; accounts/data stay on targetId. */
+  frontendTargetId?: string;
+  /** Fixed backend API origin reachable only from the selected frontend. */
+  backendGatewayUrl?: string;
+  previewAuthorizationUrl?: string;
+  previewBackendGatewayUrl?: string;
   panelUrl: string;
   /** Only this fixed loopback upstream may be used for managed proxy sites. */
   upstreamUrl: string;
@@ -41,6 +47,9 @@ export interface HostingProvider {
 }
 
 export interface ProviderAccountLink {
+  storageRevision?: number;
+  storageCapacityBytes?: number;
+  storagePendingCapacityBytes?: number | null;
   id: string;
   providerId: string;
   externalAccountId: string;
