@@ -32,7 +32,7 @@ class BuildStorageTest(unittest.TestCase):
     def test_build_failure_preserves_exit_code_and_releases_space(self):
         calls = []
         def run(argv, **kwargs):
-            calls.append(argv[0])
+            calls.append(argv)
             if argv[0].endswith('mkfs.ext4'):
                 self.assertEqual(Path(argv[-1]).stat().st_size, scratch.SIZE)
             if argv[0].endswith('runuser'):
@@ -45,7 +45,8 @@ class BuildStorageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(self.run_job(root, scratch.SIZE+scratch.HOST_RESERVE, run), 17)
             self.assertEqual(list(Path(root).iterdir()), [])
-        self.assertEqual(calls, ['/usr/sbin/mkfs.ext4','/usr/bin/mount','/usr/sbin/runuser','/usr/bin/umount'])
+        self.assertEqual(calls[0], ['/usr/bin/mount','-t','proc','-o','nosuid,nodev,noexec','proc','/proc'])
+        self.assertEqual([argv[0] for argv in calls[1:]], ['/usr/sbin/mkfs.ext4','/usr/bin/mount','/usr/sbin/runuser','/usr/bin/umount'])
 
 
 if __name__ == '__main__':
