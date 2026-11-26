@@ -1,7 +1,7 @@
 /** Installed root-owned, never in a customer's writable home. The sudoers
  * grant accepts NO arguments; managed execution is available only to root. */
 export const HOSTING_RUNTIME_HELPER = String.raw`#!/usr/bin/python3
-import os, sys, json, pwd, grp, stat, base64, subprocess, shlex, fcntl, datetime
+import os, sys, json, pwd, grp, stat, base64, subprocess, shlex, fcntl, datetime, re
 
 CONFIG = "__CONFIG__"
 def fail(message):
@@ -100,6 +100,8 @@ for p in policy["paths"]["readOnlyPaths"]:
 for p in policy["paths"]["denyPaths"]:
     owned_path(p)
     properties.append("InaccessiblePaths=" + p)
+if re.fullmatch(r"hp[a-f0-9]{20}",user):
+    properties.extend(["InaccessiblePaths=-" + home + "/.local/share/containers", "InaccessiblePaths=-" + home + "/.cache"])
 for p in properties: args.extend(["--property", p])
 args.extend(["--", "/usr/bin/python3", "-I", "/usr/lib/luxipanel/hosting-exec", "managed", command] if managed else ["--", "/usr/bin/python3", "-I", "/usr/lib/luxipanel/hosting-exec", "interactive"])
 # A root-owned flock slot stays held for the full terminal lifetime. Limits
@@ -141,8 +143,8 @@ if not context: sys.exit(126)
 try:
     number = lib.seccomp_syscall_resolve_name(b"ioctl")
     if number < 0: sys.exit(126)
-    for request in [0x40086602, 0x40046602, 0x401c5820]:
-        compare = Compare(1, 4, request, 0)
+    for request in [0x6602, 0x5820]:
+        compare = Compare(1, 7, 65535, request)
         if lib.seccomp_rule_add_array(context, 0x00050000 | errno.EPERM, number, 1, ctypes.byref(compare)) < 0: sys.exit(126)
     if lib.seccomp_load(context) < 0: sys.exit(126)
 finally: lib.seccomp_release(context)

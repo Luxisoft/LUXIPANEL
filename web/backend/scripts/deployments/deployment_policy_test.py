@@ -9,7 +9,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.seen.append(self.path)
-        self.send_response(200 if self.path == '/health' else 302 if self.path == '/redirect' else 404)
+        self.send_response(200 if self.path in ['/health','/html'] else 302 if self.path == '/redirect' else 404)
+        if self.path == '/html':
+            self.send_header('Content-Type','text/html')
         if self.path == '/redirect':
             self.send_header('Location', '/health')
         self.end_headers()
@@ -37,6 +39,13 @@ class HealthPolicyTests(unittest.TestCase):
 
     def test_successful_health(self):
         self.check()
+
+    def test_backend_role_cannot_serve_an_interface(self):
+        with self.assertRaisesRegex(RuntimeError,'backend_interface_forbidden'):
+            healthy_components([{'name':'api','surface':'http','port':self.server.server_port}], [{'name':'api','surface':'http','role':'backend','healthPath':'/html'}],attempts=1)
+
+    def test_mobile_frontend_has_no_backend_http_listener(self):
+        healthy_components([{'name':'app','surface':'static','port':None}], [{'name':'app','surface':'mobile','role':'frontend','healthPath':'/'}],attempts=1)
 
     def test_missing_endpoint_is_not_a_healthy_application(self):
         with self.assertRaisesRegex(RuntimeError, 'runtime_health_failed'):

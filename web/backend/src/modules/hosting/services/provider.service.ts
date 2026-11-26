@@ -1,3 +1,4 @@
+import { readProviderStorage, applyProviderStorage } from "./provider-storage.js";
 import { hostingTemplateService } from "./hosting-template.service.js";
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 LUXISOFT
@@ -21,7 +22,7 @@ import { securitySettingsService } from "../../admin/services/security-settings.
 import { panelUserRepository, totpRepository } from "../../auth/repositories/index.js";
 import { systemAccountsService } from "../../users/services/system-accounts.service.js";
 import { readTenantUsage } from "../../../shared/quota/quota-checker.js";
-import { AuthError, ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../../shared/errors/index.js";
+import { AuthError, ConflictError, ForbiddenError, NotFoundError, ValidationError, ServiceUnavailableError } from "../../../shared/errors/index.js";
 import { defaultProviderGroupTemplate, normalizeProviderGroupTemplate, instantiateProviderGroupTemplate } from "./provider-group-policy.js";
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -75,6 +76,11 @@ async function ownedAccount(provider: HostingProvider, externalId: string) {
 export const providerService = {
   publicProvider,
   ownedAccount,
+  /** A frontend target never changes the ownership target of accounts/data. */
+  async frontendExecutor(provider: HostingProvider, targetId = provider.frontendTargetId) {
+    if (!targetId) throw new ConflictError("Selecciona el servidor frontend en HOSTING");
+    return executorFor({ ...provider, targetId });
+  },
 
   async listTemplates(providerId: string) {
     const provider = await providerRepository.get(providerId);
@@ -87,6 +93,11 @@ export const providerService = {
   async listProviders() { return (await providerRepository.list()).map(publicProvider); },
 
   async createProvider(input: Omit<HostingProvider, "id" | "keyHash" | "keyPrefix" | "createdAt" | "updatedAt">) {
+    if (input.frontendTargetId) {
+      const executor=await this.frontendExecutor(input as HostingProvider);
+      const probe=await executor.exec('test -x /usr/lib/luxipanel/frontend-publication && test -x /usr/sbin/nginx',{timeoutMs:10000});
+      if(probe.exitCode!==0)throw new ValidationError('Instala la publicación frontend de HOSTING y nginx en el servidor seleccionado');
+    }
     if (input.allowedModules.includes("admin")) throw new ValidationError("Módulo no disponible para grupos de hosting");
     if (input.groupTemplate) input = { ...input, groupTemplate: normalizeProviderGroupTemplate(input.groupTemplate, input.allowedModules) };
     if (input.targetId !== LOCAL_TARGET_ID) {
@@ -102,6 +113,11 @@ export const providerService = {
   async updateProvider(id: string, patch: Partial<HostingProvider>) {
     const existing = await providerRepository.get(id);
     if (!existing) throw new NotFoundError("Proveedor");
+    if (patch.frontendTargetId) {
+      const executor=await this.frontendExecutor({ ...existing, frontendTargetId: patch.frontendTargetId });
+      const probe=await executor.exec('test -x /usr/lib/luxipanel/frontend-publication && test -x /usr/sbin/nginx',{timeoutMs:10000});
+      if(probe.exitCode!==0)throw new ValidationError('Instala la publicación frontend de HOSTING y nginx en el servidor seleccionado');
+    }
     // A target change after provisioning would silently cross tenant boundaries.
     if (patch.targetId && patch.targetId !== existing.targetId) throw new ConflictError("El servidor asignado es inmutable; crea otro proveedor");
     const modules = patch.allowedModules ?? existing.allowedModules;
@@ -210,6 +226,26 @@ export const providerService = {
     });
   },
 
+  async storage(provider: HostingProvider, externalId: string) {
+    const {link,account,executor}=await ownedAccount(provider,externalId);
+    return {...await readProviderStorage(executor,account),version:1,capacityBytes:Math.max(link.storageCapacityBytes??0,link.storagePendingCapacityBytes??0),pendingCapacityBytes:link.storagePendingCapacityBytes??null,revision:link.storageRevision??0};
+  },
+  async setStorage(provider:HostingProvider,externalId:string,input:{revision:number;capacityBytes:number}) {
+    return withLock(`${provider.id}:account:${externalId}`,async()=>{
+      const {link,account,executor}=await ownedAccount(provider,externalId);
+      const revision=link.storageRevision??0;
+      if(input.revision===revision-1&&input.capacityBytes===link.storageCapacityBytes)return this.storage(provider,externalId);
+      if(input.revision!==revision)throw new ConflictError('provider_storage_revision_conflict');
+      if(link.storagePendingCapacityBytes!=null&&link.storagePendingCapacityBytes!==input.capacityBytes)throw new ConflictError('provider_storage_reconciliation_required');
+      if(!(await readProviderStorage(executor,account)).nativeQuota)throw new ServiceUnavailableError('provider_native_storage_quota_unavailable');
+      // Publish an intent before touching the kernel. A crash or failed final
+      // write must keep the possible native capacity reserved to this owner.
+      await providerRepository.updateAccount(link.id,{storagePendingCapacityBytes:input.capacityBytes});
+      await applyProviderStorage(executor,account,input.capacityBytes);
+      await providerRepository.updateAccount(link.id,{storageRevision:revision+1,storageCapacityBytes:input.capacityBytes,storagePendingCapacityBytes:null});
+      return this.storage(provider,externalId);
+    });
+  },
   async usage(provider: HostingProvider, externalId: string) {
     const { account, executor } = await ownedAccount(provider, externalId);
     const measured = await readTenantUsage(executor, account);
@@ -222,41 +258,30 @@ export const providerService = {
 
   async bindSite(provider: HostingProvider, externalId: string, siteId: string, domain: string) {
     assertReference(siteId);
-    const parsed = siteFormSchema.parse({ kind: "proxy", domain, proxyPass: provider.upstreamUrl, websocket: true });
-    return withLock(`${provider.targetId}:domain:${parsed.domain}`, async () => {
-      const { account, executor } = await ownedAccount(provider, externalId);
-      if (account.status !== "active") throw new ForbiddenError("Cuenta suspendida");
-      const existing = await providerRepository.findSite(provider.id, siteId);
-      if (existing) {
-        if (existing.domain !== parsed.domain || existing.externalAccountId !== externalId) throw new ConflictError("El sitio ya está vinculado con otro dominio o cuenta");
-        return existing;
-      }
-      if (await providerRepository.findDomain(provider.targetId, parsed.domain)) throw new ConflictError("Dominio ya vinculado");
-      const sites = await providerRepository.listSitesForAccount(provider.id, externalId);
-      if (sites.length >= account.maxDomains) throw new ForbiddenError("Cupo de dominios agotado");
-      const marker = `${SITE_MARK}${provider.id}:${externalId}:${siteId}\n`;
-      const generated = nginxSitesService.generateConfig(parsed);
-      const content = marker + (siteId.startsWith("gh:") ? generated.replace("        proxy_pass ", "        proxy_buffering off;\n        proxy_read_timeout 3600s;\n        proxy_pass ") : generated);
-      try {
-        const current = await nginxSitesService.readRaw(executor, parsed.domain);
-        if (current !== content) throw new ConflictError("Existe una configuración NGINX ajena para ese dominio");
-      } catch (err) {
-        if (!(err instanceof NotFoundError)) throw err;
-      }
-      await nginxSitesService.createSiteRaw(executor, parsed.domain, content, true);
-      return providerRepository.createSite({ id: randomUUID(), providerId: provider.id,
-        externalAccountId: externalId, externalSiteId: siteId, domain: parsed.domain,
-        targetId: provider.targetId } as never);
-    });
+    const {account}=await ownedAccount(provider,externalId);
+    if(account.status!=="active")throw new ForbiddenError("Cuenta suspendida");
+    const {frontendPublicationService}=await import('./frontend-publication.service.js');
+    await frontendPublicationService.requireTarget(provider);
+    const parsed=siteFormSchema.parse({kind:"proxy",domain,proxyPass:provider.upstreamUrl,websocket:true});
+    return {externalSiteId:siteId,domain:parsed.domain,targetId:provider.frontendTargetId};
   },
 
   async unbindSite(provider: HostingProvider, externalId: string, siteId: string) {
     assertReference(siteId);
     const site = await providerRepository.findSite(provider.id, siteId);
     if (!site || site.externalAccountId !== externalId) throw new NotFoundError("Sitio de proveedor");
-    return withLock(`${provider.targetId}:domain:${site.domain}`, async () => {
-      const { executor } = await ownedAccount(provider, externalId);
-      const current = await nginxSitesService.readRaw(executor, site.domain);
+    return withLock(`${site.targetId}:domain:${site.domain}`, async () => {
+      // The stored binding and the exact nginx marker retain ownership even
+      // after its project/account has been deleted. Never resolve a new target.
+
+      const executor = await executorFor({ ...provider, targetId: site.targetId });
+      let current: string;
+      try { current = await nginxSitesService.readRaw(executor, site.domain); }
+      catch (error) {
+        if (!(error instanceof NotFoundError)) throw error;
+        await providerRepository.deleteSite(site.id);
+        return;
+      }
       if (!current.startsWith(`${SITE_MARK}${provider.id}:${externalId}:${siteId}\n`)) throw new ConflictError("La configuración NGINX cambió; requiere revisión administrativa");
       await nginxSitesService.deleteSite(executor, site.domain);
       await providerRepository.deleteSite(site.id);
