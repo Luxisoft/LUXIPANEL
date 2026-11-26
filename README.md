@@ -1,12 +1,45 @@
-# LUXIPANEL
+# LUXIPANEL — Linux Server Management & VPS Control Panel
 
-Self-hosted server administration for the web, desktop and mobile. This is the current public repository. The previous repository was renamed to [LUXIPANEL-OLD](https://github.com/Luxisoft/LUXIPANEL-OLD).
+**Panel de control para Linux, servidores VPS y hosting web**
+
+LUXIPANEL is an open-source, self-hosted Linux server and VPS control panel for Linux server management and web hosting. Manage local resources and supported remote servers over SSH from web, desktop and mobile clients.
+
+LUXIPANEL es un panel de control de código abierto y autohospedado para administrar servidores Linux, VPS y hosting web. Gestiona recursos locales y servidores remotos compatibles mediante SSH desde clientes web, de escritorio y móviles.
+
+[Install / Instalar](#install-the-server) · [Español](web/translations/README.es.md) · [Website / Sitio web](https://luxipanel.com)
+
+## Features / Funciones
+
+| English | Español |
+| --- | --- |
+| **Linux & VPS administration:** manage local server resources and supported SSH targets. | **Administración Linux y VPS:** gestiona recursos locales y servidores remotos compatibles por SSH. |
+| **Web hosting & Nginx:** manage hosting accounts, websites and Nginx configuration. | **Hosting web y Nginx:** administra cuentas de hosting, sitios web y la configuración de Nginx. |
+| **Files, terminal & databases:** work with server files, terminal sessions and supported database engines. | **Archivos, terminal y bases de datos:** trabaja con archivos, sesiones de terminal y motores de bases de datos compatibles. |
+| **Monitoring & backups:** view system metrics and alerts, create backups and configure backup schedules. | **Monitoreo y copias de seguridad:** consulta métricas y alertas, crea respaldos y configura su programación. |
+| **AI assistant:** configure your chosen provider to help with server tasks using the panel's permissions and approvals. | **Asistente de IA:** configura tu proveedor para ayudarte con tareas del servidor bajo los permisos y aprobaciones del panel. |
+| **Web, desktop & mobile:** access your installed panel from a browser, the Electron desktop client or the native React Native / Expo mobile app. | **Web, escritorio y móvil:** accede al panel instalado desde un navegador, el cliente Electron o la app nativa React Native / Expo. |
+
+Available actions depend on enabled modules, server compatibility, user permissions and integration setup. Some marketplace modules require a subscription.
+
+Las acciones disponibles dependen de los módulos habilitados, la compatibilidad del servidor, los permisos del usuario y la configuración de las integraciones. Algunos módulos del marketplace requieren una suscripción.
+
+## Workflows / Flujos de trabajo
+
+- **Your Linux server / Tu servidor Linux:** install on a supported Debian/Ubuntu host, sign in with its Linux account and manage Nginx, databases, backups and monitoring. / Instala en Debian/Ubuntu compatible, inicia sesión con su usuario Linux y administra Nginx, bases de datos, copias y monitoreo.
+- **Remote servers over SSH / Servidores remotos por SSH:** add a target in the installed panel, verify its identity and select it before acting. Supported actions depend on the target and your permissions. / Añade un destino en el panel instalado, verifica su identidad y selecciónalo antes de actuar. Las acciones dependen del destino y tus permisos.
+- **Developer projects / Proyectos de desarrollo:** use Files for editing and Git operations, Terminal for project commands and Nginx for websites and reverse proxies. Git deployment updates a selected branch with a fast-forward pull; configure builds, migrations and service restarts for your project. / Usa Archivos para editar y operar Git, Terminal para comandos del proyecto y Nginx para sitios y proxies inversos. El despliegue Git actualiza la rama con pull fast-forward; configura compilaciones, migraciones y reinicios según tu proyecto.
+
+[Server and SSH guide / Guía del servidor y SSH](web/README.md) · [Module SDK / SDK de módulos](web/MODULE-SDK-SPEC.md)
+
+## Clients / Clientes
 
 | Application | Source | How it connects |
 | --- | --- | --- |
 | Web and server | `web/backend`, `web/frontend` | Runs on your Linux server |
 | Desktop | `desktop` | Opens your selected panel in an isolated Electron browser profile |
 | Mobile | `mobile` | Native React Native / Expo workspace connected directly to your panel |
+
+This is the current public repository. The previous repository was renamed to [LUXIPANEL-OLD](https://github.com/Luxisoft/LUXIPANEL-OLD).
 
 ## Install the server
 
