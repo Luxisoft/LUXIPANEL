@@ -340,6 +340,21 @@ describe("durable production routes", () => {
     expect(JSON.stringify(route)).not.toMatch(/password|secret|database_url/i);
     expect(m.exec).toHaveBeenCalledWith(expect.stringContaining("routes.json.next"), { timeoutMs: 5000 });
   });
+  it("writes and withdraws in the configured provider's external catalog", async () => {
+    vi.stubEnv("HOSTING_GATEWAY_PROVIDER_ID", "provider-a");
+    vi.stubEnv("HOSTING_GATEWAY_ROUTE_DIRECTORY", "/fixture/catalog");
+    try {
+      await service.replaceProductionRoutes(provider, account, project, {
+        requestId, versionId: version, versionNumber: 4,
+        hosts: [{ hostname: "demo.example.com", defaultComponent: "app" }],
+      });
+      const file = "/fixture/catalog/" + hash("provider-a:" + account + ":" + project) + "/routes.json";
+      expect(m.write).toHaveBeenCalledWith(file + ".next", expect.any(String), { mode: 0o600 });
+      m.exists.mockResolvedValue(true);
+      await service.removeProductionRoutes(provider, account, project);
+      expect(m.unlink).toHaveBeenCalledWith(file);
+    } finally { vi.unstubAllEnvs(); }
+  });
   it('keeps a migrated version on its recorded frontend when hosts are reconfigured',async()=>{
     m.frontendGet.mockResolvedValue({versionId:version,targetId:'front',sha256:'a'.repeat(64)});
     await service.replaceProductionRoutes(provider,account,project,{requestId,versionId:version,versionNumber:4,hosts:[{hostname:'demo.luxisoft.com',defaultComponent:'app'}]});
