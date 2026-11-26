@@ -22,6 +22,11 @@ printf '%s ALL=(root) NOPASSWD: /usr/lib/luxipanel/deployment-helper\n' "$servic
 chmod 0440 /etc/sudoers.d/luxisoft-deployments
 visudo -cf /etc/sudoers.d/luxisoft-deployments
 bash "$script_dir/install-frontend-policy.sh"
+# An external gateway owns its systemd unit and route catalog.
+if systemctl cat luxisoft-project-gateway.service 2>/dev/null | grep -Fq '/usr/lib/luxisoft-project-gateway/'; then
+  podman --version
+  exit 0
+fi
 cat > /etc/luxipanel-project-gateway.env <<EOF
 PROJECT_GATEWAY_PORT=$gateway_port
 PROJECT_GATEWAY_HOST=0.0.0.0
