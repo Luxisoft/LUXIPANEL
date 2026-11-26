@@ -26,6 +26,9 @@ def main(command):
     if shutil.disk_usage(DISK_ROOT).free < SIZE + HOST_RESERVE:
         raise RuntimeError('host_build_disk_capacity')
 
+    # procfs must expose the same PIDs as the builder. Rootless Podman asks
+    # newuidmap to verify the owner of its child through /proc/<child>.
+    subprocess.run(['/usr/bin/mount', '-t', 'proc', '-o', 'nosuid,nodev,noexec', 'proc', '/proc'], check=True)
     parent = Path(tempfile.mkdtemp(dir=DISK_ROOT, prefix='luxisoft-build-'))
     image = parent / 'scratch.img'
     mount = parent / 'volume'
