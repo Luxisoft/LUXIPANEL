@@ -205,7 +205,15 @@ async function context(
     throw new ForbiddenError("Identidad hosting inválida");
   const id = hash(`${provider.id}:${accountRef}:${projectRef}`),
     root = path.join(panelConfigDir(), "hosting", "deployments", id);
-  return { ...owned, id, root };
+  let routeDirectory = root;
+  if (process.env.HOSTING_GATEWAY_PROVIDER_ID === provider.id) {
+    const catalog = process.env.HOSTING_GATEWAY_ROUTE_DIRECTORY;
+    if (!catalog || !path.isAbsolute(catalog) || path.normalize(catalog) !== catalog || catalog === "/") {
+      throw new ConflictError("gateway_route_directory_invalid");
+    }
+    routeDirectory = path.join(catalog, id);
+  }
+  return { ...owned, id, root, routeDirectory };
 }
 async function locked<T>(key: string, fn: () => Promise<T>) {
   const redis = getRedis(),
@@ -609,7 +617,7 @@ export const deploymentProviderService = {
           ...(backend.length ? { apiRoutes: backend.map(part => String(part.routePrefix)), proxyHosts: input.hosts.filter(host => host.defaultComponent !== part.name).map(host => host.hostname) } : {}),
           ...(input.hosts.find(host => !host.hostname.endsWith('.luxisoft.com') && !host.hostname.startsWith('www.')) ? {canonicalHost:input.hosts.find(host => !host.hostname.endsWith('.luxisoft.com') && !host.hostname.startsWith('www.'))!.hostname} : {}),
         }, bytes);
-        const file = path.join(c.root, "routes.json");
+        const file = path.join(c.routeDirectory, "routes.json");
         if (!backend.length) {
           if (await pathExists(c.executor, file)) await c.executor.unlink(file);
           return { revision: hash(bytes), versionId: input.versionId, hosts: input.hosts.length, targetId: provider.frontendTargetId };
@@ -629,7 +637,8 @@ export const deploymentProviderService = {
         hosts: input.hosts,
         components,
       };
-      const file = path.join(c.root, "routes.json");
+      const file = path.join(c.routeDirectory, "routes.json");
+      await c.executor.mkdir(c.routeDirectory, { recursive: true });
       await c.executor.writeFile(file + ".next", JSON.stringify(record), { mode: 0o600 });
       const moved = await c.executor.exec(`mv -f -- ${quoteArg(file + ".next")} ${quoteArg(file)}`, { timeoutMs: 5000 });
       if (moved.exitCode !== 0) throw new ConflictError("No se pudo activar la ruta publicada");
@@ -640,7 +649,7 @@ export const deploymentProviderService = {
     await frontendPublicationService.withdraw(provider, account, project);
     const c = await context(provider, account, project);
     return locked(c.id, async () => {
-      const file = path.join(c.root, "routes.json");
+      const file = path.join(c.routeDirectory, "routes.json");
       if (await pathExists(c.executor, file)) await c.executor.unlink(file);
       return { removed: true };
     });
@@ -649,7 +658,7 @@ export const deploymentProviderService = {
     await frontendPublicationService.remove(provider, account, project);
     const c = await context(provider, account, project),
       marker = path.join(c.root, "retire.json");
-    const routes = path.join(c.root, "routes.json");
+    const routes = path.join(c.routeDirectory, "routes.json");
     if (await pathExists(c.executor, routes)) await c.executor.unlink(routes);
     await c.executor.writeFile(
       marker,
